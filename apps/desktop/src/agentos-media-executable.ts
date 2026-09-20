@@ -1,11 +1,11 @@
 /** Resolve the native video tools without a shell or current-directory PATH lookup. */
-import { delimiter, isAbsolute, join, win32 } from 'node:path'
+import { posix, win32 } from 'node:path'
 import { statSync } from 'node:fs'
 
 /**
  * Find a configured, bundled, or installed FFmpeg tool on the selected platform.
  * @param name - Required video executable.
- * @param options - Process environment and resource location; file lookup is injectable for platform fixtures.
+ * @param options - Environment and resources in the selected platform's path syntax, with injectable file lookup.
  * @returns Absolute executable path; an invalid explicit override fails before fallback.
  */
 export function resolveMediaExecutable(name: 'ffmpeg' | 'ffprobe', options: {
@@ -15,7 +15,7 @@ export function resolveMediaExecutable(name: 'ffmpeg' | 'ffprobe', options: {
   isFile?: (path: string) => boolean
 }): string {
   const windows = options.platform === 'win32'
-  const paths = windows ? win32 : { isAbsolute, join, delimiter }
+  const paths = windows ? win32 : posix
   const isFile = options.isFile ?? ((path: string) => {
     try { return statSync(path).isFile() }
     catch { return false }
