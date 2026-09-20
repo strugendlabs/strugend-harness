@@ -40,6 +40,7 @@ const OUT = path.join(REPO, '.artifacts/strugend/packaged-' + process.platform +
      if(!body.tools){send(res,body.model,{content:JSON.stringify(body.messages).includes('whether optional')?'Optional service check':'Workspace verification'},'stop');return}
      assert(body.tools.some(x=>x.function?.name==='decision_check'));
      assert(body.tools.some(x=>x.function?.name==='memory_graph'));
+     assert(body.tools.some(x=>x.function?.name==='crawl_website'));
      if(probing){
       let name,args;
       if(probeStep===0){name='decision_check';args={model:'jev-latest',state:'No keys are configured.',questions}}
@@ -51,11 +52,12 @@ const OUT = path.join(REPO, '.artifacts/strugend/packaged-' + process.platform +
      if(step===0){name='decision_check';args={model:'jev-latest',state:'The local form reported Saved: draft.',questions}}
      else if(step===1){const seen=toolResult(body);assert.equal(seen.answers.evidence.noul,0.94);name='memory_graph';args={action:'stats'}}
      else if(step===2){assert.equal(toolResult(body).nodes,'3');args={action:'open',url:base+'form'}}
+     else if(step===6){const seen=toolResult(body);assert.equal(seen.engine,'Spider (Rust)');assert(seen.pages.some(p=>p.title==='Draft editor'&&p.text.includes('Local verification')));record('Packaged Rust crawler reads the local page through its isolated worker');send(res,body.model,{content:'Workspace verification passed.'},'stop');return}
      else{
       const seen=toolResult(body);assert.equal(seen.state.error,undefined);
       if(step===3){const field=seen.elements.find(x=>x.name==='Caption');assert(field);args={action:'fill',tabId:seen.state.tabId,revision:seen.state.revision,ref:field.ref,value:'Strugend test draft'}}
       else if(step===4){assert.equal(seen.elements.find(x=>x.name==='Caption').value,'Strugend test draft');args={action:'click',tabId:seen.state.tabId,revision:seen.state.revision,ref:seen.elements.find(x=>x.name==='Save draft').ref}}
-      else {assert(seen.text.includes('Saved: Strugend test draft'));send(res,body.model,{content:'Workspace verification passed.'},'stop');return}
+      else {assert(seen.text.includes('Saved: Strugend test draft'));name='crawl_website';args={url:base+'form',maxPages:1,maxDepth:1,timeoutMs:25000}}
      }
      step++;send(res,body.model,{role:'assistant',tool_calls:[{index:0,id:'verify-'+step,type:'function',function:{name,arguments:JSON.stringify(args)}}]},'tool_calls');return;
     }
@@ -124,7 +126,7 @@ const OUT = path.join(REPO, '.artifacts/strugend/packaged-' + process.platform +
   record('Intelligence saves write-only Decision and Memory keys plus graph origin; background autofocus cannot capture credentials');
   await closeSettings();
   await page.locator('[contenteditable="true"]').first().fill('Check the test evidence, read related memory, and save a draft in the local verification page.');await page.getByRole('button',{name:'Send message',exact:true}).click();
-  await page.getByText(/Workspace verification (passed|failed)\./).waitFor({timeout:60000});assert.deepEqual(errors,[]);assert.equal(step,5);assert.deepEqual(serviceCalls,['Decision','Memory']);
+  await page.getByText(/Workspace verification (passed|failed)\./).waitFor({timeout:60000});assert.deepEqual(errors,[]);assert.equal(step,6);assert.deepEqual(serviceCalls,['Decision','Memory']);
   const nativePage=await app.evaluate(async({webContents,BrowserWindow},url)=>{const view=webContents.getAllWebContents().find(w=>w.getURL()===url);if(!view)throw Error('Sidebar native page not found');const mounted=BrowserWindow.getAllWindows().flatMap(w=>w.contentView.children).find(child=>child.webContents===view);if(!mounted)throw Error('Browser page is not attached to the application window');return {visible:mounted.getVisible(),bounds:mounted.getBounds(),text:await view.executeJavaScript('document.body.innerText'),image:(await view.capturePage()).toDataURL()}},base+'form');
   assert.equal(nativePage.visible,true);assert(nativePage.bounds.width>100&&nativePage.bounds.height>100);assert(nativePage.text.includes('Saved: Strugend test draft'));fs.writeFileSync(path.join(OUT,'sidebar-form.png'),Buffer.from(nativePage.image.split(',')[1],'base64'));
   await page.screenshot({path:path.join(OUT,'chat-after-action.png')});
