@@ -16,6 +16,7 @@ import type {
 import type { AgentOsStore } from './agentos-store.ts'
 import { browserUrl, navigationError, websiteUrl } from './agentos-address.ts'
 import { loadWebsite } from './agentos-navigation.ts'
+import { elementTargetScript } from './agentos-browser-target.ts'
 
 const ISOLATED_WORLD = 999
 const KEY_CODES: Record<string, number> = {
@@ -114,6 +115,7 @@ export class AgentOsBrowser {
         nodeIntegration: false,
         webSecurity: true,
         spellcheck: true,
+        backgroundThrottling: false,
       },
     })
     const tab: OwnedTab = {
@@ -502,7 +504,7 @@ export class AgentOsBrowser {
           if (!/^e\d{1,3}$/u.test(command.ref)) throw new Error('Use an element reference from the latest observation.')
           const point = await this.script<{ x: number; y: number }>(
             tab,
-            `(() => { const el=globalThis.__agentOSNodes?.get(${JSON.stringify(command.ref)}); if(!el?.isConnected)throw Error('Element changed; observe again.'); if(el.matches('input[type="password"],[autocomplete="one-time-code"]')||/password|secret|token|api.?key/i.test([el.name,el.id].join(' ')))throw Error('Use the vault or human takeover for credentials.'); el.scrollIntoView({block:'center'}); const r=el.getBoundingClientRect(); if(!r.width||!r.height)throw Error('Element is not visible.'); el.focus(); return {x:Math.round(r.x+r.width/2),y:Math.round(r.y+r.height/2)}; })()`,
+            elementTargetScript(command.ref),
             operation,
           )
           signal?.throwIfAborted()

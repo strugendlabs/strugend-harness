@@ -14,6 +14,8 @@ Creator and the Web Plugin Manager use Desktop’s bundled pnpm under Electron N
 
 The [Strugend development guide](../../AGENT_OS_README.md) owns the local fork’s launch and service configuration. Display branding uses Strugend Harness; native credential identity and existing data paths remain stable so saved keys, browser profiles, and chats remain accessible. The [intelligence implementation](../desktop-host/src/strugend-intelligence.ts) adds optional typed decision checks and read-only temporal graph queries without changing the agent loop.
 
+Browser element actions focus and scroll before measuring the target, wait for two stable layout frames, and reject disabled, covered, detached, or invisible targets before pointer input. A page that cannot produce stable frames fails within five seconds. Browser views keep frame scheduling active while hidden so background tasks can finish their checks.
+
 ## Key technical decisions
 
 Desktop uses `resources/strugend/icon.png` and `resources/strugend/icon.icns`. electron-builder derives Windows application and installer icons from the PNG. Installer preparation renders the Strugend mark and wordmark into light and dark BMP resources, including the 164×314 uninstall sidebar.

@@ -14,6 +14,8 @@ Creator 和 Web Plugin Manager 在 Electron Node 模式下使用 Desktop 内置 
 
 [Strugend 开发指南](../../AGENT_OS_README.md) 定义本地分支的启动及服务配置。显示品牌使用 Strugend Harness；原生凭据标识和已有数据路径保持稳定，以便继续访问已保存的密钥、浏览器配置和聊天。[智能服务实现](../desktop-host/src/strugend-intelligence.ts) 在不更改智能体循环的情况下，加入可选的类型化决策检查和只读时序图查询。
 
+浏览器元素操作先聚焦并滚动目标，再测量位置，等待两个布局稳定的帧，并在发送指针输入前拒绝已禁用、被遮挡、已移除或不可见的目标。页面无法产生稳定帧时，操作会在五秒内失败。浏览器视图隐藏时仍保持帧调度，以便后台任务完成检查。
+
 ## 关键技术决策
 
 桌面端使用 `resources/strugend/icon.png` 和 `resources/strugend/icon.icns`。electron-builder 从 PNG 生成 Windows 应用和安装程序图标。安装程序准备阶段将 Strugend 图标和字标绘制到浅色及深色 BMP 资源中，包括 164×314 卸载侧边栏。

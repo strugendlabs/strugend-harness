@@ -57,14 +57,15 @@ const OUT = path.join(REPO, '.artifacts/strugend/packaged-' + process.platform +
       const seen=toolResult(body);assert.equal(seen.state.error,undefined);
       if(step===3){const field=seen.elements.find(x=>x.name==='Caption');assert(field);args={action:'fill',tabId:seen.state.tabId,revision:seen.state.revision,ref:field.ref,value:'Strugend test draft'}}
       else if(step===4){assert.equal(seen.elements.find(x=>x.name==='Caption').value,'Strugend test draft');args={action:'click',tabId:seen.state.tabId,revision:seen.state.revision,ref:seen.elements.find(x=>x.name==='Save draft').ref}}
-      else {assert(seen.text.includes('Saved: Strugend test draft'));name='crawl_website';args={url:base+'form',maxPages:1,maxDepth:1,timeoutMs:25000}}
+      else {assert(seen.text.includes('Saved: Strugend test draft'),'Click result: '+seen.text);name='crawl_website';args={url:base+'form',maxPages:1,maxDepth:1,timeoutMs:25000}}
      }
      step++;send(res,body.model,{role:'assistant',tool_calls:[{index:0,id:'verify-'+step,type:'function',function:{name,arguments:JSON.stringify(args)}}]},'tool_calls');return;
     }
    }catch(error){errors.push(String(error));if(req.url.endsWith('/chat/completions'))send(res,body?.model||'local-test',{content:'Workspace verification failed.'},'stop');else{res.writeHead(500);res.end('{}')}return}
   }
   if(req.url==='/form'){
-   res.setHeader('Content-Type','text/html');res.end('<!doctype html><title>Draft editor</title><style>body{font:18px system-ui;padding:30px;background:#eff2ed;color:#202432}label,input,button{display:block;margin:18px 0}input,button{padding:12px}</style><h1>Local verification</h1><label>Caption <input aria-label="Caption"></label><button onclick="document.querySelector(\'output\').textContent=\'Saved: \'+document.querySelector(\'input\').value">Save draft</button><output></output>');return;
+   // Focus moves the button before trusted pointer input reaches the page.
+   res.setHeader('Content-Type','text/html');res.end('<!doctype html><title>Draft editor</title><style>body{font:18px system-ui;padding:30px;background:#eff2ed;color:#202432}label,input,button{display:block;margin:18px 0}input,button{padding:12px}</style><h1>Local verification</h1><label>Caption <input aria-label="Caption"></label><button onfocus="this.style.marginTop=\'120px\'" onclick="document.querySelector(\'output\').textContent=\'Saved: \'+document.querySelector(\'input\').value">Save draft</button><output></output>');return;
   }
   res.writeHead(404);res.end();
  });
@@ -130,7 +131,7 @@ const OUT = path.join(REPO, '.artifacts/strugend/packaged-' + process.platform +
   const nativePage=await app.evaluate(async({webContents,BrowserWindow},url)=>{const view=webContents.getAllWebContents().find(w=>w.getURL()===url);if(!view)throw Error('Sidebar native page not found');const mounted=BrowserWindow.getAllWindows().flatMap(w=>w.contentView.children).find(child=>child.webContents===view);if(!mounted)throw Error('Browser page is not attached to the application window');return {visible:mounted.getVisible(),bounds:mounted.getBounds(),text:await view.executeJavaScript('document.body.innerText'),image:(await view.capturePage()).toDataURL()}},base+'form');
   assert.equal(nativePage.visible,true);assert(nativePage.bounds.width>100&&nativePage.bounds.height>100);assert(nativePage.text.includes('Saved: Strugend test draft'));fs.writeFileSync(path.join(OUT,'sidebar-form.png'),Buffer.from(nativePage.image.split(',')[1],'base64'));
   await page.screenshot({path:path.join(OUT,'chat-after-action.png')});
-  await noVendor();record('Real agent loop calls Decision, reads Memory, and operates the visible sidebar form');
+  await noVendor();record('Real agent loop operates the visible sidebar form after focus moves the button');
   await page.getByText('Workspace verification',{exact:true}).first().waitFor();
   await closeApp();await launch();
   await page.getByText('Workspace verification',{exact:true}).first().waitFor({timeout:60000});await page.getByText('Workspace verification',{exact:true}).first().click();
