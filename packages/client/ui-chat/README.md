@@ -24,6 +24,8 @@ File-mention providers receive the viewed Session ID with the closing-turn owner
 - [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
 - [Dev Note](#dev-note)
 
+Strugend builds collapse framework package labels into the context-injection row and present provider connection failures with product terminology. Authentication failures retain their dedicated recovery message; recorded events and expanded context remain unchanged.
+
 -----
 
 <a id="reference-previews"></a>

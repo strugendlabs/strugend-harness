@@ -20,6 +20,8 @@ kind: "package-reference"
 - [已知限制与暂缓事项](#known-limitations-and-deferred-work)
 - [开发备注](#dev-note)
 
+Strugend 构建使用简洁的空白聊天标题和居中的输入框。工作区、模式、权限与模型控件保留原有行为；工具需要时才打开右侧面板。
+
 -----
 
 <a id="conversation-assembly"></a>

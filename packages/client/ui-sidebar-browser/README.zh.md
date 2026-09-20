@@ -9,7 +9,7 @@ kind: "package-reference"
 
 ## 概述
 
-在独立的右侧 Sidebar tab 中浏览 HTTP(S) 页面，包括 loopback 服务。当前 Web 与 Desktop 都使用 iframe 和应用维护的 history。本包不会向被访问内容注入 Electron 或 Node 能力。
+在独立的右侧 Sidebar tab 中浏览 HTTP(S) 页面，包括 loopback 服务。Web 使用 iframe 和应用维护的 history；Agent OS Desktop 使用原生 Chromium 视图。本包不会向被访问内容注入 Electron 或 Node 能力。
 
 ## 目录
 
@@ -42,7 +42,13 @@ kind: "package-reference"
 
 Client 插件可以调用 `ctx.sidebarRight.openTab('browser', { params: { url } })` 打开 tab。可选 URL 会在导航前接受与地址栏输入相同的校验。
 
-工具栏提供后退、前进、刷新、前往、在系统浏览器中打开，以及最右侧的逐 tab sandbox 开关。关闭 sandbox 是临时选择，并会显示警告。外部打开接受已知的 HTTP(S) 目标。tab 标题显示 Web 主机名。
+Agent OS Desktop 在现有的 Session 级浏览器 store 中保留每个 tab 最后成功加载的 HTTP(S) 地址。重启应用或重载 UI 后，会在同一聊天拥有的新原生视图中重新打开该地址。失败或未完成的加载不会覆盖它。页面表单内容与原生前进/后退历史不会恢复。
+
+Desktop 将视口测量合并到动画帧中，仅在取整后的边界或可见性发生变化时更新原生视图。不会移动面板的聊天更新不会重复发送定位请求。对话框和菜单会隐藏原生视图；尺寸为零的面板会保持隐藏，直到布局提供可用的边界。旧工具栏请求的错误不会覆盖较新请求的结果。
+
+如果 Desktop 页面崩溃，待处理的读取和导航会停止，排队的操作会被拒绝。tab 会保留所属聊天与接管状态。使用刷新或输入地址即可恢复；被中断的点击、输入和表单提交不会重放。关闭 tab 同样会取消其待处理工作。
+
+Web 工具栏提供后退、前进、刷新、前往、在系统浏览器中打开，以及最右侧的逐 tab sandbox 开关。关闭 sandbox 是临时选择，并会显示警告。外部打开接受已知的 HTTP(S) 目标。tab 标题显示 Web 主机名。
 
 -----
 
@@ -58,7 +64,7 @@ Client 插件可以调用 `ctx.sidebarRight.openTab('browser', { params: { url }
 
 ### Iframe 载体
 
-Web 与 Desktop 默认使用 `sandbox="allow-scripts allow-forms allow-same-origin allow-popups allow-popups-to-escape-sandbox"`。frame 没有直接的下载或顶层导航 flag。popup 会脱离 sandbox；在 Web 中，逃逸的 popup 会保留 opener，并可以导航顶层应用。被访问的 origin 可以使用自身 Cookie 与 Web storage，但跨域目标无法读取 DSH DOM、storage 或 API 响应。iframe 不发送 referrer，也不添加包自有的 Permissions Policy，因此浏览器默认策略与用户授权生效。toolbar 可以为当前 tab occurrence 移除 sandbox；该选择不持久化。未受 sandbox 约束的页面可以按浏览器 activation 规则导航顶层应用，并使用下载、模态对话框和输入锁定。本包不代理或探测远程页面。
+Web 默认使用 `sandbox="allow-scripts allow-forms allow-same-origin allow-popups allow-popups-to-escape-sandbox"`。frame 没有直接的下载或顶层导航 flag。popup 会脱离 sandbox；在 Web 中，逃逸的 popup 会保留 opener，并可以导航顶层应用。被访问的 origin 可以使用自身 Cookie 与 Web storage，但跨域目标无法读取 DSH DOM、storage 或 API 响应。iframe 不发送 referrer，也不添加包自有的 Permissions Policy，因此浏览器默认策略与用户授权生效。toolbar 可以为当前 tab occurrence 移除 sandbox；该选择不持久化。未受 sandbox 约束的页面可以按浏览器 activation 规则导航顶层应用，并使用下载、模态对话框和输入锁定。本包不代理或探测远程页面。
 
 Web 记录 toolbar 提交和 typed tab 打开。导航状态机把每个受控 revision 的第一次 iframe load 视为已知，把后续 load 视为页面已经变化到不可读取 URL 的证据。进入 unknown 状态后，地址会显示标记，后退、前进和外部打开会禁用，刷新则返回最后一个受控 URL。body 重挂载时会重新加载应用最后已知的 URL，并且仅在尚无受控目标时使用可选初始 URL。不产生 iframe load 的 History API 与 fragment 变化仍不可见。iframe `error` event 会显示临时加载失败 notice，直到下一个受控加载，但不会改变 URL history。
 

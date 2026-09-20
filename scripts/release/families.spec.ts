@@ -186,6 +186,10 @@ describe('release families', () => {
     const missing = join(defaultBuild, 'missing')
     write(join(missing, 'package.json'), `${JSON.stringify({ version: officialEnvironment.DSH_CLIENT_VERSION })}\n`)
 
+    const strugend = buildFixture({ ...officialEnvironment, DSH_CLIENT_BUILD_PROFILE: 'strugend', DSH_CLIENT_TITLE: 'Strugend Harness' })
+    expect(() => { dsh.verifyBuildArtifacts(strugend, 'strugend') }).not.toThrow()
+    expect(() => { dsh.verifyBuildArtifacts(official, 'strugend') }).toThrow(/DSH_CLIENT_TITLE/)
+    expect(() => { dsh.verifyBuildArtifacts(strugend) }).toThrow(/DSH_CLIENT_TITLE/)
     expect(() => { dsh.verifyBuildArtifacts(official) }).not.toThrow()
     expect(() => { dsh.verifyBuildArtifacts(defaultBuild) }).toThrow(/DSH_CLIENT_TITLE/)
     expect(() => { dsh.verifyBuildArtifacts(missing) }).toThrow(/record.*missing/)

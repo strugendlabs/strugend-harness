@@ -29,6 +29,7 @@ function SidebarFrame({ renderSlot }: FrameProps) {
 async function bench() {
   const runtime = await SlotTestRuntime.create()
   runtime.ctx.provide('layout', { selectPanel: vi.fn() })
+  runtime.ctx.provide('sidebarRight', { openTab: vi.fn() } as never)
   runtime.releaseWorkspaceSource()
   const directoryPicker = {}
   const { remote } = runtime

@@ -1,0 +1,14 @@
+{
+  "decision": [
+    {
+      "type": "text",
+      "text": "{\"available\":false,\"reason\":\"Decision is not configured. Add its key in Intelligence settings, or continue with Core.\"}"
+    }
+  ],
+  "memory": [
+    {
+      "type": "text",
+      "text": "{\"available\":false,\"reason\":\"Memory graph is not connected. Use the local memory file instead.\"}"
+    }
+  ]
+}

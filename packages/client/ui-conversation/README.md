@@ -20,6 +20,8 @@ English | [中文](README.zh.md)
 - [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
 - [Dev Note](#dev-note)
 
+Strugend builds use a quiet empty-chat headline and a centered composer. Workspace, mode, access, and model controls retain their behavior; the right panel opens when a tool needs it.
+
 -----
 
 <a id="conversation-assembly"></a>

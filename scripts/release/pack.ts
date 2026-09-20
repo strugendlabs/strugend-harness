@@ -52,7 +52,7 @@ function parseConcurrency(raw: string | undefined): number {
 /** Pack the family named by `--family` into `--out`. */
 async function main(): Promise<void> {
   const { values } = parseArgs({
-    options: { family: { type: 'string' }, out: { type: 'string' }, concurrency: { type: 'string' } },
+    options: { 'client-profile': { type: 'string', default: 'official' }, family: { type: 'string' }, out: { type: 'string' }, concurrency: { type: 'string' } },
     allowPositionals: false,
   })
   if (values.family === undefined) throw new Error('usage: pack.ts --family <dsh|vendor> [--out dist/npm] [--concurrency 1]')
@@ -62,7 +62,10 @@ async function main(): Promise<void> {
   const root = process.cwd()
   const destination = resolve(root, values.out ?? DEFAULT_OUTPUT)
   const members = family.publishOrder(family.members(root)).order
-  family.verifyBuildArtifacts(root)
+  const profile = values['client-profile']
+  if (profile !== 'official' && profile !== 'strugend') throw new Error('Unknown client build profile')
+  if (profile === 'strugend' && family.id !== 'dsh') throw new Error('The Strugend client profile requires the dsh family')
+  family.verifyBuildArtifacts(root, profile)
   family.verifyVersions(members)
 
   rmSync(destination, { recursive: true, force: true })

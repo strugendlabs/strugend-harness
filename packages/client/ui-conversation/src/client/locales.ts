@@ -9,6 +9,9 @@ const PLAN_NEXT_ACTION_EN = 'describe your task to generate plan'
 
 /** Simplified Chinese dictionary (the key-set source of truth). */
 export const zh = {
+  'hero.agentosHeadline': '我们来做些什么？',
+  'hero.strugendSubtitle': '描述任务，或从技能开始。',
+  'hero.newChat': '新建聊天',
   'hint.plan': PLAN_NEXT_ACTION_ZH,
   'hint.goal': '输入目标，智能体将持续执行',
   'hint.goal.active': '当前目标进行中。可输入 edit 修改 / pause 暂停 / resume 继续 / clear 清除',
@@ -146,9 +149,10 @@ export const zh = {
   'queue.save': '保存排队消息',
   'queue.cancelEdit': '取消编辑',
   'queue.remove': '删除排队消息',
+  'queue.steer.short': '插话',
   'queue.steer': '插话发送',
   'queue.steer.unavailable': '仅运行中可插话发送',
-  'error.sessionInUse': '当前会话已被占用，可能是其他正在运行的 DSH 导致的（如其他 dsh web、桌面端），请退出其他正在运行的 DSH 后重试。',
+  'error.sessionInUse': '此聊天已在另一个应用实例中打开。请关闭该实例后重试。',
   'queue.editFailed': '编辑失败：这条消息可能已经开始发送。',
   'queue.removeFailed': '删除失败：这条消息可能已经开始发送。',
   'queue.steerFailed': '插话发送失败，请重试。',
@@ -171,14 +175,17 @@ export type ConversationKey = keyof typeof zh
 
 /** English dictionary, checked complete against the zh key set. */
 export const en = {
+  'hero.agentosHeadline': 'What shall we work on?',
+  'hero.strugendSubtitle': 'Describe a task, or start with a skill.',
+  'hero.newChat': 'New chat',
   'hint.plan': PLAN_NEXT_ACTION_EN,
   'hint.goal': 'describe the objective for a long-running task',
   'hint.goal.active': 'goal active — edit / pause / resume / clear',
   'placeholder.plan': PLAN_NEXT_ACTION_EN,
-  'placeholder.default': 'Message or run a task, / commands, @ files or sessions',
+  'placeholder.default': 'Message Strugend…',
   'placeholder.unavailable': 'Session unavailable',
   'placeholder.parentOffline': 'Parent session offline; sending is unavailable but you can still stop the run',
-  'placeholder.hero': 'Describe what you want to build, / commands, @ files or sessions',
+  'placeholder.hero': 'Message Strugend…',
   'placeholder.workspace': 'Choose a workspace to start',
   'placeholder.steerQueue': 'Cmd/Ctrl+Enter steers all queued messages',
   'input.commands': 'Add files or run commands',
@@ -308,9 +315,10 @@ export const en = {
   'queue.save': 'Save queued message',
   'queue.cancelEdit': 'Cancel editing',
   'queue.remove': 'Remove queued message',
+  'queue.steer.short': 'Steer',
   'queue.steer': 'Steer queued message',
   'queue.steer.unavailable': 'Steering is available only while the agent is running',
-  'error.sessionInUse': 'This session is already in use, possibly by another running DSH instance (such as dsh web or the desktop app). Quit other running DSH instances and try again.',
+  'error.sessionInUse': 'This chat is open in another application instance. Close that instance and try again.',
   'queue.editFailed': 'Edit failed: this message may have already started sending.',
   'queue.removeFailed': 'Removal failed: this message may have already started sending.',
   'queue.steerFailed': 'Steering failed. Try again.',

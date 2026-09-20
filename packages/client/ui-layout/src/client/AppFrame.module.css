@@ -154,3 +154,5 @@
 .overlayLayer > * {
   pointer-events: auto;
 }
+
+:global([data-strugend][data-platform='darwin']) .sidebarCol { background:var(--dsw-specific-sidebar-fill); }

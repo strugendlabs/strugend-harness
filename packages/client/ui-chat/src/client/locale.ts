@@ -5,6 +5,7 @@ export const NS = 'chat'
 
 /** Simplified Chinese dictionary and key-set source of truth. */
 export const zh = {
+  'message.failure.core': 'Core 服务请求失败。请检查智能服务设置中的连接后重试。',
   'view.chat': '对话',
   'number.groupSeparator': ',',
   'duration.compactSeconds': '{seconds}秒',
@@ -116,6 +117,7 @@ export type ChatKey = keyof typeof zh
 
 /** English dictionary, checked against the Chinese key set. */
 export const en = {
+  'message.failure.core': 'Core service request failed. Check the connection in Intelligence settings and try again.',
   'view.chat': 'Chat',
   'number.groupSeparator': ',',
   'duration.compactSeconds': '{seconds}s',

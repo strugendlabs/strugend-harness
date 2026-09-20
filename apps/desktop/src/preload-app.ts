@@ -5,6 +5,7 @@ import { DESKTOP_IPC, SCHEME, type DshDesktopProductApi, type DesktopUpdatePrese
 import { markDocumentPlatform } from './preload-platform.ts'
 import { syncNativeTheme } from './preload-theme.ts'
 import { syncWindowsAppearance } from './preload-windows.ts'
+import type { AgentOsDesktopApi, AgentOsEvent } from '@deepseek-ai/dsh-agentos-protocol'
 
 const product: DshDesktopProductApi = {
   protocolVersion: 1,
@@ -20,6 +21,15 @@ const product: DshDesktopProductApi = {
 }
 
 if (location.protocol === `${SCHEME}:` && location.hostname === 'app') {
+  const agentOS: AgentOsDesktopApi = {
+    request: command => ipcRenderer.invoke('agent-os:request', command) as Promise<unknown>,
+    subscribe(listener) {
+      const handle = (_event: Electron.IpcRendererEvent, event: AgentOsEvent): void => { listener(event) }
+      ipcRenderer.on('agent-os:event', handle)
+      return () => { ipcRenderer.off('agent-os:event', handle) }
+    },
+  }
+  contextBridge.exposeInMainWorld('agentOS', agentOS)
   syncWindowsAppearance()
   contextBridge.exposeInMainWorld('__DSH_DIRECTORY_PICKER__', {
     pick: () => ipcRenderer.invoke(DESKTOP_IPC.directoryPick) as Promise<string | null>,

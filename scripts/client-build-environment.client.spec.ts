@@ -115,6 +115,12 @@ describe('client build environment', () => {
       DSH_CLIENT_TITLE: 'DeepSeek Harness',
       DSH_CLIENT_VERSION: '1.2.3',
     })
+    expect(resolveClientBuildEnvironment(parent, 'strugend')).toEqual({
+      DSH_CLIENT_BUILD_PROFILE: 'strugend',
+      DSH_CLIENT_COMMIT_HASH: COMMIT_HASH.slice(0, 7),
+      DSH_CLIENT_TITLE: 'Strugend Harness',
+      DSH_CLIENT_VERSION: '1.2.3',
+    })
     expect(() => {
       resolveClientBuildEnvironment({ DSH_BUILD_CLIENT_PROFILE: 'official' })
     }).toThrow(/DSH_CLIENT_COMMIT_HASH/)

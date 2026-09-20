@@ -31,6 +31,8 @@ Static application pages install `__DSH_BOOT_READY__` before the entry runs. The
 
 The shell base styles apply automatic CJK/Latin spacing to ordinary content in supporting browsers. Semantic code and terminal, diff, read, and search output containers retain literal source spacing and column alignment; browsers without `text-autospace` support ignore both declarations.
 
+Strugend builds load the local S icon and product name during startup. Loading respects reduced motion and theme preference. Failed plugin IDs omit the framework prefix in the displayed report; the underlying diagnostics remain available to the Host.
+
 ### What boot looks like
 
 Boot runs in two stages: the module stage adopts the parser-loaded bootstrap batch, builds the module system from the Host-provided boot graph, and prefetches the `immediately` tier through the shared application-batch URL, which executes once. The plugin stage then activates every graph entry and waits for all of them before handing the marked boot DOM to the UI renderer, which hydrates it and switches to the complete UI.
@@ -38,6 +40,8 @@ Boot runs in two stages: the module stage adopts the parser-loaded bootstrap bat
 ### The boot page
 
 The boot page uses plain DOM and local CSS, so bundle and plugin-activation failures remain visible: it shows one spinner node whose CSS arc grows as entries activate, and reports per-entry status. The spinner and its animation phase persist until the full UI replaces the boot page. A plugin that fails import or activation is reported by name with the reason (missing service, import failure, or state) instead of a blank page. The console contains the original import error.
+
+Agent OS builds (`DSH_CLIENT_TITLE='Agent OS'`) use the application's bundled titanium mark, a subtle breathing animation, and an indeterminate loading track. Startup copy follows the browser's English or Chinese locale before plugin dictionaries arrive. The page respects reduced motion and the system color scheme, stops animating for inline failure reports, and yields immediately when the workspace is ready.
 
 ### The shared module table
 

@@ -315,11 +315,16 @@ export function ModelSelect(
     void select(selection).then(settleSelection)
   }
 
+  const productName = (provider: string, model: string, fallback: string): string => {
+    if (process.env.DSH_CLIENT_TITLE !== 'Strugend Harness' || provider !== 'deepseek-official') return fallback
+    return t(model.includes('vision') ? 'role.vision' : 'role.core')
+  }
   const waiting = state.current === null && state.status === 'loading'
-  const modelLabel = waiting
+  const rawModelLabel = waiting
     ? t('trigger.loading')
     : currentChoice?.model.name
       ?? (state.current === null ? t('trigger.fallback') : `${state.current.provider}/${state.current.model}`)
+  const modelLabel = state.current === null ? rawModelLabel : productName(state.current.provider, state.current.model, rawModelLabel)
   const triggerLabel = effortLabel === undefined ? modelLabel : `${modelLabel} · ${effortLabel}`
   const triggerAria = waiting
     ? t('trigger.loading')
@@ -413,7 +418,7 @@ export function ModelSelect(
                   const headingId = `${id}-${group.id}`
                   return (
                     <section role="group" aria-labelledby={headingId} className={css.group} key={group.id}>
-                      <div className={css.groupTitle} id={headingId}>{group.name}</div>
+                      <div className={css.groupTitle} id={headingId}>{productName(group.id, '', group.name)}</div>
                       {group.models.map((model) => {
                         const selected = state.current?.provider === group.id && state.current.model === model.id
                         return (
@@ -424,12 +429,12 @@ export function ModelSelect(
                             aria-checked={selected}
                             className={clsx(css.option, selected && css.selected)}
                             key={model.id}
-                            title={model.name}
+                            title={productName(group.id, model.id, model.name)}
                             disabled={busy}
                             onClick={() => { choose({ provider: group.id, model: model.id }) }}
                           >
                             <span className={css.optionCopy}>
-                              <span className={css.modelName}>{model.name}</span>
+                              <span className={css.modelName}>{productName(group.id, model.id, model.name)}</span>
                             </span>
                             <span className={css.check}>
                               {selected ? <IconCheckOutline16 /> : null}

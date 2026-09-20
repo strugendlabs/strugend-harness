@@ -20,6 +20,8 @@ The Web GUI lets users switch the model and reasoning effort for an existing ses
 - [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
 - [Dev Note](#dev-note)
 
+Strugend builds display the bundled routes as Core and Vision. This presentation does not rewrite provider IDs, model IDs, custom provider names, or recorded selections.
+
 -----
 
 <a id="use-this-package"></a>

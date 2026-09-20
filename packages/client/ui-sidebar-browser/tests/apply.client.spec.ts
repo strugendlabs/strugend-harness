@@ -40,6 +40,7 @@ async function boot() {
     }),
   }
   ctx.provide('sidebarRightTabs', tabs as never)
+  ctx.provide('sidebarRight', { openTab: vi.fn() } as never)
   ctx.provide('slots', slots as never)
   ctx.provide('locale', locale as never)
   const fiber = ctx.plugin({ inject: [...inject], apply })

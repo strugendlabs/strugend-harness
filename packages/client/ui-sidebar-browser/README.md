@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-Browse HTTP(S) pages, including loopback services, inside independent right-Sidebar tabs. The current carrier is an iframe with application-managed history in both Web and Desktop. The package never injects Electron or Node access into visited content.
+Browse HTTP(S) pages, including loopback services, inside independent right-Sidebar tabs. Web uses an iframe with application-managed history; Agent OS Desktop uses a native Chromium view. The package never injects Electron or Node access into visited content.
 
 ## Table of Contents
 
@@ -42,7 +42,13 @@ The package has no configuration. A custom Web composition mounts its Host compa
 
 Client plugins can open a tab through `ctx.sidebarRight.openTab('browser', { params: { url } })`. The optional URL passes the same validation as address-bar input before navigation.
 
-The toolbar provides Back, Forward, Reload, Go, Open in system browser, and a rightmost per-tab sandbox toggle. Disabling the sandbox is temporary and displays a warning. The external action accepts a known HTTP(S) target. The tab title is the Web host.
+Agent OS Desktop retains each tab's last successfully loaded HTTP(S) address in the existing Session-scoped browser store. Restarting the application or reloading its UI reopens that address in a new native view owned by the same chat. Failed and unfinished loads do not overwrite it. Page form contents and the native Back/Forward stack are not restored.
+
+Desktop coalesces viewport measurements into animation frames and updates the native view only when its rounded bounds or visibility change. Chat updates that leave the pane in place do not send repeated placement requests. Dialogs and menus hide the native view; zero-sized panes remain hidden until layout provides usable bounds. An older toolbar request cannot replace a newer request's result with its error.
+
+If a desktop page crashes, its pending reads and navigation stop and queued actions are rejected. The tab keeps its chat owner and takeover state. Use Reload or enter an address to recover it; interrupted clicks, typing, and form submissions are not replayed. Closing the tab also cancels its pending work.
+
+The Web toolbar provides Back, Forward, Reload, Go, Open in system browser, and a rightmost per-tab sandbox toggle. Disabling the sandbox is temporary and displays a warning. The external action accepts a known HTTP(S) target. The tab title is the Web host.
 
 -----
 
@@ -58,7 +64,7 @@ The address parser accepts HTTP and HTTPS, including loopback targets. It reject
 
 ### Iframe carrier
 
-Web and Desktop use `sandbox="allow-scripts allow-forms allow-same-origin allow-popups allow-popups-to-escape-sandbox"` by default. The frame has no direct download or top-navigation flag. Popups leave the sandbox; in Web, an escaped popup retains its opener and can navigate the top-level application. The visited origin can use its own cookies and Web storage but a cross-origin target cannot read DSH DOM, storage, or API responses. The iframe sends no referrer and adds no package-owned Permissions Policy, so browser defaults and user grants apply. The toolbar can remove the sandbox for the current tab occurrence; the choice is not persisted. An unsandboxed page can navigate the top-level application under browser activation rules and use downloads, modal dialogs, and input locks. The package does not proxy or probe remote pages.
+Web uses `sandbox="allow-scripts allow-forms allow-same-origin allow-popups allow-popups-to-escape-sandbox"` by default. The frame has no direct download or top-navigation flag. Popups leave the sandbox; in Web, an escaped popup retains its opener and can navigate the top-level application. The visited origin can use its own cookies and Web storage but a cross-origin target cannot read DSH DOM, storage, or API responses. The iframe sends no referrer and adds no package-owned Permissions Policy, so browser defaults and user grants apply. The toolbar can remove the sandbox for the current tab occurrence; the choice is not persisted. An unsandboxed page can navigate the top-level application under browser activation rules and use downloads, modal dialogs, and input locks. The package does not proxy or probe remote pages.
 
 Web records toolbar submissions and typed tab opens. A navigation state machine treats the first iframe load for each controlled revision as known and a later load as proof that the page changed to an unreadable URL. In that unknown state the address is marked, Back, Forward, and external-open are disabled, and Reload returns to the last controlled URL. A remounted body reloads the latest application-known URL and uses its optional initial URL only before the first controlled target. History API and fragment changes that emit no iframe load remain invisible. An iframe `error` event displays a transient load-failure notice until the next controlled load without changing URL history.
 

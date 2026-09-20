@@ -102,7 +102,7 @@ export function DeepSeekOnboardingDialog(props: DeepSeekOnboardingDialogProps): 
       <div className={styles.editor}>
         <ProviderEditor
           provider={row.entry.provider}
-          displayName={row.entry.displayName}
+          displayName={process.env.DSH_CLIENT_TITLE === 'Strugend Harness' ? t('intelligenceCore') : row.entry.displayName}
           namespace={namespace}
           schema={schema}
           settingsPath={row.entry.settingsPath}

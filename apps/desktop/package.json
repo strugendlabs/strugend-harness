@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-desktop",
   "description": "Electron desktop shell for a bundled dsh runtime and external plugins",
-  "version": "0.1.6-alpha.2",
+  "version": "0.1.6-alpha.2.20260920.1",
   "private": true,
   "license": "MIT",
   "type": "module",
@@ -34,10 +34,14 @@
     "upload:win:x64": "tsx scripts/upload-target.ts win-x64"
   },
   "dependencies": {
+    "@spider-rs/spider-rs": "0.0.157",
     "electron-updater": "^6.8.9",
-    "semver": "^7.8.5"
+    "linkedom": "0.18.12",
+    "semver": "^7.8.5",
+    "sharp": "^0.35.3"
   },
   "devDependencies": {
+    "@deepseek-ai/dsh-agentos-protocol": "workspace:^",
     "@deepseek-ai/dsh-app-boot": "workspace:^",
     "@deepseek-ai/dsh-home-paths": "workspace:^",
     "@electron/get": "^5.1.0",

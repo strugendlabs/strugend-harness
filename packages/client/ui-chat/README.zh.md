@@ -24,6 +24,8 @@ kind: "package-reference"
 - [已知限制与暂缓事项](#known-limitations-and-deferred-work)
 - [开发备注](#dev-note)
 
+Strugend 构建将框架包标签收起到上下文注入行中，并使用产品术语呈现提供方连接失败。身份验证失败保留专用恢复消息；已记录的事件和展开的上下文内容保持不变。
+
 -----
 
 <a id="reference-previews"></a>

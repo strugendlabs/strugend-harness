@@ -2,7 +2,7 @@ import { defineConfig } from 'tsdown'
 
 export default defineConfig([
   {
-    entry: ['lib/types/main.js'],
+    entry: ['lib/types/main.js', 'lib/types/agentos-crawl-worker.js'],
     outDir: 'lib',
     format: ['esm'],
     platform: 'node',
@@ -12,7 +12,7 @@ export default defineConfig([
     clean: false,
     deps: { neverBundle: ['electron'] },
   },
-  ...(['preload-app', 'preload-mandatory', 'preload-update-dialog'] as const).map(name => ({
+  ...(['preload-app', 'preload-mandatory', 'preload-update-dialog', 'preload-browser'] as const).map(name => ({
     // Sandboxed Electron preloads run as CommonJS even though the application package is ESM.
     entry: { [name]: `lib/types/${name}.js` },
     outDir: 'lib',

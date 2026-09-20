@@ -1,0 +1,152 @@
+name: Strugend desktop preview
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Confirmed preview version (must match package.json)
+        required: true
+        type: string
+      publish:
+        description: Publish a GitHub prerelease after every native build passes
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: strugend-preview-${{ inputs.version }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: win-x64
+            runner: windows-2022
+          - target: mac-arm64
+            runner: macos-15
+          - target: mac-x64
+            runner: macos-15-intel
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 90
+    env:
+      DSH_TELEMETRY_DISABLED: '1'
+      NODE_OPTIONS: --max-old-space-size=4096
+      PREVIEW_VERSION: ${{ inputs.version }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Validate preview and native build host
+        run: pnpm strugend:package ${{ matrix.target }} --version "$env:PREVIEW_VERSION" --check
+        shell: pwsh
+      - name: Install video tools for export qualification
+        shell: pwsh
+        run: |
+          if ($IsWindows) {
+            choco install ffmpeg --yes --no-progress
+            if ($LASTEXITCODE -ne 0) { throw 'FFmpeg installation failed' }
+            $ffmpeg = Get-ChildItem 'C:/ProgramData/chocolatey/lib/ffmpeg*' -Recurse -Filter ffmpeg.exe | Select-Object -First 1
+            if (-not $ffmpeg) { throw 'The FFmpeg binary is missing' }
+            "AGENT_OS_FFMPEG=$($ffmpeg.FullName)" >> $env:GITHUB_ENV
+            "AGENT_OS_FFPROBE=$(Join-Path $ffmpeg.Directory.FullName 'ffprobe.exe')" >> $env:GITHUB_ENV
+          } elseif (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue)) {
+            brew install ffmpeg
+            if ($LASTEXITCODE -ne 0) { throw 'FFmpeg installation failed' }
+          }
+      - name: Run packaging and platform regression tests
+        run: >-
+          pnpm exec vitest run apps/desktop/tests/strugend-preview.spec.ts
+          apps/desktop/tests/agentos-media-executable.spec.ts
+          apps/desktop/tests/agentos-media.spec.ts
+          apps/desktop/tests/package-target.spec.ts
+          apps/desktop/tests/package-target-stages.spec.ts
+          apps/desktop/tests/desktop-package-environment.spec.ts
+          apps/desktop/tests/agentos-address.spec.ts
+          apps/desktop/tests/agentos-navigation.spec.ts
+          --maxWorkers=2 --testTimeout=90000 --hookTimeout=90000
+      - name: Build native installer and run bundled runtime smokes
+        run: pnpm strugend:package ${{ matrix.target }} --version "$env:PREVIEW_VERSION"
+        shell: pwsh
+      - name: Exercise packaged chat, credentials, services and sidebar browser
+        shell: pwsh
+        run: |
+          $output = (Resolve-Path "apps/desktop/.desktop-build/targets/${{ matrix.target }}/unsigned-artifacts").Path
+          if ($IsWindows) {
+            $installer = Get-ChildItem $output -File -Filter '*.exe' | Select-Object -First 1
+            if (-not $installer) { throw 'The Windows installer is missing' }
+            $installRoot = Join-Path $env:RUNNER_TEMP 'Strugend-Preview'
+            $installed = Start-Process -FilePath $installer.FullName -ArgumentList @('/S', "/D=$installRoot") -Wait -PassThru
+            if ($installed.ExitCode -ne 0) { throw "Installer failed: $($installed.ExitCode)" }
+            $app = Join-Path $installRoot 'Strugend Harness.exe'
+            if (-not (Test-Path $app)) { throw 'The installer did not create the application' }
+          }
+          else {
+            $bundle = Get-ChildItem $output -Directory -Recurse -Filter 'Strugend Harness.app' | Select-Object -First 1
+            if (-not $bundle) { throw 'Packaged application bundle is missing' }
+            $app = Join-Path $bundle.FullName 'Contents/MacOS/Strugend Harness'
+          }
+          node apps/web/tests/strugend-desktop-smoke.mjs "$app"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: strugend-evidence-${{ matrix.target }}
+          path: .artifacts/strugend/packaged-*
+          if-no-files-found: ignore
+          retention-days: 14
+      - name: Record artifact hashes
+        shell: pwsh
+        run: |
+          $output = "apps/desktop/.desktop-build/targets/${{ matrix.target }}/unsigned-artifacts"
+          $files = Get-ChildItem $output -File | Where-Object { $_.Extension -in '.exe', '.dmg', '.zip' }
+          if ($files.Count -eq 0) { throw 'No installers were produced' }
+          $lines = $files | ForEach-Object { "{0}  {1}" -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant(), $_.Name }
+          $lines | Set-Content -Encoding utf8NoBOM "$output/SHA256-${{ matrix.target }}.txt"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: strugend-${{ matrix.target }}-${{ inputs.version }}
+          compression-level: 0
+          retention-days: 14
+          if-no-files-found: error
+          path: |
+            apps/desktop/.desktop-build/targets/${{ matrix.target }}/unsigned-artifacts/*.exe
+            apps/desktop/.desktop-build/targets/${{ matrix.target }}/unsigned-artifacts/*.dmg
+            apps/desktop/.desktop-build/targets/${{ matrix.target }}/unsigned-artifacts/*.zip
+            apps/desktop/.desktop-build/targets/${{ matrix.target }}/unsigned-artifacts/SHA256-*.txt
+
+  release:
+    if: inputs.publish
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      PREVIEW_VERSION: ${{ inputs.version }}
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: strugend-*-${{ inputs.version }}
+          path: preview
+          merge-multiple: true
+      - name: Publish BYOK test preview
+        shell: bash
+        run: |
+          gh release create "strugend-v$PREVIEW_VERSION" preview/* \
+            --target "$GITHUB_SHA" --prerelease \
+            --title "Strugend Harness $PREVIEW_VERSION · BYOK preview" \
+            --notes-file apps/desktop/PREVIEW.md

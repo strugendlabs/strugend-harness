@@ -20,6 +20,7 @@ const useResource = (() => ({ status: 'none' as const, value: undefined, failure
 const usePanelInfo: GlobalStandardProps['usePanelInfo'] = selector => selector({ activePanelId: null })
 
 afterEach(() => {
+  vi.unstubAllEnvs()
   cleanup()
   document.getElementById('root')?.remove()
 })
@@ -163,6 +164,15 @@ function harness(options: {
 }
 
 describe('DeepSeekOnboardingDialog', () => {
+  it('presents Core setup without upstream labels in Strugend builds', async () => {
+    vi.stubEnv('DSH_CLIENT_TITLE', 'Strugend Harness')
+    const h = harness()
+    render(<DeepSeekOnboardingDialog {...h.props} />)
+    const dialog = await screen.findByRole('dialog')
+    expect(dialog.textContent).not.toMatch(/deepseek|\bdsh\b/iu)
+    expect(dialog.textContent).toContain('Core')
+    expect(screen.getByLabelText<HTMLInputElement>(en.keyInput).type).toBe('password')
+  })
   it('renders when the shell root is absent', async () => {
     const h = harness()
     document.getElementById('root')!.remove()

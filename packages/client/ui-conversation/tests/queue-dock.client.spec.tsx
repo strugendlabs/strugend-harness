@@ -266,6 +266,17 @@ describe('QueueDock', () => {
     expect(container.innerHTML).toBe('')
   })
 
+  it('keeps desktop queue rows visible with a named Steer control', () => {
+    const snapshot = snapshotWith([row('i-1', 'one'), row('i-2', 'two')])
+    const source = liveSession(snapshot)
+    const view = render(<QueueDock {...kitFor(snapshot)} expandedByDefault
+      useSession={source.useSession} useProjection={source.useProjection} />)
+    expect(view.getByText('one')).toBeTruthy()
+    expect(view.getByText('two')).toBeTruthy()
+    expect(view.getAllByText('插话')).toHaveLength(2)
+    expect(view.getByRole('button', { name: '2 条排队消息' }).getAttribute('aria-expanded')).toBe('true')
+  })
+
   it('renders one row directly and defaults multiple rows to a collapsible count header', () => {
     const single = snapshotWith([row('i-1', 'one')])
     const source = liveSession(single)

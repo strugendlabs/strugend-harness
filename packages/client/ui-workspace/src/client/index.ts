@@ -8,6 +8,7 @@
  * client half (see the contract module doc). Export discipline:
  * packages/client/AGENTS.md.
  */
+import type {} from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
 import type { Context } from '@deepseek-ai/cordis'
 import type { RemoteHostFacts } from '@deepseek-ai/dsh-api-remotes/client'
 import type { ISessions } from '@deepseek-ai/dsh-api-session-controller/client'
@@ -26,8 +27,10 @@ import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type { WorkspaceBrowserInjected, WorkspacePickerInjected } from './contract/slots.ts'
 import { UiWorkspaceService } from './navigation.ts'
 import { createWorkspaceViewStore } from './stores.ts'
-import { WorkspaceBrowser } from './rows/WorkspaceBrowser.tsx'
+import { AgentOsWorkspace, AgentOsMark, StrugendWordmark } from './AgentOsWorkspace.tsx'
+import { createAgentOsController, type AgentOsInjected } from './agentos-controller.ts'
 import { WorkspacePicker } from './WorkspacePicker.tsx'
+import { WorkspaceBrowser } from './rows/WorkspaceBrowser.tsx'
 import { en, zh, type WorkspaceKey } from './locales.ts'
 
 export type { UiWorkspace } from './navigation.ts'
@@ -67,7 +70,7 @@ const NS = 'workspace'
  * declaration through `slots.inject()` instead of assuming order.
  */
 export const inject = [
-  'slots', 'sessions', 'workspaces', 'locale', 'remote', 'remote.directoryPicker', 'layout',
+  'slots', 'sessions', 'workspaces', 'locale', 'remote', 'remote.directoryPicker', 'layout', 'sidebarRight',
 ]
 
 /**
@@ -77,12 +80,20 @@ export const inject = [
  * @param ctx - client root context.
  */
 export function apply(ctx: Context): void {
+  const desktopApi = typeof window === 'undefined' ? undefined : window.agentOS
+  const desktop = createAgentOsController(desktopApi, () => { ctx.sidebarRight.openTab('video') })
+  ctx.effect(() => () =>{  desktop.dispose() }, 'agent-os: personal workspace')
   const sessions = ctx.get('sessions') as ISessions
   const workspaces = ctx.get('workspaces') as IWorkspaces
   const uiWorkspace = new UiWorkspaceService(
     ctx, ctx.remote.directoryPicker, workspaces, sessions)
   ctx.slots.provideRoot({ hooks: { workspaces: workspaces.list } })
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'ui-workspace: dictionaries')
+  if (desktopApi !== undefined) {
+    ctx.slots.inject('sidebar.brand.name', () => ctx.slots.register({ name: 'sidebar.brand.name', locale: NS }, StrugendWordmark))
+    ctx.slots.inject('sidebar.brand.mark', () => ctx.slots.register({ name: 'sidebar.brand.mark', locale: NS }, AgentOsMark))
+    ctx.slots.inject('conversation.hero.brand.mark', () => ctx.slots.register({ name: 'conversation.hero.brand.mark', locale: NS }, AgentOsMark))
+  }
 
   const searchSessions: WorkspaceBrowserInjected['searchSessions'] = async (query, signal) => {
     const result = await sessions.search(query, signal)
@@ -105,7 +116,9 @@ export function apply(ctx: Context): void {
   const openSession: WorkspaceBrowserInjected['open'] = (sessionId) => {
     uiWorkspace.openSession(sessionId)
   }
-  const browserInjected = (): WorkspaceBrowserInjected => ({
+  const browserInjected = (): WorkspaceBrowserInjected & AgentOsInjected => ({
+    agentOsRequest: command => desktop.agentOsRequest(command),
+    openVideoStudio: () => { desktop.openVideoStudio() },
     // Explicit group actions keep their target; unscoped New Session inherits
     // the current Session Workspace before the recent-Workspace fallback.
     startSession: (workspaceId) => { uiWorkspace.startSession(workspaceId) },
@@ -133,7 +146,7 @@ export function apply(ctx: Context): void {
     },
     archiveSession: async (sessionId) => { await uiWorkspace.archiveSession(sessionId) },
     createWorkspace: input => workspaces.create(input),
-    hooks: { directoryFlow: browserFlowSource, hostInfo },
+    hooks: { directoryFlow: browserFlowSource, hostInfo, ...desktop.hooks },
   })
   const pickerInjected = (): WorkspacePickerInjected => ({
     createWorkspace: input => workspaces.create(input),
@@ -149,7 +162,7 @@ export function apply(ctx: Context): void {
       inject: browserInjected,
       locale: NS,
     },
-    WorkspaceBrowser,
+    desktopApi === undefined ? WorkspaceBrowser : AgentOsWorkspace,
   ))
   ctx.slots.inject('conversation.hero.workspace', () => ctx.slots.register(
     {

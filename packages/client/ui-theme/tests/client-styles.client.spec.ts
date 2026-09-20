@@ -1,16 +1,33 @@
 // @vitest-environment jsdom
 /** Dynamic ui-theme entry owns the global styles in dependency order. */
 import { Context } from '@deepseek-ai/cordis'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { installThemeStyles } from '../src/client/styles.ts'
 
 const PLUGIN_ID = '@deepseek-ai/dsh-client-ui-theme'
 
 afterEach(() => {
+  vi.unstubAllEnvs()
   document.head.querySelectorAll(`style[data-plugin="${PLUGIN_ID}"]`).forEach((node) => { node.remove() })
 })
 
 describe('ui-theme client styles', () => {
+  it('owns the Strugend palette and marker for exactly its plugin lifetime', async () => {
+    vi.stubEnv('DSH_CLIENT_TITLE', 'Strugend Harness')
+    const ctx = new Context()
+    try {
+      const before = document.head.querySelectorAll('style').length
+      const fiber = ctx.plugin({ apply(scope) { installThemeStyles(scope) } })
+      await fiber.await()
+      expect(document.documentElement.hasAttribute('data-strugend')).toBe(true)
+      expect(document.head.querySelectorAll('style').length).toBe(before + 7)
+      await fiber.dispose()
+      expect(document.documentElement.hasAttribute('data-strugend')).toBe(false)
+      expect(document.head.querySelectorAll('style').length).toBe(before)
+    } finally {
+      await ctx.fiber.dispose()
+    }
+  })
   it('mounts every global sheet in dependency order and removes them on dispose', async () => {
     const ctx = new Context()
     const fiber = ctx.plugin({

@@ -53,3 +53,18 @@ it.each(['--unsigned', '--prepare-only'])('keeps %s hardware-free and creates no
   for (const call of run.run.mock.calls) expect(call[3].env).not.toHaveProperty('DSH_DESKTOP_WINDOWS_TOKEN_PIN')
   expect(writeFileSync).not.toHaveBeenCalled()
 })
+
+it.each([['win-x64', 'win32', 'x64'], ['mac-arm64', 'darwin', 'arm64']] as const)
+('builds the Strugend preview for %s without signing or update records', async (name, platform, arch) => {
+  const { run, stages } = supervisor()
+  await packageTarget(parseDesktopPackageInvocation([name, '--unsigned'], platform, arch),
+    { DSH_DESKTOP_APP_ID: 'com.strugend.harness', DSH_DESKTOP_DISTRIBUTION: 'strugend-preview' }, run)
+  expect(stages[0]).toBe('run build:strugend')
+  expect(stages[1]).toContain('--client-profile strugend')
+  expect(stages).not.toContain('preflight:windows-signing')
+  expect(stages).not.toContain('run sign:primary-runtime')
+  expect(stages.at(-1)).toContain('--publish never')
+  const preparation = run.run.mock.calls.find(call => call[0] === 'run prepare:dsh')!
+  expect(preparation[3].env).toMatchObject({ DSH_DESKTOP_UNSIGNED: '1' })
+  expect(writeFileSync).not.toHaveBeenCalled()
+})

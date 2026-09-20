@@ -1,0 +1,43 @@
+/* Product palette overrides; the theme preference still owns light/dark selection. */
+html[data-strugend] body {
+  --strugend-accent-border: #718b74;
+  --dsw-alias-state-business-primary: #436a4a;
+  --dsw-alias-button-info-fill: #436a4a;
+  --dsw-alias-button-info-hover: #35573b;
+  --dsw-alias-state-business-tertiary: #e2ece2;
+  --dsw-alias-brand-primary-new-colorprimary-new-color: #436a4a;
+  --dsw-specific-sidebar-fill: #f1f4f1;
+  --dsw-specific-sidebar-nav-item-active: #dfe7df;
+  --dsw-specific-sidebar-nav-item-active-accent: #d3e2d4;
+  --dsw-specific-input-major: #ffffff;
+}
+
+html[data-strugend] body[data-ds-dark-theme] {
+  --strugend-accent-border: #819685;
+  --dsw-alias-bg-base: #181a1b;
+  --dsw-alias-bg-layer-1: #202324;
+  --dsw-alias-bg-layer-2: #292d2e;
+  --dsw-alias-bg-layer-3: #303536;
+  --dsw-alias-bg-overlay: #272b2c;
+  --dsw-alias-label-primary: #e8e9e5;
+  --dsw-alias-label-secondary: #a3ada8;
+  --dsw-alias-label-tertiary: #929d97;
+  --dsw-alias-label-caption: #929d97;
+  --dsw-alias-border-l2: #323738;
+  --dsw-alias-border-l3: #383e3f;
+  --dsw-alias-border-l4: #4c5451;
+  --dsw-alias-interactive-bg-hover: #2b3230;
+  --dsw-alias-state-business-primary: #b8d4ba;
+  --dsw-alias-button-info-fill: #b8d4ba;
+  --dsw-alias-button-info-hover: #c9e0cb;
+  --dsw-alias-state-business-tertiary: #34483a;
+  --dsw-alias-brand-primary-new-colorprimary-new-color: #b8d4ba;
+  --dsw-alias-button-primary-fill: #b8d4ba;
+  --dsw-specific-input-major: #202324;
+  --dsw-specific-sidebar-fill: #202324;
+  --dsw-specific-sidebar-nav-item-active: #303a33;
+  --dsw-specific-sidebar-nav-item-active-accent: #3c5040;
+  --dsw-specific-sidebar-nav-item-hover: #29312d;
+}
+
+html[data-strugend] { --dsh-composer-card-max-width: 700px; }

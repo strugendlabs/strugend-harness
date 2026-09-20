@@ -1,0 +1,22 @@
+[
+  {
+    "kind": "success",
+    "text": "Full access enabled for this chat. File and shell operations can use all paths available to the app without sandbox approval prompts. Use /power off to return to workspace access."
+  },
+  {
+    "kind": "success",
+    "text": "Full access enabled for this chat. File and shell operations can use all paths available to the app without sandbox approval prompts. Use /power off to return to workspace access."
+  },
+  {
+    "kind": "error",
+    "text": "Use /power, /power off, or /power status."
+  },
+  {
+    "kind": "success",
+    "text": "Current access: danger-full-access."
+  },
+  {
+    "kind": "success",
+    "text": "Workspace access restored for this chat. Wider file and shell access requires approval."
+  }
+]

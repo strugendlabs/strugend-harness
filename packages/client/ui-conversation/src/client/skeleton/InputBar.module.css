@@ -398,3 +398,7 @@
   font-size: 12px;
   cursor: pointer;
 }
+
+:global([data-strugend]) .card { border:1px solid var(--dsw-alias-border-l3); border-radius:16px; box-shadow:none; padding-top:14px; gap:24px; }
+:global([data-strugend]) .hero .card { min-height:140px; }
+:global([data-strugend]) :global([data-ds-dark-theme]) .primary { color:#18251b; }

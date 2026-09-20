@@ -20,6 +20,8 @@ The dsh web client sidebar lets users recognize the active build, start a new se
 - [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
 - [Dev Note](#dev-note)
 
+Strugend builds use an outlined New chat action and compact navigation, while preserving collapse, resize, and slot ownership.
+
 -----
 
 <a id="use-this-package"></a>

@@ -111,8 +111,9 @@ export abstract class ReleaseFamily {
    * Assert that built artifacts match this release family's required profile.
    * Families without environment-selected artifacts accept every build tree.
    * @param _root - repository root containing generated artifacts.
+   * @param _clientProfile - explicit branding profile required for client artifacts.
    */
-  verifyBuildArtifacts(_root: string): void {}
+  verifyBuildArtifacts(_root: string, _clientProfile: 'official' | 'strugend' = 'official'): void {}
 
   /**
    * Discover this family's members.
@@ -327,9 +328,12 @@ class DshFamily extends ReleaseFamily {
   ] as const
   readonly tagPrefix = 'dsh-v'
 
-  /** Require current artifacts from a complete official client build. */
-  override verifyBuildArtifacts(root: string): void {
-    readClientBuildRecord(root, officialClientBuildEnvironment(root))
+  /** Require current artifacts from the explicitly selected client build. */
+  override verifyBuildArtifacts(root: string, clientProfile: 'official' | 'strugend' = 'official'): void {
+    const expected = officialClientBuildEnvironment(root)
+    readClientBuildRecord(root, clientProfile === 'strugend'
+      ? { ...expected, DSH_CLIENT_BUILD_PROFILE: 'strugend', DSH_CLIENT_TITLE: 'Strugend Harness' }
+      : expected)
   }
 
   /**

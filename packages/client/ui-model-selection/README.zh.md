@@ -20,6 +20,8 @@ Web GUI 允许用户通过 `/model` 弹窗或 composer 模型控件切换既有�
 - [已知限制与延期工作](#known-limitations-and-deferred-work)
 - [开发备注](#dev-note)
 
+Strugend 构建将内置路由显示为 Core 和 Vision。这种显示方式不会改写提供方 ID、模型 ID、自定义提供方名称或已记录的选择。
+
 -----
 
 <a id="use-this-package"></a>

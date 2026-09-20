@@ -1,18 +1,22 @@
-# DeepSeek Harness 桌面端
+# Strugend Harness 桌面端
 
 [English](README.md) | 中文
 
 桌面应用是完整 dsh Web 应用外的一层 Electron 壳。Electron RunAsNode 子进程启动共享 profile runner，Electron 立即从 `dsh-app://app/` 加载打包内的 Web 入口。共享加载页等待 Host 启动注入，然后在同一文档中启动客户端。Electron 将应用 HTTP 请求转发给已认证的 Web Host；WebSocket 流连接到该 Host，仅为归属的应用窗口附加凭据。Node IPC 承载启动注入、就绪与关闭。Desktop 默认使用端口 `19387`，与 Web 的 `3080` 分开；可通过 `webserver.config.port` patch 覆盖。
 
-应用菜单第一项“**关于 DeepSeek Harness**”打开 Electron 原生关于面板，展示应用图标、产品名称和当前安装的发布版本。菜单文案跟随桌面壳的语言。macOS 从应用包读取图标，因此未打包的开发启动会显示 Electron 图标；Windows 使用随包分发的 PNG。
+应用菜单第一项“**关于 Strugend Harness**”打开 Electron 原生关于面板，展示应用图标、产品名称和当前安装的发布版本。菜单文案跟随桌面壳的语言。macOS 从应用包读取图标，因此未打包的开发启动会显示 Electron 图标；Windows 使用随包分发的 PNG。
 
 Desktop 的本地原生目录流程打开绑定应用窗口的 Electron 文件夹对话框，并先恢复、显示和聚焦该窗口。并发请求共用一个对话框；取消不返回路径，失败后可以重试。普通 Web 使用 Host 选择器。浏览模式列出 Host 目录。Linux 缺少 zenity 或 kdialog 时，自动选择使用浏览模式，不使用 Electron 对话框。
 
 Creator 和 Web Plugin Manager 在 Electron Node 模式下使用 Desktop 内置 pnpm，无需 PATH 中存在 pnpm。私有 Node 启动器环境仅应用于包操作。
 
+## Strugend 本地应用
+
+[Strugend 开发指南](../../AGENT_OS_README.md) 定义本地分支的启动及服务配置。显示品牌使用 Strugend Harness；原生凭据标识和已有数据路径保持稳定，以便继续访问已保存的密钥、浏览器配置和聊天。[智能服务实现](../desktop-host/src/strugend-intelligence.ts) 在不更改智能体循环的情况下，加入可选的类型化决策检查和只读时序图查询。
+
 ## 关键技术决策
 
-设计师原稿位于 `resources/icon.png` 和 `resources/icon.svg`；平台适配保留鲸鱼与渐变，分别位于 `resources/icon-windows.*` 和 `resources/icon-macos.*`。将各平台 SVG 导出为透明的 1024×1024 PNG。electron-builder 为 Windows 应用、安装程序和卸载程序生成多尺寸 ICO（[Windows 图标要求](https://learn.microsoft.com/en-us/windows/apps/design/iconography/app-icon-construction)）。安装页面在两种主题下使用匹配的图案；卸载程序的欢迎和完成页共用 `installer/assets/uninstaller-sidebar.png`，准备阶段将其转换为 164×314 BMP。
+桌面端使用 `resources/strugend/icon.png` 和 `resources/strugend/icon.icns`。electron-builder 从 PNG 生成 Windows 应用和安装程序图标。安装程序准备阶段将 Strugend 图标和字标绘制到浅色及深色 BMP 资源中，包括 164×314 卸载侧边栏。
 
 macOS PNG 使用带留白的圆角底板，供传统 ICNS 打包使用，包含最高 1024 像素的表示。它是扁平图标，并非 Icon Composer 文档。Apple 的[应用图标指南](https://developer.apple.com/design/human-interface-guidelines/app-icons)要求向 Icon Composer 提供未遮罩的图层；这些输入需要在 macOS 上单独导出，不能复用已做圆角的 ICNS 图案。发布前须在支持的 macOS 版本中验收 Finder 和 Dock 的显示效果。
 
@@ -95,6 +99,14 @@ pnpm run start:desktop
 Workspace 开发使用 Electron RunAsNode 运行当前 CLI 与私有 Desktop Host 包，插件管理和恢复使用 `$DSH_HOME/profiles/desktop`，与一次性工作区运行时分离。Host 在开发与打包构建中都使用 runtime 模块解析，不创建官方包的 fallback 链接；开发者安装的包（包括链接）保留原生优先级。需要验证 Electron RunAsNode、内置 pnpm、内置 dsh 资源、插件安装和修复时，应运行未封装安装器的应用目录。
 
 ## 打包
+
+### Strugend BYOK 预览版
+
+Strugend 测试发行版支持 Windows x64、macOS arm64 和 macOS x64。确认版本并统一发行族清单后，在兼容的本机构建主机上，从仓库根目录运行 `pnpm strugend:package <target> --version <confirmed-version>`。`--check` 仅验证配置而不构建；`--dir` 生成未打包的应用目录。命令仅在本地文件不存在时，从 `.env.windows.strugend.example` 或 `.env.macos.strugend.example` 创建平台 dotenv，并拒绝已有的其他发行版配置。
+
+预览产物使用 `com.strugend.harness` 和 Strugend 客户端构建配置，关闭自动更新及强制更新服务，并显式选择无签名模式。产物不含服务商密钥或计费服务。macOS 预览版未经公证；正式签名打包仍需满足独立的签名前提。[测试预览说明](PREVIEW.md) 介绍安装和 BYOK 要求。手动运行的[预览工作流](../../.github/workflows/strugend-preview.yml) 构建三个本机目标并记录 SHA256，仅在明确选择发布且所有构建成功时创建 GitHub 预发布版本。
+
+视频工具优先解析显式指定的绝对路径 `AGENT_OS_FFMPEG` 和 `AGENT_OS_FFPROBE`，其次查找随附的媒体可执行文件（若存在），最后搜索 PATH 中的绝对目录。Windows 使用 `.exe` 文件并忽略 PATH 变量名大小写；macOS 还搜索 Homebrew 安装目录。预览版不附带 FFmpeg。桌面包包含浏览器预加载脚本、爬虫工作进程、共享 JavaScript 块、录制技能资源及上游许可证。 内置技能位于 ASAR 之外，首次启动时可通过文件系统复制。
 
 <a id="release-versions"></a>
 

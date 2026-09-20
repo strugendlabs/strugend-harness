@@ -4,6 +4,11 @@ import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
+import { VideoStudio, type VideoStudioState } from './view/VideoStudio.tsx'
+import type { MediaAsset } from '@deepseek-ai/dsh-agentos-protocol'
+import { DesktopBrowserBody } from './view/DesktopBrowserBody.tsx'
+import { DesktopBrowserTitle } from './view/DesktopBrowserTitle.tsx'
+import { createDesktopBrowser } from './browser/DesktopBrowser.ts'
 import { BrowserBody } from './view/BrowserBody.tsx'
 import { BrowserTitle } from './view/BrowserTitle.tsx'
 import { createBrowserControllers } from './browser/BrowserController.ts'
@@ -22,12 +27,13 @@ export type { BrowserAddressFailure, BrowserAddressResult, BrowserTarget } from 
 declare module '@deepseek-ai/dsh-client-ui-sidebar-right/client' {
   interface SidebarRightTabParamsMap {
     /** Optional initial Browser URL. */
-    browser: { readonly url?: string }
+    browser: { readonly url?: string; readonly nativeTabId?: string }
+    video: { readonly assetId?: string }
   }
 }
 
 /** Required Browser services. */
-export const inject = ['slots', 'locale', 'sidebarRightTabs']
+export const inject = ['slots', 'locale', 'sidebarRightTabs', 'sidebarRight']
 
 /** Register the Browser type, localized guide entry, body, and title. */
 export function apply(ctx: Context): void {
@@ -36,11 +42,51 @@ export function apply(ctx: Context): void {
   const store = createBrowserStore()
   ctx.effect(() => ctx.locale.register(namespace, { zh, en }), 'ui-sidebar-browser.copy')
   ctx.effect(() => ctx.sidebarRightTabs.register(browserDefinition(t)), 'ui-sidebar-browser.type')
-  ctx.effect(() => ctx.slots.inject('sidebar.right.pane.tab', () => ctx.slots.register({
-    name: 'sidebar.right.pane.tab', key: BROWSER_ID, locale: namespace, store,
-    inject: (_sessionId, actions) => createBrowserControllers(actions),
-  }, BrowserBody)), 'ui-sidebar-browser.body')
-  ctx.effect(() => ctx.slots.inject('sidebar.right.pane.tab.title', () => ctx.slots.register({
-    name: 'sidebar.right.pane.tab.title', key: BROWSER_ID, store,
-  }, BrowserTitle)), 'ui-sidebar-browser.title')
+  const desktop = typeof window === 'undefined' ? undefined : window.agentOS
+  if (desktop !== undefined) {
+    const controller = createDesktopBrowser(desktop)
+    let videoState: VideoStudioState = { assets: [] }
+    const videoListeners = new Set<() => void>()
+    const updateVideo = (patch: Partial<VideoStudioState>): void => {
+      videoState = { ...videoState, ...patch }
+      for (const listener of videoListeners) listener()
+    }
+    const videoSource = {
+      getSnapshot: () => videoState,
+      subscribe: (listener: () => void) => { videoListeners.add(listener); return () => { videoListeners.delete(listener) } },
+    }
+    void desktop.request({ type: 'media.list' }).then((assets) => { updateVideo({ assets: assets as MediaAsset[] }) }).catch(() => { /* Parent startup errors are shown by the application boot surface. */ })
+    ctx.effect(() => desktop.subscribe((event) => {
+      if (event.type === 'media') updateVideo({ assets: event.assets })
+      if (event.type === 'media.progress') updateVideo({ progress: event })
+    }), 'agent-os: video library')
+    const videoId = 'agent-os-video-studio'
+    ctx.effect(() => ctx.sidebarRightTabs.register({ id: videoId, kind: 'video', multiple: false, priority: 'builtin', title: () => t('video.title'), guide: [{ id: 'new', order: 35, title: () => t('video.title'), description: () => t('video.description') }] }), 'agent-os: video type')
+    ctx.effect(() => ctx.slots.inject('sidebar.right.pane.tab', () => ctx.slots.register({
+      name: 'sidebar.right.pane.tab', key: videoId, locale: namespace,
+      inject: sessionId => ({ hooks: { videoStudio: videoSource }, videoRequest: (command: Parameters<typeof desktop.request>[0]) => desktop.request(command), openSocial: (url: string) => { void desktop.request({ type: 'browser.action', sessionId, command: { action: 'open', url } }) } }),
+    }, VideoStudio)), 'agent-os: video studio')
+
+    ctx.effect(() => () =>{  controller.dispose() }, 'agent-os: browser source')
+    ctx.effect(() => desktop.subscribe((event) => {
+      if (event.type !== 'browser.open') return
+      ctx.sidebarRight.openTabIn(event.sessionId as Parameters<typeof ctx.sidebarRight.openTabIn>[0], 'browser', { params: { url: event.url, nativeTabId: event.tabId } })
+    }), 'agent-os: reveal owned browser')
+    ctx.effect(() => ctx.slots.inject('sidebar.right.pane.tab', () => ctx.slots.register({
+      name: 'sidebar.right.pane.tab', key: BROWSER_ID, locale: namespace, store,
+      inject: sessionId => ({ ...controller, desktopSessionId: sessionId }),
+    }, DesktopBrowserBody)), 'agent-os: native browser')
+    ctx.effect(() => ctx.slots.inject('sidebar.right.pane.tab.title', () => ctx.slots.register({
+      name: 'sidebar.right.pane.tab.title', key: BROWSER_ID,
+      inject: sessionId => ({ ...controller, desktopSessionId: sessionId }),
+    }, DesktopBrowserTitle)), 'agent-os: native browser title')
+  } else {
+    ctx.effect(() => ctx.slots.inject('sidebar.right.pane.tab', () => ctx.slots.register({
+      name: 'sidebar.right.pane.tab', key: BROWSER_ID, locale: namespace, store,
+      inject: (_sessionId, actions) => createBrowserControllers(actions),
+    }, BrowserBody)), 'ui-sidebar-browser.body')
+    ctx.effect(() => ctx.slots.inject('sidebar.right.pane.tab.title', () => ctx.slots.register({
+      name: 'sidebar.right.pane.tab.title', key: BROWSER_ID, store,
+    }, BrowserTitle)), 'ui-sidebar-browser.title')
+  }
 }

@@ -20,6 +20,8 @@ kind: "package-reference"
 - [已知限制与延期工作](#known-limitations-and-deferred-work)
 - [开发备注](#dev-note)
 
+桌面组合显示 Strugend 字标，并按需打开技能、记忆、密码库和视频工作室。聊天分组层级用于组织会话，不替代工作区归属，也不更改已持久化的会话 ID。
+
 -----
 
 <a id="use-this-package"></a>

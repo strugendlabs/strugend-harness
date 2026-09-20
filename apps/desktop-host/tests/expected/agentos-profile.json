@@ -1,0 +1,78 @@
+[
+  {
+    "id": "credentials",
+    "name": "/desktop/credentials.js",
+    "config": {}
+  },
+  {
+    "id": "llm-deepseek",
+    "config": {
+      "models": [
+        {
+          "id": "deepseek-flash",
+          "name": "Core",
+          "inputModalities": [
+            "text",
+            "image"
+          ],
+          "systemPromptUpdate": "in-history"
+        },
+        {
+          "id": "deepseek-v4-flash-vision-exp",
+          "name": "Vision",
+          "inputModalities": [
+            "text",
+            "image"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "sandbox-policy",
+    "config": {
+      "mode": "danger-full-access",
+      "workspaceRoot": "/workspace"
+    }
+  },
+  {
+    "id": "approval",
+    "config": {
+      "policy": "never"
+    }
+  },
+  {
+    "id": "permission",
+    "config": {
+      "defaultPreset": "danger-full-access",
+      "presets": {
+        "read-only": {
+          "sandbox": "read-only",
+          "approval": "ask"
+        },
+        "workspace-write": {
+          "sandbox": "workspace-write",
+          "approval": "ask"
+        },
+        "danger-full-access": {
+          "sandbox": "danger-full-access",
+          "approval": "never"
+        }
+      }
+    }
+  },
+  {
+    "id": "bash-sandbox",
+    "config": {
+      "timeoutMs": 300000,
+      "maxTimeoutMs": 1800000
+    }
+  },
+  {
+    "id": "pwsh-sandbox",
+    "config": {
+      "timeoutMs": 300000,
+      "maxTimeoutMs": 1800000
+    }
+  }
+]

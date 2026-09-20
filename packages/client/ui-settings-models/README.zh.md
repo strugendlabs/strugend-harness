@@ -20,6 +20,8 @@ kind: "package-reference"
 - [已知限制与延期工作](#known-limitations-and-deferred-work)
 - [开发备注](#dev-note)
 
+在 Strugend 桌面组合中，智能服务页面以 Core、Decision、Memory 凭据和记忆服务源地址替代提供方卡片。密钥仅可写入，已配置状态不代表连接已验证。环境凭据为只读。图数据库地址编辑使用设置版本；写入被拒绝时保留草稿。其他组合仍可使用通用提供方编辑器。
+
 -----
 
 <a id="use-this-package"></a>

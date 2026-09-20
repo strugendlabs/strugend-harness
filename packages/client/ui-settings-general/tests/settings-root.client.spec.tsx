@@ -283,6 +283,28 @@ describe('SettingsPanel chrome seats', () => {
 })
 
 describe('SettingsPanel close paths', () => {
+  it.each([false, true])('isolates settings and restores prior inert=%s after closing', (previous) => {
+    const { view } = mount()
+    view.container.id = 'root'
+    view.container.inert = previous
+    const trigger = openPanel()
+    expect(view.container.inert).toBe(true)
+    expect(view.container.contains(screen.getByRole('dialog'))).toBe(false)
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+    expect(view.container.inert).toBe(previous)
+    if (!previous) expect(document.activeElement).toBe(trigger)
+  })
+
+  it('restores background interaction when the open settings shell unmounts', () => {
+    const { view } = mount()
+    view.container.id = 'root'
+    view.container.inert = false
+    openPanel()
+    view.unmount()
+    expect(view.container.inert).toBe(false)
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
   it('closes via the header button and restores trigger focus', async () => {
     mount()
     const trigger = openPanel()

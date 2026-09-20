@@ -20,6 +20,8 @@ English | [中文](README.zh.md)
 - [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
 - [Dev Note](#dev-note)
 
+In the Strugend desktop composition, Intelligence replaces provider cards with Core, Decision, and Memory credentials plus a Memory service origin. Keys are write-only and remain distinct from connection verification. Environment credentials are read-only. Graph edits use the settings revision; rejected edits retain the draft. The generic provider editor remains available in other compositions.
+
 -----
 
 <a id="use-this-package"></a>

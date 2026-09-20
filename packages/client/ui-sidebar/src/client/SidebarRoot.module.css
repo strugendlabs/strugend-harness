@@ -558,3 +558,10 @@
     animation: none;
   }
 }
+
+:global([data-strugend]) .root:not(.collapsed) .logoRow { min-height:74px; height:auto; margin:0 12px 24px; }
+:global([data-strugend]) .brandIdentity, :global([data-strugend]) .brandName { height:auto; }
+:global([data-strugend]) .brandMark { display:none; }
+:global([data-strugend]) .newSession { background:transparent; border-color:var(--strugend-accent-border); justify-content:flex-start; gap:12px; height:40px; border-radius:8px; margin-bottom:14px; }
+:global([data-strugend]) .collapsed .newSession { border:none; justify-content:center; padding:0; }
+:global([data-strugend]) .panelList { margin-bottom:0; }

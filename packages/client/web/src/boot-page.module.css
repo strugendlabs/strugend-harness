@@ -101,3 +101,131 @@
   color: var(--dsw-alias-label-secondary, var(--dsh-boot-label-secondary));
   white-space: pre-wrap;
 }
+
+/* Agent OS artwork is local: startup needs no fonts, images, or services from the network. */
+.agentOs {
+  position: relative;
+  overflow: auto;
+  min-height: 100%;
+  background: radial-gradient(ellipse at 50% 42%, #1c2030 0%, #14161d 33%, #111216 68%);
+  color: #f3f4fb;
+  -webkit-app-region: drag;
+}
+
+.agentOs .card {
+  position: relative;
+  padding: 64px 32px;
+  gap: 18px;
+}
+
+.agentOs .wordmark {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 24px;
+  color: #f3f4fb;
+}
+
+.mark {
+  display: block;
+  object-fit: contain;
+  margin-bottom: 22px;
+  filter: drop-shadow(0 10px 28px #778ff21c);
+  animation: breathe 3.6s ease-in-out infinite;
+}
+
+.name {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 34px;
+  font-weight: 550;
+  line-height: 1.25;
+  letter-spacing: -0.045em;
+}
+
+.tagline {
+  margin-top: 10px;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 20px;
+  letter-spacing: 0.035em;
+  color: #8d93a7;
+}
+
+.agentOs .spinner {
+  width: 112px;
+  height: 2px;
+  border: 0;
+  border-radius: 2px;
+  overflow: hidden;
+  background: #ffffff12;
+  animation: none;
+}
+
+.agentOs .spinner::after {
+  inset: 0;
+  width: 44px;
+  background: linear-gradient(90deg, transparent, #a9b5ff 50%, transparent);
+  mask: none;
+  -webkit-mask: none;
+  animation: sweep 1.8s ease-in-out infinite;
+}
+
+.agentOs .hint {
+  color: #858b9d;
+  font-size: 11px;
+  letter-spacing: 0.015em;
+}
+
+.agentOs .failed {
+  max-width: min(580px, calc(100vw - 96px));
+  padding: 20px;
+  border: 1px solid #ffffff14;
+  border-radius: 12px;
+  background: #ffffff04;
+  -webkit-app-region: no-drag;
+  user-select: text;
+  overflow-wrap: anywhere;
+}
+
+.agentOs .failedTitle { color: #f1b7b9; }
+.agentOs .failedItem { color: #bec3d4; }
+.stopped .mark { animation: none; }
+
+@keyframes breathe {
+  0%, 100% { opacity: 0.82; transform: translateY(0); }
+  50% { opacity: 1; transform: translateY(-4px); }
+}
+
+@keyframes sweep {
+  0% { transform: translateX(-44px); }
+  100% { transform: translateX(112px); }
+}
+
+@media (prefers-color-scheme: light) {
+  .agentOs {
+    background: radial-gradient(ellipse at 50% 42%, #e0e6fc 0%, #eff1f8 36%, #f8f9fc 72%);
+  }
+  .agentOs .wordmark { color: #202432; }
+  .agentOs .tagline, .agentOs .hint { color: #656c80; }
+  .agentOs .spinner { background: #26345e14; }
+  .agentOs .spinner::after { background: linear-gradient(90deg, transparent, #6377c8 50%, transparent); }
+  .agentOs .failed { background: #ffffffa0; border-color: #26345e18; }
+  .agentOs .failedTitle { color: #a33744; }
+  .agentOs .failedItem { color: #525b72; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner, .mark, .agentOs .spinner::after { animation: none; }
+  .agentOs .spinner::after { width: 100%; opacity: 0.7; }
+}
+
+.strugend { background:#181a1b; color:#e8e9e5; }
+.strugend .wordmark { display:flex; flex-direction:column; align-items:center; gap:16px; }
+.strugend .mark { width:84px; height:84px; object-fit:contain; animation:none; }
+.strugend .name { font-family:Georgia,'Times New Roman',serif; font-size:28px; font-weight:400; letter-spacing:-.5px; }
+.strugend .tagline { color:#a3ada8; font-size:13px; }
+.strugend .spinner { margin:30px auto 18px; }
+@media (prefers-color-scheme:light) {
+  .strugend { background:#fff; color:#202324; }
+  .strugend .tagline { color:#59685c; }
+}

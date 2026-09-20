@@ -1,7 +1,7 @@
 import { WINDOWS_TITLEBAR_HEIGHT } from './windows-layout.ts'
 /** Electron shell: desktop project ownership, custom protocol, windows, and lifecycle. */
 
-import { readFile, writeFile } from 'node:fs/promises'
+import { writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
@@ -39,6 +39,13 @@ import { DesktopMandatoryUpdateWindow } from './mandatory-update-window.ts'
 import { DesktopPolicyTestAuth } from './policy-test-auth.ts'
 import { DesktopUpdateDialog, type UpdateDialogOptions } from './update-dialog.ts'
 import { readDesktopRuntime } from './runtime-tree.ts'
+import { AgentOsDesktop } from './agentos.ts'
+import { agentOsIdentity } from './agentos-identity.ts'
+
+const agentOsBrand = agentOsIdentity(process.env.DEEPSEEK_BASE_URL)
+// Keep the native credential and Chromium profile identity stable across display-name changes.
+app.setName(agentOsBrand.badge ? 'Agent OS (Local API)' : 'Agent OS')
+process.env.DSH_HOME ??= join(app.getPath('appData'), 'Agent OS', 'harness')
 
 let focusPrimaryWindow = (): void => {}
 let stopForRecovery = async (): Promise<void> => {}
@@ -143,6 +150,10 @@ function createWindow(preload: string, show = false, primary = false): BrowserWi
     if (['http:', 'https:'].includes(new URL(url).protocol)) void shell.openExternal(url)
     return { action: 'deny' }
   })
+  if (agentOsBrand.badge) window.webContents.on('page-title-updated', (event, title) => {
+    event.preventDefault()
+    window.setTitle(`${title} — ${currentDesktopLocale().messages.localApi}`)
+  })
   window.webContents.on('context-menu', (_event, { isEditable, selectionText, editFlags }) => {
     const items: MenuItemConstructorOptions[] = []
     if (isEditable) {
@@ -189,6 +200,11 @@ async function main(): Promise<void> {
   const paths = resolveDesktopPaths()
   const development = !app.isPackaged
   const activeProject = paths.profile
+  if (process.platform === 'darwin') {
+    app.dock?.setBadge(agentOsBrand.badge)
+    app.dock?.setIcon(development ? join(app.getAppPath(), 'resources', 'strugend', 'icon.png')
+      : join(process.resourcesPath, 'icon.png'))
+  }
   const manager = new DesktopProjectManager(paths, resources)
   let quitting = false
   let startup: Promise<void> | undefined
@@ -231,6 +247,7 @@ async function main(): Promise<void> {
     }
   }
   let navigation: { window: BrowserWindow; url: string; promise: Promise<void> } | undefined
+  const agentOS = new AgentOsDesktop(join(process.env.DSH_HOME ?? join(app.getPath('appData'), 'Agent OS', 'harness'), 'agent-os'), currentMainWindow, assertProductSender)
   const navigateMain = (url: string): Promise<void> => {
     const window = mainWindow
     if (quitting || window === undefined || window.isDestroyed()) return Promise.resolve()
@@ -251,7 +268,7 @@ async function main(): Promise<void> {
       hostInspectPort, process.env, onFailure,
       development ? join(app.getAppPath(), '.desktop-build', 'targets', `${process.platform === 'darwin' ? 'mac' : 'win'}-${process.arch}`, 'runtime', 'primary-runtime')
         : join(process.resourcesPath, 'runtime', 'primary-runtime'),
-      development ? 'link' : 'runtime', resources)
+      development ? 'link' : 'runtime', resources, (request, signal) => agentOS.hostRequest(request, signal))
     return {
       start: async () => {
         const ready = await host.start()
@@ -383,6 +400,8 @@ async function main(): Promise<void> {
       }
       return true
     },
+    undefined,
+    () => false, // Agent OS has no signed update feed yet.
   )
 
   const updateSchedule = new DesktopUpdateSchedule(updates, resolveDesktopUpdateScheduleConfig(process.env))
@@ -398,6 +417,7 @@ async function main(): Promise<void> {
   protocol.handle(SCHEME, (request) => {
     const url = new URL(request.url)
     if (url.hostname === 'app') {
+      if (url.pathname.startsWith('/agent-os-media/')) return agentOS.media.serve(request)
       if (url.pathname === '/' || url.pathname === '/index.html' || url.pathname.startsWith('/assets/')
         || ['/favicon.svg', '/manifest.webmanifest'].includes(url.pathname)) {
         return serveWebDocument(request, join(resources.dsh, 'node_modules', '@deepseek-ai', 'dsh-web-frontend', 'dist'))
@@ -576,12 +596,12 @@ async function main(): Promise<void> {
   })
 
   app.setAboutPanelOptions({
-    applicationName: 'DeepSeek Harness',
+    applicationName: 'Strugend Harness',
     applicationVersion: app.getVersion(),
     // The release has no separate build number; omit Electron's bundle version.
     version: '',
     copyright: '',
-    iconPath: development ? join(app.getAppPath(), 'resources', 'icon-windows.png')
+    iconPath: development ? join(app.getAppPath(), 'resources', 'strugend', 'icon.png')
       : join(process.resourcesPath, 'icon.png'),
   })
   // A custom application menu replaces Electron's default menu, so macOS needs
@@ -602,7 +622,7 @@ async function main(): Promise<void> {
     { role: 'quit', ...(process.platform === 'win32' ? { label: currentDesktopLocale().messages.exitApplication } : {}) },
   ]
   Menu.setApplicationMenu(process.platform === 'win32' ? null : Menu.buildFromTemplate([{
-    label: darwin ? app.name : currentDesktopLocale().messages.application,
+    label: darwin ? agentOsBrand.name : currentDesktopLocale().messages.application,
     submenu: applicationItems(),
   }, ...platformMenus]))
 
@@ -712,25 +732,21 @@ async function main(): Promise<void> {
     updateDialog.dispose()
     mandatoryUI?.dispose()
     void Promise.all([Promise.resolve(mandatoryPolicy?.dispose()).then(() => policyAuth?.dispose()), backend.close()])
-      .catch((error: unknown) => { console.error(error) }).finally(() => { app.quit() })
+      .catch((error: unknown) => { console.error(error) })
+      .then(() => agentOS.dispose())
+      .catch((error: unknown) => { console.error(error) })
+      .finally(() => { app.quit() })
   })
 
   mainWindow = createMainWindow()
-  const manifest: unknown = JSON.parse(await readFile(join(app.getAppPath(), 'package.json'), 'utf8'))
-  if (typeof manifest !== 'object' || manifest === null) throw new Error('desktop policy: invalid application manifest')
-  const developmentPolicy = app.isPackaged ? undefined : process.env.DSH_DESKTOP_MANDATORY_UPDATE_CONFIG
-  const policyInput: unknown = app.isPackaged
-    ? ('dshMandatoryUpdatePolicy' in manifest ? manifest.dshMandatoryUpdatePolicy : undefined)
-    : developmentPolicy === undefined ? undefined : JSON.parse(developmentPolicy) as unknown
-  const policyConfig = resolveDesktopPolicyConfig(policyInput, !app.isPackaged)
+  // This fork has its own distribution; never enforce the upstream publisher's policy.
+  const policyConfig = resolveDesktopPolicyConfig(undefined, true)
   if (policyConfig !== undefined) {
     if (policyConfig.authentication === 'feishu-test') {
       policyAuth = new DesktopPolicyTestAuth(policyConfig.origin, locale, () => mandatoryUI?.confirmationWindow ?? mainWindow,
         (event) => { console.info(`desktop policy authentication: ${event}`); updateJournal?.action(`policy-login-${event}`) })
     }
-    const bundleId = app.isPackaged
-      ? ('dshDesktopAppId' in manifest ? manifest.dshDesktopAppId : undefined)
-      : process.env.DSH_DESKTOP_APP_ID
+    const bundleId = 'app.agent-os.desktop'
     if (typeof bundleId !== 'string' || bundleId.trim() === '') throw new Error('desktop policy: missing application bundle ID')
     if (!['win32', 'darwin'].includes(process.platform) || !['x64', 'arm64'].includes(process.arch)) throw new Error('desktop policy: unsupported platform')
     let wasBlocking = false

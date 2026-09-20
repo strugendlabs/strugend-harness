@@ -159,6 +159,7 @@
     "scripts/client-bundle-purity.spec.ts"
   ],
   "references": [
+    { "path": "packages/util/agentos-protocol" },
     { "path": "./packages/client/connection/tsconfig.host.json" },
     { "path": "./packages/skill/skill-office" },
     { "path": "./packages/browser-use/browser-use" },

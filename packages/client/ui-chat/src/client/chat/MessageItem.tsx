@@ -52,7 +52,9 @@ function failureMessage(
   code: unknown,
   t: ChatViewSlotProps['t'],
 ): string {
-  return code === 'AUTH' ? t('message.failure.auth') : message
+  if (code === 'AUTH') return t('message.failure.auth')
+  if (process.env.DSH_CLIENT_TITLE === 'Strugend Harness' && /deepseek|\bdsh\b/iu.test(message)) return t('message.failure.core')
+  return message
 }
 
 function ModelRetryItem({ node, active, t }: {

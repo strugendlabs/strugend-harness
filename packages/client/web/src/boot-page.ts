@@ -25,19 +25,37 @@ export class BootPage {
   private readonly active = new Set<string>()
   private total = 0
   private failure: string | undefined
+  private readonly agentOs = ['Agent OS', 'Strugend Harness'].includes(process.env.DSH_CLIENT_TITLE ?? '')
+  private readonly strugend = process.env.DSH_CLIENT_TITLE === 'Strugend Harness'
+  private readonly copy = navigator.language.toLowerCase().startsWith('zh')
+    ? { tagline: '从想法到行动', loading: '正在准备工作区…', failed: '工作区未能启动' }
+    : { tagline: 'From thought to action', loading: 'Preparing your workspace…', failed: 'Workspace could not start' }
 
   /**
    * Build and attach the boot page.
    * @param container - Application mount point.
    */
   constructor(container: HTMLElement) {
-    this.root = div(css.boot)
+    this.root = div([css.boot, this.strugend ? css.strugend : this.agentOs ? css.agentOs : ''].join(' '))
     this.root.dataset.dshBoot = ''
     this.card = div(css.card)
     this.wordmark = div(css.wordmark, 'HARNESS')
+    if (this.agentOs) {
+      const image = document.createElement('img')
+      image.src = this.strugend ? '/assets/strugend/mark-512.png' : '/assets/agent-os/mark-512.png'
+      image.width = 160
+      image.height = 160
+      image.alt = ''
+      image.draggable = false
+      image.className = css.mark ?? ''
+      const name = div(css.name, this.strugend ? 'Strugend Harness' : 'Agent OS')
+      this.wordmark.replaceChildren(image, name, div(css.tagline, this.copy.tagline))
+    }
     this.spinner = div(css.spinner)
     this.spinner.dataset.dshBootSpinner = ''
-    this.hint = div(css.hint, 'Loading plugins…')
+    this.spinner.setAttribute('aria-hidden', 'true')
+    this.hint = div(css.hint, this.agentOs ? this.copy.loading : 'Loading plugins…')
+    this.hint.setAttribute('role', 'status')
     this.card.append(this.wordmark, this.spinner, this.hint)
     this.root.append(this.card)
     container.append(this.root)
@@ -83,15 +101,18 @@ export class BootPage {
   private render(): void {
     const failed = [...this.states].filter(([, state]) => state === 'failed').map(([id]) => id)
     if (this.failure === undefined && failed.length === 0) {
+      this.root.classList.remove(css.stopped ?? '')
       if (this.spinner.parentElement !== this.card) {
         this.card.replaceChildren(this.wordmark, this.spinner, this.hint)
       }
       return
     }
     const report = div(css.failed)
-    report.append(div(css.failedTitle, 'Failed to load plugins'))
-    for (const id of failed) report.append(div(css.failedItem, id))
-    if (this.failure !== undefined) report.append(div(css.failedItem, this.failure))
+    this.root.classList.add(css.stopped ?? '')
+    report.setAttribute('role', 'alert')
+    report.append(div(css.failedTitle, this.agentOs ? this.copy.failed : 'Failed to load plugins'))
+    for (const id of failed) report.append(div(css.failedItem, this.strugend ? id.replace('@deepseek-ai/dsh-', '') : id))
+    if (this.failure !== undefined) report.append(div(css.failedItem, this.strugend ? this.failure.replaceAll('@deepseek-ai/dsh-', '').replaceAll('DeepSeek Harness', 'Strugend Harness') : this.failure))
     this.card.replaceChildren(this.wordmark, report)
   }
 

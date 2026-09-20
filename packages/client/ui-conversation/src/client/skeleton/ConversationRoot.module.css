@@ -517,3 +517,8 @@
 .embeddedBody[data-content-phase='settling'] .composerSeat {
   visibility: hidden;
 }
+
+:global([data-strugend]) .composerHero { padding-bottom:70px; }
+:global([data-strugend]) .heroWorkspaceRow { margin-bottom:8px; }
+:global([data-strugend]) .headerBlank { border-bottom:1px solid var(--dsw-alias-border-l3); min-height:54px; }
+:global([data-strugend]) .body { --dsh-composer-card-max-width: min(calc(100% - 32px), 700px); }

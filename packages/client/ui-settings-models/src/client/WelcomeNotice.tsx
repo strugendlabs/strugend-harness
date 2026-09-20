@@ -12,6 +12,8 @@ import css from './WelcomeNotice.module.css'
 
 /** Registration-side dependencies of {@link WelcomeNotice}. */
 export interface WelcomeNoticeInjected {
+  /** Select the desktop fork's first-run copy. */
+  agentOs?: boolean
   hooks: {
     /** Durable or process-local acknowledgement state. */
     welcome: SnapshotStore<WelcomeNoticeState>
@@ -54,10 +56,11 @@ export function WelcomeNotice(props: WelcomeNoticeProps): ReactNode {
   const acknowledge = async (): Promise<void> => {
     if (await controller.acknowledge()) finish()
   }
-  const paragraphs = t('welcomeBody').split('\n\n')
+  const agentOs = props.agentOs ?? false
+  const paragraphs = t(agentOs ? 'agentOsWelcomeBody' : 'welcomeBody').split('\n\n')
 
   return (
-    <OnboardingModal title={t('welcomeTitle')} focusTitle>
+    <OnboardingModal title={t(agentOs ? 'agentOsWelcomeTitle' : 'welcomeTitle')} focusTitle>
       <div className={css.copy}>
         {paragraphs.map(paragraph => <p key={paragraph}>{paragraph}</p>)}
       </div>

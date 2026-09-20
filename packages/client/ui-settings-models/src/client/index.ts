@@ -1,7 +1,7 @@
 /**
  * Models settings and product-onboarding plugin, browser half. It registers
- * the Models page plus the ordered internal-testing and official-DeepSeek
- * onboarding dialogs, whose UI shares this package's modal wrapper. The Host
+ * provider editing or desktop Intelligence settings and ordered onboarding
+ * dialogs, whose UI shares this package's modal wrapper. The Host
  * settings and credential contracts stay behind their existing wire APIs.
  * Export discipline:
  * packages/client/AGENTS.md.
@@ -83,7 +83,22 @@ export function apply(ctx: ClientContext): void {
   // Registration-time text (the nav label thunk) and the inject faces share
   // one bound translate; copy freshness rides the locale revision.
   const t = ctx.locale.bind(NS) as ModelsSectionInjected['t']
+  const intelligence: ModelsSectionInjected['intelligence'] = typeof window !== 'undefined' && 'agentOS' in window ? {
+    load: async () => {
+      const response = await ctx.remote.settings.describe()
+      if (!response.ok) throw new Error(response.error.message)
+      const service = response.value.namespaces.find(row => row.ns === 'strugend-intelligence')
+      const core = response.value.namespaces.find(row => row.ns === 'llm-deepseek')
+      const coreValue = core === undefined ? undefined : schema.getPath(core.value, ['apiKeyEnv'])
+      const coreRef = typeof coreValue === 'string' ? coreValue : 'DEEPSEEK_API_KEY'
+      const credentials = await ctx.remote.credentials.describe([coreRef, 'TYPESAFE_API_KEY', 'CHRONOGRAPH_TOKEN'])
+      const graphUrl = service === undefined ? undefined : schema.getPath(service.value, ['graphUrl'])
+      if (!service || !credentials.ok || typeof graphUrl !== 'string') throw new Error('Intelligence settings are unavailable.')
+      return { coreRef, graphUrl, revision: service.revision, credentials: credentials.value }
+    },
+  } : undefined
   const injected = (): ModelsSectionInjected => ({
+    ...(intelligence === undefined ? {} : { intelligence }),
     controller,
     hooks: { snapshot: controller.store },
     operations,
@@ -104,6 +119,7 @@ export function apply(ctx: ClientContext): void {
     decode: decodeWelcomeSection,
   }))
   const welcomeInjected = (): WelcomeNoticeInjected => ({
+    agentOs: typeof window !== 'undefined' && 'agentOS' in window,
     controller: welcomeController,
     hooks: { welcome: welcomeController.store },
     t,

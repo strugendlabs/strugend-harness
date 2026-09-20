@@ -209,7 +209,6 @@ export function parseDesktopPackageInvocation(
   })
   if (positionals.length > 1) throw new Error('desktop package: expected at most one target')
   const name = positionals[0] ?? hostTargetName(hostPlatform, hostArch)
-  if (values.unsigned && name !== 'win-x64') throw new Error('desktop package: --unsigned requires win-x64')
   if (values.unsigned && values['prepare-only']) throw new Error('desktop package: --unsigned cannot use --prepare-only')
   return {
     target: resolveDesktopPackageTarget(name, hostPlatform, hostArch),
@@ -292,7 +291,7 @@ async function main(): Promise<void> {
   if (run !== undefined) console.log(`DESKTOP_PACKAGING_RECORD ${run.directory}`)
   let success = false
   try {
-    if (target.platform === 'darwin') {
+    if (target.platform === 'darwin' && !invocation.unsigned) {
       await withMacOSSigningKeychain(environment, signingEnvironment => packageTarget(invocation, signingEnvironment, run))
     } else {
       await packageTarget(invocation, environment, run)
@@ -324,6 +323,7 @@ export async function packageTarget(
   const buildEnv = withoutWindowsSigningEnvironment(withoutDesktopUploadCredentials(environment))
   const targetEnv: NodeJS.ProcessEnv = {
     ...buildEnv,
+    DSH_DESKTOP_UNSIGNED: invocation.unsigned ? '1' : '0',
     DSH_DESKTOP_TARGET_PLATFORM: target.platform,
     DSH_DESKTOP_TARGET_ARCH: target.arch,
   }
@@ -338,8 +338,9 @@ export async function packageTarget(
       ['--import', 'tsx/esm', join(APP_ROOT, 'scripts/windows-signing-preflight.ts')],
       { cwd: APP_ROOT, env: electronBuilderEnv, timeoutMs: 60_000 })
   }
-  await execute(['run', 'build:official'], buildEnv, REPOSITORY_ROOT)
-  await execute(['run', 'release:pack', '--family', 'dsh', '--out', buildPaths.packedDsh], buildEnv, REPOSITORY_ROOT)
+  const preview = environment.DSH_DESKTOP_DISTRIBUTION === 'strugend-preview'
+  await execute(['run', preview ? 'build:strugend' : 'build:official'], buildEnv, REPOSITORY_ROOT)
+  await execute(['run', 'release:pack', '--family', 'dsh', '--out', buildPaths.packedDsh, ...(preview ? ['--client-profile', 'strugend'] : [])], buildEnv, REPOSITORY_ROOT)
   await execute([
     '--dir',
     'apps/desktop-host',
@@ -363,7 +364,7 @@ export async function packageTarget(
   await execute(['run', 'prepare:packages'], targetEnv)
   await execute(['run', 'prepare:dsh'], targetEnv)
   if (invocation.prepareOnly) return
-  if (target.platform === 'darwin' && !invocation.directory) {
+  if (target.platform === 'darwin' && !invocation.directory && !invocation.unsigned) {
     await execute([
       ...desktopElectronBuilderArguments(target, true),
       '--config.mac.notarize=false',

@@ -131,6 +131,8 @@ function HeroFish({ hovering }: { hovering: boolean }) {
  */
 export function HeroShell({ t, renderSlot, children }: HeroShellProps) {
   const [hovering, setHovering] = useState(false)
+  const strugend = process.env.DSH_CLIENT_TITLE === 'Strugend Harness'
+  if (strugend) return <div className={css.strugendHero}><h1>{t('hero.agentosHeadline')}</h1><p>{t('hero.strugendSubtitle')}</p>{children}</div>
   return (
     <div className={css.root}>
       <div className={css.stack}>
@@ -151,7 +153,7 @@ export function HeroShell({ t, renderSlot, children }: HeroShellProps) {
           </span>
           <span className={css.titleGroup}>
             {/* Own element: keeps the headline text addressable apart from the badge. */}
-            <span>{t('hero.headline')}</span>
+            <span>{t(process.env.DSH_CLIENT_TITLE === 'Agent OS' ? 'hero.agentosHeadline' : 'hero.headline')}</span>
             <span className={css.previewBadge}>{t('hero.preview')}</span>
           </span>
         </div>

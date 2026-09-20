@@ -1,5 +1,15 @@
 /** Launch the Desktop profile through the Web application and report its URL to Electron. */
 
+import { mkdir, writeFile } from 'node:fs/promises'
+import { fileURLToPath } from 'node:url'
+import * as agentOsVision from './agentos-vision.ts'
+import * as agentOsTools from './agentos-tools.ts'
+import * as agentOsWorkflow from './agentos-workflow.ts'
+import * as agentOsPower from './agentos-power.ts'
+import * as strugendIntelligence from './strugend-intelligence.ts'
+import { agentOsProfilePatch } from './agentos-profile.ts'
+import * as skillFilesystem from '@deepseek-ai/dsh-skill-filesystem'
+import { desktopRequest } from './agentos-bridge.ts'
 import { delimiter, join } from 'node:path'
 import { loadLayeredEnv, loadProfileDirectory } from '@deepseek-ai/dsh-app-boot'
 import { runProfile } from '@deepseek-ai/dsh/profile-boot'
@@ -15,13 +25,20 @@ async function main(): Promise<void> {
   const projectDir = process.argv[3] as string
   const installAnchor = join(runtimeDir, 'node_modules', '@deepseek-ai', 'dsh', 'package.json')
   const profile = loadProfileDirectory('dsh', projectDir, installAnchor)
+  const overlay = join(resolveDshHome(), 'agent-os-desktop.patch.yml')
+  await mkdir(resolveDshHome(), { recursive: true, mode: 0o700 })
+  try { await writeFile(join(resolveDshHome(), 'settings.yaml'), JSON.stringify({ 'ui-theme': { preference: 'dark', fontSize: 14 } }), { flag: 'wx', mode: 0o600 }) }
+  catch (error) { if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error }
+  await writeFile(overlay, JSON.stringify(agentOsProfilePatch(
+    fileURLToPath(new URL('./agentos-credentials.js', import.meta.url)), projectDir, process.env.DSH_PERMISSION_MODE,
+  )), { mode: 0o600 })
   const application = runProfile({
     environment: loadLayeredEnv('dsh'),
     profile: 'desktop',
     resolutionMode: process.argv[5] === 'runtime' ? 'runtime' : 'link',
     resolvedProfile: { profile, installAnchor },
-    patchFiles: [],
-    args: ['--no-open', '--port', '19387'],
+    patchFiles: [overlay],
+    args: ['--no-open', '--port', process.env.DSH_DESKTOP_HOST_PORT ?? '19387'],
     ...(process.argv[6] === undefined ? {} : {
       packageManager: {
         command: process.execPath,
@@ -65,6 +82,13 @@ async function main(): Promise<void> {
   })
   process.once('disconnect', () => { void stop() })
   const { ctx } = await application
+  await ctx.plugin(agentOsWorkflow)
+  await ctx.plugin(agentOsPower)
+  await ctx.plugin(agentOsTools)
+  await ctx.plugin(agentOsVision)
+  await ctx.plugin(strugendIntelligence, strugendIntelligence.Config({} as strugendIntelligence.Config))
+  const skillRoot = await desktopRequest<string>({ method: 'skill-root' })
+  await ctx.plugin(skillFilesystem, { providerName: 'agent-os-recordings', includeDefaultRoots: false, customSkillDirs: [skillRoot] })
   control.updateTasks = installDesktopUpdateTaskControl(ctx)
   await ctx.plugin(desktopOffice, {
     source: process.argv[4] ?? join(runtimeDir, '..', 'runtime', 'primary-runtime'),

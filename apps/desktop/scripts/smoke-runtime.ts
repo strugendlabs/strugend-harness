@@ -16,7 +16,10 @@ import type { DesktopRuntimeDescriptor } from '../src/runtime-tree.ts'
 export async function smokeDesktopRuntime(root: string, node: string, runtime: DesktopRuntimeDescriptor): Promise<void> {
   const home = mkdtempSync(join(tmpdir(), 'dsh-desktop-smoke-'))
   const profile = join(home, 'profiles', 'desktop')
-  const host = new DesktopHostProcess(node, root, profile, undefined, { ...process.env, DSH_HOME: home })
+  const environment = Object.fromEntries(Object.entries(process.env)
+    .filter(([name]) => !/KEY|SECRET|TOKEN|PASSWORD/iu.test(name) && name !== 'DEEPSEEK_BASE_URL'))
+  const host = new DesktopHostProcess(node, root, profile, undefined, { ...environment, DSH_HOME: home, DSH_TELEMETRY_DISABLED: '1' },
+    undefined, undefined, 'link', undefined, createSmokeDesktopBridge(home))
   try {
     createPluginProfile(profile)
     const pluginName = 'desktop-runtime-smoke-plugin'
@@ -57,5 +60,22 @@ export function apply(ctx) {
   } finally {
     await host.stop()
     rmSync(home, { recursive: true, force: true })
+  }
+}
+
+/**
+ * Supply only the local resources needed by the host boot check.
+ * @param home - Disposable smoke-test profile directory.
+ * @returns A bridge that exposes an empty skill directory and no credentials; other operations fail.
+ */
+export function createSmokeDesktopBridge(home: string): (request: unknown) => Promise<unknown> {
+  const skills = join(home, 'skills')
+  mkdirSync(skills, { recursive: true })
+  return async (request: unknown) => {
+    if (typeof request === 'object' && request !== null && 'method' in request) {
+      if (request.method === 'skill-root') return skills
+      if (request.method === 'credential' && 'operation' in request && request.operation === 'get') return null
+    }
+    throw new Error('Desktop startup smoke requested an unsupported operation')
   }
 }

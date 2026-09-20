@@ -134,11 +134,25 @@
 }
 
 .failure {
+  display: flex;
   flex: 0 0 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
   padding: 6px 12px;
   color: var(--dsw-alias-state-error-primary);
   font: var(--dsw-font-xxxs-11);
   background: color-mix(in srgb, var(--dsw-alias-state-error-primary) 8%, transparent);
+}
+
+.failure button {
+  padding: 4px 8px;
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  background: var(--dsw-alias-bg-layer-1);
+  border: 0.5px solid var(--dsw-alias-border-l2);
+  border-radius: 5px;
+  cursor: pointer;
 }
 
 .sandboxWarning {
@@ -165,3 +179,10 @@
   flex: 0 0 auto;
   margin-right: 4px;
 }
+
+.nativeControls { display:flex; align-items:center; gap:8px; padding:8px 10px; border-bottom:0.5px solid var(--dsw-alias-border-l3); font-size:11px; }
+.nativeControls button { border:0.5px solid var(--dsw-alias-border-l3); border-radius:6px; background:transparent; color:inherit; padding:5px 8px; cursor:pointer; }
+.nativeControls button[aria-pressed="true"] { color:#ff756f; }
+.nativeStatus { flex:1; color:var(--dsw-alias-label-secondary); }
+.nativeViewport { flex:1; min-height:0; position:relative; }
+.nativeNotice { padding:8px 12px; font-size:12px; color:#93c5a8; }

@@ -322,7 +322,7 @@ describe('desktop main startup', () => {
     const expected = JSON.parse(readFileSync(new URL('./expected/about-panel.json', import.meta.url), 'utf8')) as Record<string, unknown>
     expect({ menu: submenu.slice(0, 2), options: { ...options, iconPath: '<app icon>' } }).toEqual(expected[locale])
     expect(options.iconPath).toBe(packaged ? join('desktop-test-resources', 'icon.png')
-      : join('desktop-test-app', 'resources', 'icon-windows.png'))
+      : join('desktop-test-app', 'resources', 'agent-os', 'icon.png'))
   })
 
   it('shows one explained startup login before Host readiness and joins concurrent checks without reopening it', async () => {

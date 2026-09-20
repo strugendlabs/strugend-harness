@@ -8,12 +8,33 @@
     "src"
   ],
   "references": [
-    { "path": "../../vendor/cordis" },
-    { "path": "../../packages/core/agent" },
-    { "path": "../../packages/jobs/jobs" },
-    { "path": "../../packages/skill/skill-office" },
-    { "path": "../../packages/util/home-paths" },
-    { "path": "../../packages/core/tools" },
+    {
+      "path": "../../vendor/cordis"
+    },
+    {
+      "path": "../../packages/core/agent"
+    },
+    {
+      "path": "../../packages/jobs/jobs"
+    },
+    {
+      "path": "../../packages/skill/skill-office"
+    },
+    {
+      "path": "../../packages/util/home-paths"
+    },
+    {
+      "path": "../../packages/core/tools"
+    },
+    {
+      "path": "../../packages/core/system-prompt"
+    },
+    {
+      "path": "../../packages/interaction/commands"
+    },
+    {
+      "path": "../../packages/interaction/permission-presets"
+    },
     {
       "path": "../cli"
     },
@@ -25,6 +46,33 @@
     },
     {
       "path": "../../packages/host/webserver"
+    },
+    {
+      "path": "../../packages/util/agentos-protocol"
+    },
+    {
+      "path": "../../packages/credentials/credentials"
+    },
+    {
+      "path": "../../packages/attachment/attachment"
+    },
+    {
+      "path": "../../packages/llm/llm"
+    },
+    {
+      "path": "../../packages/skill/skill-filesystem"
+    },
+    {
+      "path": "../../packages/util/values"
+    },
+    {
+      "path": "../../packages/core/session"
+    },
+    {
+      "path": "../../vendor/schemastery"
+    },
+    {
+      "path": "../../packages/settings/settings"
     }
   ]
 }

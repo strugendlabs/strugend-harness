@@ -38,7 +38,7 @@ describe('installer preparation preserves application dependencies', () => {
       const config = createElectronBuilderConfig(env, platform, 'x64')
       const aboutIcon = config.extraResources.find(resource => resource.to === 'icon.png')
       expect(aboutIcon).toBeDefined()
-      expect(readFileSync(aboutIcon!.from)).toEqual(readFileSync(new URL('../resources/icon-windows.png', import.meta.url)))
+      expect(readFileSync(aboutIcon!.from)).toEqual(readFileSync(new URL('../resources/strugend/icon.png', import.meta.url)))
       const packager = new Packager({ projectDir: tmpdir() })
       // A foreign source-build target avoids rebuilding modules; the real dependency ownership decision still runs.
       Object.defineProperties(packager, {

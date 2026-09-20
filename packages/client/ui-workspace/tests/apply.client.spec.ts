@@ -12,6 +12,7 @@ import type { SessionReference } from '@deepseek-ai/dsh-api-session-controller/c
 
 async function bench() {
   const ctx = new Context()
+  ctx.provide('sidebarRight', { openTab: vi.fn() } as never)
   await ctx.plugin(SlotRegistry).await()
   const create = vi.fn(async (input: { name: string } | { path: string }) => ({
     workspaceId: 'ws-new' as never,
@@ -108,7 +109,7 @@ describe('ui-workspace apply', () => {
 
   it('declares the services it drives', () => {
     expect(inject).toEqual([
-      'slots', 'sessions', 'workspaces', 'locale', 'remote', 'remote.directoryPicker', 'layout',
+      'slots', 'sessions', 'workspaces', 'locale', 'remote', 'remote.directoryPicker', 'layout', 'sidebarRight',
     ])
   })
 

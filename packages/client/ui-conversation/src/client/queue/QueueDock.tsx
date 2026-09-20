@@ -33,6 +33,8 @@ function textOf(content: InboxState['next-turn'][number]['content']): string | n
 
 /** Queue operations injected by the session-scoped registration. */
 export interface QueueDockInjected {
+  /** Desktop keeps queued rows expanded like the composer reference. */
+  expandedByDefault?: boolean
   updateQueue: (itemId: MessageId, action: QueueAction) => Promise<void>
   notify: (level: 'info' | 'error', text: string) => void
   /** Resolve one durable queued image into a session-scoped browser URL. */
@@ -106,7 +108,7 @@ export type QueueDockProps = PropsRuntime<'conversation.input.dock'> & QueueDock
  * collapsible count header; an empty queue renders nothing. Local submissions
  * show sending status and disabled actions until their Host queue rows arrive.
  */
-export function QueueDock({ useSession, useProjection, updateQueue, notify, loadImage, t }: QueueDockProps) {
+export function QueueDock({ useSession, useProjection, updateQueue, notify, loadImage, t, expandedByDefault = false }: QueueDockProps) {
   const inbox = useProjection('inbox') as unknown as InboxState | undefined
   const queue = inbox?.['next-turn'] ?? EMPTY_QUEUE
   const pendingSubmissions = useSession(s => s.pendingSubmissions)
@@ -123,13 +125,13 @@ export function QueueDock({ useSession, useProjection, updateQueue, notify, load
   const queueMutable = useSession(s => s.subagent === null || s.subagent.address.mode === 'continuable')
   const [editing, setEditing] = useState<{ id: MessageId; text: string } | null>(null)
   const [busy, setBusy] = useState<MessageId | null>(null)
-  const [collapsed, setCollapsed] = useState(true)
+  const [collapsed, setCollapsed] = useState(!expandedByDefault)
   const listId = useId()
 
   useEffect(() => {
-    if (rowCount === 0 && !collapsed) setCollapsed(true)
+    if (rowCount === 0 && collapsed === expandedByDefault) setCollapsed(!expandedByDefault)
     if (editing !== null && (!queueMutable || !queue.some(row => row.id === editing.id))) setEditing(null)
-  }, [collapsed, editing, queue, queueMutable, rowCount])
+  }, [collapsed, editing, queue, queueMutable, rowCount, expandedByDefault])
 
   if (rowCount === 0) return null
 
@@ -316,7 +318,7 @@ export function QueueDock({ useSession, useProjection, updateQueue, notify, load
                               )
                             }}
                           >
-                            <IconSendOutline14 />
+                            {expandedByDefault ? <span>{t('queue.steer.short')}</span> : <IconSendOutline14 />}
                           </button>
                         </Tooltip>
                       </>
@@ -405,6 +407,7 @@ export const queueDockEntry = {
         const conversation = actx.get('conversation')
         if (conversation === undefined) throw new Error('queue dock: conversation service unavailable')
         return {
+          expandedByDefault: 'agentOS' in window,
           updateQueue: (itemId, action) => conversation.updateQueue(itemId, action),
           notify: (level, text) => { conversation.input.for(actx).notify(level, text) },
           loadImage: attachment => ctx.uiConversation.imageUrl(sessionId, attachment),

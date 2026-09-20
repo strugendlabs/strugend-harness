@@ -1,18 +1,22 @@
-# DeepSeek Harness Desktop
+# Strugend Harness Desktop
 
 English | [中文](README.zh.md)
 
 The desktop application is an Electron shell around the complete dsh Web application. An Electron RunAsNode child starts the shared profile runner, and Electron immediately loads the packaged Web entry at `dsh-app://app/`. Its shared loading page waits for Host boot injections, then starts the client without navigating to another document. Electron forwards application HTTP requests to the authenticated Web Host; WebSocket streams connect to that Host with credentials attached only for the owned application window. Node IPC carries boot injections, readiness, and shutdown. Desktop defaults to port `19387`, separate from Web’s `3080`; a `webserver.config.port` patch can override it.
 
-The first application-menu command, **About DeepSeek Harness**, opens Electron's native About panel with the application icon, product name, and installed release version. The menu follows the Desktop shell locale. macOS reads the icon from its application bundle, so an unpackaged development launch displays Electron's icon; Windows receives the packaged PNG.
+The first application-menu command, **About Strugend Harness**, opens Electron's native About panel with the application icon, product name, and installed release version. The menu follows the Desktop shell locale. macOS reads the icon from its application bundle, so an unpackaged development launch displays Electron's icon; Windows receives the packaged PNG.
 
 Desktop’s local native directory flow opens an Electron folder dialog attached to the application window, restoring, showing, and focusing that window first. Concurrent requests share one dialog; cancellation returns no path and failures remain retryable. Ordinary Web uses the Host chooser. Browse mode lists Host directories. On Linux without zenity or kdialog, automatic selection uses browse instead of the Electron dialog.
 
 Creator and the Web Plugin Manager use Desktop’s bundled pnpm under Electron Node mode without requiring pnpm on PATH. The private Node launcher environment applies only to package operations.
 
+## Strugend local application
+
+The [Strugend development guide](../../AGENT_OS_README.md) owns the local fork’s launch and service configuration. Display branding uses Strugend Harness; native credential identity and existing data paths remain stable so saved keys, browser profiles, and chats remain accessible. The [intelligence implementation](../desktop-host/src/strugend-intelligence.ts) adds optional typed decision checks and read-only temporal graph queries without changing the agent loop.
+
 ## Key technical decisions
 
-The original artwork lives in `resources/icon.png` and `resources/icon.svg`; platform adaptations retain the whale and gradients in `resources/icon-windows.*` and `resources/icon-macos.*`. Export each platform SVG as a transparent 1024×1024 PNG. Electron-builder generates the multi-size ICO for the Windows application, installer, and uninstaller ([Windows icon requirements](https://learn.microsoft.com/en-us/windows/apps/design/iconography/app-icon-construction)). The installation pages use matching artwork in both themes; the uninstaller's welcome and finish pages share `installer/assets/uninstaller-sidebar.png`, converted to a 164×314 BMP during preparation.
+Desktop uses `resources/strugend/icon.png` and `resources/strugend/icon.icns`. electron-builder derives Windows application and installer icons from the PNG. Installer preparation renders the Strugend mark and wordmark into light and dark BMP resources, including the 164×314 uninstall sidebar.
 
 The macOS PNG uses an inset rounded background for legacy ICNS packaging, with representations up to 1024 pixels. It is a flattened icon, not an Icon Composer document. Apple's [app icon guidance](https://developer.apple.com/design/human-interface-guidelines/app-icons) describes unmasked layers for Icon Composer; those inputs require a separate macOS export and must not reuse the rounded ICNS artwork. Verify Finder and Dock appearance on supported macOS versions before release.
 
@@ -94,6 +98,14 @@ pnpm run start:desktop
 Workspace development runs the current CLI and private Desktop Host packages under Electron RunAsNode. Plugin management and recovery use `$DSH_HOME/profiles/desktop`, separate from the disposable workspace runtime. The Host uses runtime module resolution in both development and packaged builds without creating official-package fallback links; developer-installed packages, including links, retain native priority. Use an unpacked application to exercise Electron RunAsNode, bundled pnpm, bundled dsh resources, plugin installation and repair paths.
 
 ## Package
+
+### Strugend BYOK preview
+
+The Strugend test distribution supports Windows x64, macOS arm64, and macOS x64. After confirming a version and aligning the release-family manifests, run `pnpm strugend:package <target> --version <confirmed-version>` from the repository root on a compatible native build host. `--check` validates configuration without building; `--dir` creates an unpacked application. The command creates the platform dotenv from `.env.windows.strugend.example` or `.env.macos.strugend.example` only when the local file is absent, and refuses another distribution's existing configuration.
+
+Preview artifacts use `com.strugend.harness`, the Strugend client build profile, no automatic updater, no mandatory-update service, and explicit unsigned mode. They contain no provider keys or billing service. macOS previews are not notarized; signed production packaging retains its separate signing prerequisites. The [test preview notes](PREVIEW.md) describe installation and BYOK requirements. The manual [preview workflow](../../.github/workflows/strugend-preview.yml) builds all three native targets, records SHA256 hashes, and publishes a GitHub prerelease only when requested and every build succeeds.
+
+Video tools resolve explicit absolute `AGENT_OS_FFMPEG` and `AGENT_OS_FFPROBE` paths first, then bundled media executables if present, then absolute PATH entries. Windows uses `.exe` files and a case-insensitive PATH variable; macOS also searches Homebrew installation directories. The preview does not bundle FFmpeg. Browser preloads, crawler workers, shared JavaScript chunks, recorded-skill resources, and the upstream license are included in the desktop package. Bundled skills live outside ASAR so first-run filesystem copying can read them.
 
 <a id="release-versions"></a>
 

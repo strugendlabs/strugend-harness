@@ -92,6 +92,7 @@ export class DesktopHostProcess {
    *   `office-skills` resources fail Host startup.
    * @param packageManager - Bundled pnpm entry and Node launcher directory, scoped to package operations.
    * @param profileResolution - Package resolution mode for the application-owned profile.
+   * @param agentOsRequest - Desktop operation handler; omitted handlers reject desktop requests.
    */
   constructor(
     private readonly node: string,
@@ -103,6 +104,7 @@ export class DesktopHostProcess {
     private readonly primaryRuntime?: string,
     private readonly profileResolution: 'link' | 'runtime' = 'link',
     private readonly packageManager?: { readonly pnpm: string; readonly nodeBin: string },
+    private readonly agentOsRequest?: (request: unknown, signal?: AbortSignal) => Promise<unknown>,
   ) {}
 
   /**
@@ -130,7 +132,21 @@ export class DesktopHostProcess {
     child.stderr?.setEncoding('utf8')
     child.stderr?.on('data', (chunk: string) => { this.stderr = (this.stderr + chunk).slice(-MAX_HOST_DIAGNOSTIC_CHARS) })
     child.stdout?.pipe(process.stdout)
+    const desktopOperations = new Map<string, AbortController>()
+    child.once('exit', () => { for (const controller of desktopOperations.values()) controller.abort(); desktopOperations.clear() })
     child.on('message', (message: unknown) => {
+      if (typeof message === 'object' && message !== null && 'type' in message && message.type === 'agent-os:cancel' && 'id' in message && typeof message.id === 'string') { desktopOperations.get(message.id)?.abort(); return }
+      if (typeof message === 'object' && message !== null && 'type' in message && message.type === 'agent-os:request'
+        && 'id' in message && typeof message.id === 'string' && message.id.length <= 100 && 'request' in message) {
+        const id = message.id
+        const controller = new AbortController(); desktopOperations.set(id, controller)
+        const reply = (result: unknown, error?: string): void => {
+          if (child.connected) child.send({ type: 'agent-os:response', id, result, error }, () => { /* Child exit owns transport errors after the reply was queued. */ })
+        }
+        if (this.agentOsRequest === undefined) { desktopOperations.delete(id); reply(null, 'Desktop features are unavailable.') }
+        else void this.agentOsRequest(message.request, controller.signal).then((result) => { reply(result) }, (error: unknown) => { reply(null, error instanceof Error ? error.message : 'Desktop operation failed.') }).finally(() => { desktopOperations.delete(id) })
+        return
+      }
       if (!isDesktopHostEvent(message)) {
         this.fail(new Error('dsh desktop host sent an invalid IPC event'))
         child.kill('SIGTERM')

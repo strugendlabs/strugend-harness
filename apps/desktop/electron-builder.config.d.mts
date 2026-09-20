@@ -1,6 +1,7 @@
 /** Electron-builder fields asserted by the Desktop release tests. */
 export interface DesktopElectronBuilderConfig {
   readonly appId: string
+  readonly productName: string
   readonly directories: {
     readonly output: string
   }
@@ -12,10 +13,16 @@ export interface DesktopElectronBuilderConfig {
     { readonly from: string, readonly to: 'dsh', readonly filter: readonly ['**/*'] },
     { readonly from: string, readonly to: 'dsh/node_modules', readonly filter: readonly ['**/*'] },
   ]
-  readonly extraMetadata: { readonly dshDesktopAppId: string }
+  readonly extraMetadata: {
+    readonly dshDesktopAppId: string
+    readonly dshMandatoryUpdatePolicy: unknown
+    readonly strugendDistribution: 'byok-preview' | undefined
+  }
   readonly asarUnpack: readonly string[]
   readonly extraResources: readonly [
     { readonly from: string, readonly to: 'runtime' },
+    { readonly from: string, readonly to: 'agent-os-skills' },
+    { readonly from: string, readonly to: 'LICENSE' },
     { readonly from: string, readonly to: 'icon.png' },
   ]
   readonly mac: {

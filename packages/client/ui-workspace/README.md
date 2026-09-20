@@ -20,6 +20,8 @@ This package lets users browse grouped or flat Session lists, choose a Workspace
 - [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
 - [Dev Note](#dev-note)
 
+The desktop composition presents the Strugend wordmark and opens Skills, Memory, Vault, and Video studio on demand. Its group hierarchy organizes chats without replacing workspace ownership or changing persisted session IDs.
+
 -----
 
 <a id="use-this-package"></a>

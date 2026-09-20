@@ -30,6 +30,7 @@ export interface ContextInjectionRowProps {
  */
 export function ContextInjectionRow({ content, source, producer, form, t }: ContextInjectionRowProps) {
   const [open, setOpen] = useState(false)
+  const label = process.env.DSH_CLIENT_TITLE === 'Strugend Harness' && producer.label?.startsWith('@deepseek-ai/dsh-') ? null : producer.label
   // Resolved rather than declared: a form whose fields are unreadable renders
   // the opaque body, and the marker must say what the row actually shows.
   const { rendered, summary, body } = contextBody(form, { content, source, t })
@@ -42,13 +43,13 @@ export function ContextInjectionRow({ content, source, producer, form, t }: Cont
         : <IconContextInjectionOutline16 size={14} />}
       chevronClassName={css.chevron}
       title={t(producer.role === 'recall' ? 'message.contextRecall' : 'message.contextInjection')}
-      collapsedContent={producer.label === null ? undefined : (
+      collapsedContent={label === null ? undefined : (
         /* ToolRow's separator shape: an aria-hidden dot, so the accessible name
            stays the two readable parts and the two disclosure rows expose one
            name shape. A source that names no producer drops the dot with it. */
         <>
           <span className={css.sep} aria-hidden />
-          <span className={css.source} data-context-source>{producer.label}</span>
+          <span className={css.source} data-context-source>{label}</span>
           {summary !== null && (
             <>
               <span className={css.sep} aria-hidden />

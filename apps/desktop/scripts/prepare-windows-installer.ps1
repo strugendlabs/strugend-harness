@@ -41,19 +41,29 @@ if ($TestProgress -or $CompileProgressOnly) {
     }
 }
 Add-Type -AssemblyName System.Drawing
-foreach ($asset in @('brand', 'brand-2x', 'brand-dark', 'brand-dark-2x', 'uninstaller-sidebar')) {
-    $image = [Drawing.Image]::FromFile((Join-Path $installerRoot "assets/$asset.png"))
-    try {
-        $bitmap = [Drawing.Bitmap]::new($image.Width, $image.Height, [Drawing.Imaging.PixelFormat]::Format24bppRgb)
+$logo = [Drawing.Image]::FromFile((Join-Path $PSScriptRoot '../resources/strugend/icon.png'))
+try {
+    foreach ($asset in @('brand', 'brand-2x', 'brand-dark', 'brand-dark-2x', 'uninstaller-sidebar')) {
+        $sidebar = $asset -eq 'uninstaller-sidebar'
+        $scale = if ($asset -like '*2x') { 2 } else { 1 }
+        $width = if ($sidebar) { 164 } else { 600 * $scale }
+        $height = if ($sidebar) { 314 } else { 196 * $scale }
+        $dark = $asset -like '*dark*'
+        $bitmap = [Drawing.Bitmap]::new($width, $height, [Drawing.Imaging.PixelFormat]::Format24bppRgb)
         try {
             $graphics = [Drawing.Graphics]::FromImage($bitmap)
+            $brush = [Drawing.SolidBrush]::new($(if ($dark) { [Drawing.Color]::White } else { [Drawing.Color]::FromArgb(32, 36, 34) }))
+            $font = [Drawing.Font]::new('Segoe UI', $(if ($sidebar) { 13 } else { 30 * $scale }), [Drawing.FontStyle]::Bold, [Drawing.GraphicsUnit]::Pixel)
             try {
-                $background = if ($asset -like '*dark*') { [Drawing.Color]::FromArgb(21, 21, 23) } else { [Drawing.Color]::White }
-                $graphics.Clear($background)
-                $graphics.DrawImage($image, 0, 0, $image.Width, $image.Height)
-            } finally { $graphics.Dispose() }
+                $graphics.Clear($(if ($dark) { [Drawing.Color]::FromArgb(21, 21, 23) } else { [Drawing.Color]::White }))
+                $graphics.TextRenderingHint = [Drawing.Text.TextRenderingHint]::AntiAliasGridFit
+                $size = if ($sidebar) { 88 } else { 88 * $scale }
+                $graphics.DrawImage($logo, 24 * $scale, 42 * $scale, $size, $size)
+                if ($sidebar) { $graphics.DrawString("Strugend`nHarness", $font, $brush, 24, 150) }
+                else { $graphics.DrawString('Strugend Harness', $font, $brush, 126 * $scale, 69 * $scale) }
+            } finally { $graphics.Dispose(); $brush.Dispose(); $font.Dispose() }
             $bitmap.Save((Join-Path $output "$asset.bmp"), [Drawing.Imaging.ImageFormat]::Bmp)
         } finally { $bitmap.Dispose() }
-    } finally { $image.Dispose() }
-}
+    }
+} finally { $logo.Dispose() }
 Write-Output "Prepared native installer resources: $output"

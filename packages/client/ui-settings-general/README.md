@@ -29,6 +29,8 @@ Users reach the shell through the sidebar's bottom Settings control; feature plu
 
 In Desktop, the account-row update control shows availability, progress, verification, readiness, and persistent retry feedback. The preload carries semantic phase, version, progress, and classified failures; the component resolves every visible and accessible string from the active `settings` locale, including after an in-application language change. Selecting an available update starts downloading; installation requires a separate shell-owned confirmation. A collapsed sidebar shows the same status as a dot on its top expand button. Connection feedback takes priority except during shell-reported installation, when the expected backend disconnect must not hide update status. Failure restores connection feedback. Both controls share one carrier subscription; browser code cannot choose packages or authorize installation. [Desktop updates](../../../apps/desktop/README.md) owns the release workflow.
 
+The Settings panel renders outside the application root and makes that root inert while open, so background chat autofocus cannot redirect typing from settings fields. Closing or unmounting restores the prior interaction state; closing returns focus to the Settings control.
+
 ### The General section
 
 The General section holds rows registered into `settings.general.item` by feature packages — it has no built-in rows. Feature plugins own the row copy and behavior; the shell only provides the section and its slot. The Appearance row, for example, lives in ui-theme.

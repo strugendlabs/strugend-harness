@@ -1,3 +1,4 @@
+import { IntelligenceSettings, type IntelligenceOperations } from './IntelligenceSettings.tsx'
 /**
  * Models settings section: the provider rows joined from the configurable
  * directory, settings namespaces, and credential states, with one editor
@@ -29,6 +30,9 @@ import styles from './ModelsSection.module.css'
 
 /** Injected dependencies of {@link ModelsSection} (slot `inject`). */
 export interface ModelsSectionInjected {
+  /** Product-role settings supplied only by the desktop composition. */
+  intelligence?: IntelligenceOperations
+
   /** The page store (loaded on mount, refreshed on pushed invalidations). */
   controller: ModelsSettingsStore
   hooks: {
@@ -198,6 +202,7 @@ export function ModelsSection(props: ModelsSectionProps): ReactNode {
     controller === undefined || useSnapshot === undefined || operations === undefined
     || schema === undefined || t === undefined
   ) return null
+  if (props.intelligence !== undefined) return <IntelligenceSettings access={props.intelligence} operations={operations} t={t} />
   return <Loaded injected={{ controller, useSnapshot, operations, schema, t }} renderSlot={renderSlot} />
 }
 

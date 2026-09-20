@@ -73,6 +73,7 @@ export function ConversationSessionHeader({
         <div className={css.headerLeading} data-conversation-header-leading="">
           {renderSlot('conversation.session.header.leading', {})}
         </div>
+        {hideChrome && process.env.DSH_CLIENT_TITLE === 'Strugend Harness' && <span className={css.titleCluster}>{t('hero.newChat')}</span>}
         {!hideChrome && (
           <>
             <div className={css.titleCluster}>
