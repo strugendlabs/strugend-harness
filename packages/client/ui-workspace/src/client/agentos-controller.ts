@@ -8,6 +8,7 @@ import type {
   VaultItem,
 } from '@deepseek-ai/dsh-agentos-protocol'
 
+/** Workspace-visible organization, memory and credential metadata; secret values are excluded. */
 export interface AgentOsState {
   available: boolean
   ready: boolean
@@ -17,13 +18,19 @@ export interface AgentOsState {
   recordings: Recording[]
   error: string
 }
+/** Observable workspace state and actions provided to the desktop workspace view. */
 export interface AgentOsInjected {
   hooks: { agentOs: HostObservable<AgentOsState> }
   openVideoStudio(): void
   agentOsRequest(command: AgentOsCommand): Promise<unknown>
 }
 
-/** @param api - Desktop-only authenticated bridge. @returns State and narrow action callbacks. */
+/**
+ * Maintain desktop workspace state until the owning view is disposed.
+ * @param api - Desktop-only authenticated bridge; absent in a standalone web client.
+ * @param openVideoStudio - Show the media editor in the sidebar.
+ * @returns State, action callbacks and subscription cleanup.
+ */
 export function createAgentOsController(
   api: AgentOsDesktopApi | undefined,
   openVideoStudio: () => void,

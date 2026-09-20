@@ -21,7 +21,11 @@ export function desktopTabId(sessionId: string, tabId: string, nativeTabId?: str
   return nativeTabId ?? `native-${sessionId}-${tabId}`
 }
 
-/** @param api - Authenticated preload API. @returns Controller with a stable observable source and cleanup. */
+/**
+ * Observe and dispose the native tabs owned by mounted conversation views.
+ * @param api - Authenticated preload API.
+ * @returns Controller with a stable observable source and cleanup.
+ */
 export function createDesktopBrowser(
   api: AgentOsDesktopApi,
 ): Omit<DesktopBrowserInjected, 'desktopSessionId'> & { dispose(): void } {

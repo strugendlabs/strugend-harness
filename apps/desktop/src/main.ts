@@ -1,7 +1,7 @@
 import { WINDOWS_TITLEBAR_HEIGHT } from './windows-layout.ts'
 /** Electron shell: desktop project ownership, custom protocol, windows, and lifecycle. */
 
-import { writeFile } from 'node:fs/promises'
+import { readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
@@ -214,6 +214,7 @@ async function main(): Promise<void> {
   let requireCleanStop = false
   let updateStoppedHost = false
   let updateStopFailure: DesktopHostUncleanExitError | undefined
+  let previewDistribution = true
   let updateState: DesktopUpdateState = { phase: 'idle' }
   let mandatoryPolicy: DesktopMandatoryUpdatePolicy | undefined
   let mandatoryUI: DesktopMandatoryUpdateWindow | undefined
@@ -401,7 +402,7 @@ async function main(): Promise<void> {
       return true
     },
     undefined,
-    () => false, // Agent OS has no signed update feed yet.
+    () => app.isPackaged && !previewDistribution,
   )
 
   const updateSchedule = new DesktopUpdateSchedule(updates, resolveDesktopUpdateScheduleConfig(process.env))
@@ -739,14 +740,22 @@ async function main(): Promise<void> {
   })
 
   mainWindow = createMainWindow()
-  // This fork has its own distribution; never enforce the upstream publisher's policy.
-  const policyConfig = resolveDesktopPolicyConfig(undefined, true)
+  const manifest: unknown = JSON.parse(await readFile(join(app.getAppPath(), 'package.json'), 'utf8'))
+  if (typeof manifest !== 'object' || manifest === null) throw new Error('desktop policy: invalid application manifest')
+  previewDistribution = 'strugendDistribution' in manifest && manifest.strugendDistribution === 'byok-preview'
+  const developmentPolicy = app.isPackaged ? undefined : process.env.DSH_DESKTOP_MANDATORY_UPDATE_CONFIG
+  const policyInput: unknown = previewDistribution ? undefined : app.isPackaged
+    ? ('dshMandatoryUpdatePolicy' in manifest ? manifest.dshMandatoryUpdatePolicy : undefined)
+    : developmentPolicy === undefined ? undefined : JSON.parse(developmentPolicy) as unknown
+  const policyConfig = resolveDesktopPolicyConfig(policyInput, previewDistribution || !app.isPackaged)
   if (policyConfig !== undefined) {
     if (policyConfig.authentication === 'feishu-test') {
       policyAuth = new DesktopPolicyTestAuth(policyConfig.origin, locale, () => mandatoryUI?.confirmationWindow ?? mainWindow,
         (event) => { console.info(`desktop policy authentication: ${event}`); updateJournal?.action(`policy-login-${event}`) })
     }
-    const bundleId = 'app.agent-os.desktop'
+    const bundleId = app.isPackaged
+      ? ('dshDesktopAppId' in manifest ? manifest.dshDesktopAppId : undefined)
+      : process.env.DSH_DESKTOP_APP_ID
     if (typeof bundleId !== 'string' || bundleId.trim() === '') throw new Error('desktop policy: missing application bundle ID')
     if (!['win32', 'darwin'].includes(process.platform) || !['x64', 'arm64'].includes(process.arch)) throw new Error('desktop policy: unsupported platform')
     let wasBlocking = false

@@ -15,6 +15,10 @@ type InvokeEvent = { sender?: unknown; senderFrame: { url: string } }
 type InvokeHandler = (event: InvokeEvent, ...args: unknown[]) => unknown
 
 vi.mock('../src/web-document.ts', () => ({ authenticateWebHost: async () => 'test-cookie', serveWebDocument: vi.fn(), forwardWebRequest: vi.fn() }))
+vi.mock('../src/agentos.ts', () => ({ AgentOsDesktop: class {
+  readonly hostRequest = vi.fn(async () => null)
+  readonly dispose = vi.fn()
+} }))
 
 const harness = await vi.hoisted(async () => {
   const { EventEmitter } = await import('node:events')
@@ -40,6 +44,7 @@ const harness = await vi.hoisted(async () => {
   let quitCompleted = deferred()
   let policyBlocked = deferred()
   let embeddedPolicy: unknown
+  let previewDistribution = false
   let closeWindowsOnQuit = false
   let updateState: DesktopUpdateState = { phase: 'idle' }
   const updateCheck = vi.fn(async (_manual?: boolean): Promise<DesktopUpdateState> => updateState)
@@ -119,6 +124,8 @@ const harness = await vi.hoisted(async () => {
     getLocale: (): string => 'en-US',
     getVersion: () => '1.0.0',
     getAppPath: () => 'desktop-test-app',
+    getPath: () => 'desktop-test-app-data',
+    setName: vi.fn(),
     setAboutPanelOptions: vi.fn<(options: Electron.AboutPanelOptionsOptions) => void>(),
     requestSingleInstanceLock: () => true,
     exit: vi.fn(),
@@ -154,6 +161,8 @@ const harness = await vi.hoisted(async () => {
     get hostStarted() { return hostStarted }, get navigated() { return navigated },
     get dialogShown() { return dialogShown }, get quitCompleted() { return quitCompleted },
     get policyBlocked() { return policyBlocked },
+    get previewDistribution() { return previewDistribution },
+    set previewDistribution(value: boolean) { previewDistribution = value },
     get embeddedPolicy() { return embeddedPolicy },
     set embeddedPolicy(value: unknown) { embeddedPolicy = value },
     nextNavigation() { navigated = deferred(); return navigated.promise },
@@ -178,6 +187,7 @@ const harness = await vi.hoisted(async () => {
       navigated = deferred(); dialogShown = deferred(); quitCompleted = deferred()
       policyBlocked = deferred()
       embeddedPolicy = undefined
+      previewDistribution = false
     },
   }
 })
@@ -214,7 +224,7 @@ vi.mock('node:fs/promises', async (importOriginal) => {
   const original = await importOriginal<typeof import('node:fs/promises')>()
   return { ...original, readFile: vi.fn((path: Parameters<typeof original.readFile>[0], encoding?: 'utf8') => {
     if (path === join('desktop-test-app', 'package.json')) {
-      return Promise.resolve(JSON.stringify({ dshDesktopAppId: 'com.deepseek.dsh', dshMandatoryUpdatePolicy: harness.embeddedPolicy }))
+      return Promise.resolve(JSON.stringify({ dshDesktopAppId: 'com.deepseek.dsh', dshMandatoryUpdatePolicy: harness.embeddedPolicy, strugendDistribution: harness.previewDistribution ? 'byok-preview' : undefined }))
     }
     return encoding === undefined ? original.readFile(path) : original.readFile(path, encoding)
   }) }
@@ -287,8 +297,10 @@ beforeEach(() => {
   vi.spyOn(console, 'error').mockImplementation(() => {})
   vi.spyOn(console, 'info').mockImplementation(() => {})
   vi.stubEnv('DSH_DESKTOP_PNPM_ENTRY', 'test-pnpm')
+  vi.stubEnv('DSH_HOME', 'desktop-test-home')
+  vi.stubEnv('DEEPSEEK_BASE_URL', undefined)
   vi.stubEnv('DSH_DESKTOP_DSH_DIR', 'test-runtime')
-  vi.stubGlobal('process', { ...process, platform: 'win32', resourcesPath: 'desktop-test-resources' })
+  vi.stubGlobal('process', { ...process, platform: 'win32', arch: 'x64', resourcesPath: 'desktop-test-resources' })
   vi.stubEnv('DSH_DESKTOP_HOST_INSPECT_PORT', undefined)
   vi.stubEnv('DSH_DESKTOP_MANDATORY_UPDATE_CONFIG', undefined)
   vi.stubEnv('DSH_DESKTOP_UPDATE_JOURNAL_DIR', undefined)
@@ -307,6 +319,18 @@ afterEach(async () => {
 })
 
 describe('desktop main startup', () => {
+  it('starts a BYOK preview without contacting an embedded publisher policy', async () => {
+    harness.previewDistribution = true
+    harness.embeddedPolicy = { origin: 'https://policy.example.com', authentication: 'feishu-test',
+      allowedPageOrigins: ['https://downloads.example.com'], intervalMs: 1000, jitter: 0 }
+    const request = vi.fn<typeof fetch>()
+    vi.stubGlobal('fetch', request)
+    await readyForUpdate()
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(request).not.toHaveBeenCalled()
+    expect(testAuth.login).not.toHaveBeenCalled()
+  })
+
   it.each([
     ['darwin', true, 'en-US'],
     ['darwin', false, 'zh-CN'],
@@ -322,7 +346,7 @@ describe('desktop main startup', () => {
     const expected = JSON.parse(readFileSync(new URL('./expected/about-panel.json', import.meta.url), 'utf8')) as Record<string, unknown>
     expect({ menu: submenu.slice(0, 2), options: { ...options, iconPath: '<app icon>' } }).toEqual(expected[locale])
     expect(options.iconPath).toBe(packaged ? join('desktop-test-resources', 'icon.png')
-      : join('desktop-test-app', 'resources', 'agent-os', 'icon.png'))
+      : join('desktop-test-app', 'resources', 'strugend', 'icon.png'))
   })
 
   it('shows one explained startup login before Host readiness and joins concurrent checks without reopening it', async () => {
@@ -547,7 +571,7 @@ describe('desktop main startup', () => {
     expect(() => handler(event, 'application', NaN, 34)).toThrow('invalid popup request')
     const application = handler(event, 'application', 48, 34)
     expect(harness.menu.buildFromTemplate.mock.lastCall![0].map(item => item.label ?? item.type)).toEqual([
-      '关于 DeepSeek Harness', 'separator', '检查更新…', 'separator', '退出',
+      '关于 Strugend Harness', 'separator', '检查更新…', 'separator', '退出',
     ])
     expect(harness.popup.mock.lastCall![0]).toMatchObject({ window, x: 48, y: 34 })
     expect(harness.popup.mock.lastCall![0].callback).toBeTypeOf('function')
@@ -580,7 +604,7 @@ describe('desktop main startup', () => {
       .find(items => items.some(item => item.role === 'editMenu'))
     if (template === undefined) throw new Error('application menu missing')
     expect(template.map(describeItem)).toEqual(platform === 'darwin'
-      ? ['Desktop test', 'fileMenu', 'editMenu', 'windowMenu']
+      ? ['Strugend Harness', 'fileMenu', 'editMenu', 'windowMenu']
       : ['Application', 'editMenu'])
     const application = template[0]!.submenu as MenuItemConstructorOptions[]
     expect(application.map(describeItem)).toEqual(platform === 'darwin'
