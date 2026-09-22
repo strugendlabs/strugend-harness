@@ -99,6 +99,8 @@ jobs:
           LAYA_MODEL_TEST: '1'
           LAYA_PACKAGED_ROOT: apps/desktop/.desktop-build/targets/${{ matrix.target }}
         run: pnpm exec vitest run apps/desktop-host/tests/strugend-laya.built.spec.ts --maxWorkers=1
+      - name: Verify native terminal startup and prompt detection
+        run: pnpm exec vitest run packages/terminal/terminal-bash/tests --maxWorkers=2 --testTimeout=90000 --hookTimeout=90000
       - name: Exercise packaged chat, local Laya, delivery, credentials and browser
         shell: pwsh
         run: |
