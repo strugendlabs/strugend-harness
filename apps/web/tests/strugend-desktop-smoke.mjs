@@ -104,8 +104,15 @@ const OUT = fs.mkdtempSync(path.join(evidenceRoot, 'packaged-' + process.platfor
   try{await owned.close()}finally{await exited;clearTimeout(timer)}
   if(forced)throw new Error('The packaged application did not exit within 10 seconds');
  }
- async function settings(){await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Intelligence',exact:true}).click();await page.getByLabel('Decision API key').waitFor()}
- async function closeSettings(){await page.keyboard.press('Escape');await page.locator('[contenteditable="true"]').first().waitFor()}
+ async function settings(){
+  await page.locator('[data-strugend-topbar]').getByRole('button',{name:'Settings',exact:true}).click();
+  const dialog=page.getByRole('dialog',{name:'Settings',exact:true});
+  await dialog.getByRole('button',{name:'Connections',exact:true}).click();
+  await dialog.locator('summary').filter({hasText:/^Intelligence$/}).click();
+  await dialog.getByLabel('Decision API key').waitFor();
+ }
+ async function closeSettings(){await page.getByRole('dialog',{name:'Settings',exact:true}).getByRole('button',{name:'Close',exact:true}).click();await page.getByRole('dialog',{name:'Settings',exact:true}).waitFor({state:'hidden'});await page.locator('[contenteditable="true"]').first().waitFor()}
+ async function newChat(){await page.locator('[data-strugend-topbar]').getByRole('button',{name:'New chat',exact:true}).last().click();await page.getByText('What shall we work on?',{exact:true}).waitFor();await page.locator('[contenteditable="true"]').first().waitFor()}
  const noVendor=async()=>{const text=await page.locator('body').innerText();assert(!/DeepSeek Harness|\bdsh\b|@deepseek-ai/i.test(text),'Visible upstream branding: '+text.match(/.{0,50}(DeepSeek Harness|\bdsh\b|@deepseek-ai).{0,50}/i)?.[0])};
  try{
   const started=await launch();await page.getByRole('button',{name:'Continue',exact:true}).click({timeout:60000});
@@ -118,12 +125,20 @@ const OUT = fs.mkdtempSync(path.join(evidenceRoot, 'packaged-' + process.platfor
   await app.evaluate(({dialog},folder)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[folder]})},workspace);
   await page.getByRole('button',{name:'Choose workspace',exact:true}).click();
   await page.getByText('What shall we work on?',{exact:true}).waitFor();
+  await page.getByRole('button',{name:'Choose workspace',exact:true}).getByText(path.basename(workspace),{exact:true}).waitFor();
   await page.locator('[contenteditable="true"]').first().waitFor();
   await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].setContentSize(1440,900));
   await page.waitForFunction(()=>innerWidth===1440);
   await noVendor();assert.equal(await page.locator('[data-agent-os-browser]').count(),0);
   await page.screenshot({path:path.join(OUT,'empty-chat.png')});
   record('Minimal empty chat hides tools until needed and has no vendor labels');
+  await page.locator('[data-strugend-topbar]').getByRole('button',{name:'History',exact:true}).click();
+  const history=page.locator('#strugend-history');
+  await history.getByText(path.basename(workspace),{exact:true}).waitFor();
+  await history.getByRole('button',{name:'Add workspace',exact:true}).waitFor();
+  await page.screenshot({path:path.join(OUT,'history-drawer.png')});
+  await history.getByRole('button',{name:'Close history',exact:true}).click();
+  await history.waitFor({state:'hidden'});record('History reveals workspace management and closes back to the task');
   const disabledVideo=await page.evaluate(async()=>{try{await window.agentOS.request({type:'media.import'});return ''}catch(error){return String(error)}});assert.match(disabledVideo,/coming soon/i);record('Video studio is unavailable through the native bridge as well as agent tools');
   const native=await app.evaluate(({app,nativeImage})=>{const image=nativeImage.createFromPath(process.resourcesPath+'/icon.png');return {name:app.getName(),empty:image.isEmpty(),size:image.getSize()}});
   assert.equal(native.empty,false);assert.deepEqual(native.size,{width:1024,height:1024});
@@ -132,7 +147,7 @@ const OUT = fs.mkdtempSync(path.join(evidenceRoot, 'packaged-' + process.platfor
   await page.getByRole('button',{name:'Send message',exact:true}).click();
   await page.getByText('Core remains available without optional services.',{exact:true}).waitFor({timeout:60000});
   assert.equal(probeStep,2);assert.deepEqual(serviceCalls,[]);record('Absent Decision is omitted from Core tools and context; graph and video tools are absent');
-  probing=false;await page.getByRole('button',{name:'New chat',exact:true}).last().click();await page.locator('[contenteditable="true"]').first().waitFor();
+  probing=false;await newChat();
   await settings();
   for(const [role,value] of [['Decision','synthetic-decision-key']]){
    const input=page.getByLabel(role+' API key');await input.focus();
@@ -203,7 +218,7 @@ const OUT = fs.mkdtempSync(path.join(evidenceRoot, 'packaged-' + process.platfor
   await page.getByText('Application build and artifact verification passed.',{exact:true}).first().waitFor({timeout:120000});
   assert.deepEqual(errors,[]);assert.equal(deliveryStep,3);record('Agent starts a delivery job, builds and executes a local application, and collects its hashed receipt');
   delivering=false;
-  await page.getByRole('button',{name:'New chat',exact:true}).last().click();await page.getByText('What shall we work on?',{exact:true}).waitFor();
+  await newChat();
   await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].setContentSize(880,600));await page.waitForFunction(()=>innerWidth===880);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);await page.screenshot({path:path.join(OUT,'empty-chat-small.png')});
   record('New chat fits the minimum window width without horizontal overflow');
   await page.addInitScript(()=>{let gate;Object.defineProperty(window,'__DSH_BOOT_READY__',{configurable:true,get:()=>gate,set:value=>{gate=value;const resolve=value.resolve;value.resolve=(...args)=>{window.__releaseStrugendBoot=()=>resolve(...args)}}})});
