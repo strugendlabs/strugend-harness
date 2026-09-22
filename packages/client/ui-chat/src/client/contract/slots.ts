@@ -78,6 +78,8 @@ export interface ChatNodeTurnDataInjected {
 
 /** Stable owner currency delivered to a keyed Chat renderer. */
 export interface ChatNodeOwnerProps {
+  /** Show technical context and reasoning when explicitly requested by the reader. */
+  showDiagnostics?: boolean | undefined
   cwd?: string | undefined
   /** Open the current source file of a skill referenced by a sent message. */
   openSkill: (name: string) => void

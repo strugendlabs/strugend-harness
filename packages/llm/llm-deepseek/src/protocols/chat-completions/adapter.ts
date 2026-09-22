@@ -163,6 +163,12 @@ export class ChatCompletionsAdapter extends LlmAdapter {
     })
   }
 
+  override async validateConnection(_provider: string, _model: string, signal?: AbortSignal): Promise<void> {
+    signal?.throwIfAborted()
+    await this.config.resolveApiKey(this.config.options())
+    signal?.throwIfAborted()
+  }
+
   stream(options: GenerateOptions): AsyncIterable<StreamChunk> {
     return this.streamWithConnection(options, this.config.options())
   }

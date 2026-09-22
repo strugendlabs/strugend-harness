@@ -277,6 +277,19 @@ export abstract class LlmAdapter {
   }
 
   /**
+   * Check local connection requirements without sending a model request or refreshing OAuth.
+   * Adapters own credential policy; the default permits routes without authentication requirements.
+   * @param _provider - Registered provider route.
+   * @param _model - Exact selected model.
+   * @param signal - Cancellation for local credential checks.
+   * @returns Completion when locally configured; rejects with an actionable provider error otherwise.
+   */
+  validateConnection(_provider: string, _model: string, signal?: AbortSignal): Promise<void> {
+    signal?.throwIfAborted()
+    return Promise.resolve()
+  }
+
+  /**
    * Stream one model call as raw chunks. The only required method.
    * @param options - the fully-assembled request; implementations must honor `options.signal`.
    * @returns the chunk stream, obeying the adapter contract documented on `StreamChunk`.
@@ -907,6 +920,20 @@ export class LlmRuntime extends TypertRemoteService {
       ...info.context === undefined ? {} : { context: info.context },
       modelInfo: info,
     }
+  }
+
+  /**
+   * Validate a selected route's local connection requirements before prompt admission.
+   * No model request or OAuth refresh occurs; dispatch still resolves current credentials.
+   * @param provider - Registered provider route.
+   * @param model - Exact selected model.
+   * @param signal - Cancellation for local credential checks.
+   * @returns Completion when the adapter's local requirements are satisfied.
+   */
+  async validateConnection(provider: string, model: string, signal?: AbortSignal): Promise<void> {
+    signal?.throwIfAborted()
+    await this.registration(provider).adapter.validateConnection(provider, model, signal)
+    signal?.throwIfAborted()
   }
 
   /**

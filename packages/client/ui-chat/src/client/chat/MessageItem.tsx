@@ -215,6 +215,7 @@ function UserStyleBubble({
               ))}
           </div>
         )}
+        {showBubble && process.env.DSH_CLIENT_TITLE === 'Strugend Harness' && <span className={css.authorLabel}>{t('message.you')}</span>}
         {showBubble && <div className={css.bubble}>
           {projectUserText(text, referenceLabels, skillNames, 'skill', references)}
           {rest.map((block, i) => <JsonBlock key={i} label={t('message.extraBlock')} payload={block} truncatedLabel={truncated} />)}

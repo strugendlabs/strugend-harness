@@ -221,3 +221,7 @@
 .modalAction {
   min-width: 72px;
 }
+
+.diagnostics { align-self: flex-end; margin: 2px 24px 8px; padding: 4px 6px; color: var(--dsw-alias-label-tertiary); background: transparent; border: 0; font: inherit; font-size: 11px; cursor: pointer; }
+.diagnostics:hover, .diagnostics[aria-pressed='true'] { color: var(--dsw-alias-state-business-primary); }
+:global([data-strugend]) .column { padding-top: 24px; gap: 24px; }

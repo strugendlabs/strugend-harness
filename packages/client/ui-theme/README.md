@@ -20,7 +20,9 @@ English | [中文](README.zh.md)
 - [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
 - [Dev Note](#dev-note)
 
-Building with `DSH_CLIENT_TITLE="Strugend Harness"` adds a scoped graphite-and-sage palette while retaining the user’s light/dark preference. The stylesheet and document marker belong to the theme plugin’s lifetime.
+Building with `DSH_CLIENT_TITLE="Strugend Harness"` adds a scoped graphite-and-tangerine palette while retaining the user’s light/dark preference. The stylesheet and document marker belong to the theme plugin’s lifetime.
+
+Strugend uses graphite surfaces and tangerine actions in dark appearance, with matching accents in light appearance. Existing user appearance and reduced-motion preferences remain authoritative.
 
 -----
 

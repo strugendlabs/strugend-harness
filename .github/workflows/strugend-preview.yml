@@ -57,25 +57,10 @@ jobs:
       - name: Validate preview and native build host
         run: pnpm strugend:package ${{ matrix.target }} --version "$env:PREVIEW_VERSION" --check
         shell: pwsh
-      - name: Install video tools for export qualification
-        shell: pwsh
-        run: |
-          if ($IsWindows) {
-            choco install ffmpeg --yes --no-progress
-            if ($LASTEXITCODE -ne 0) { throw 'FFmpeg installation failed' }
-            $ffmpeg = Get-ChildItem 'C:/ProgramData/chocolatey/lib/ffmpeg*' -Recurse -Filter ffmpeg.exe | Select-Object -First 1
-            if (-not $ffmpeg) { throw 'The FFmpeg binary is missing' }
-            "AGENT_OS_FFMPEG=$($ffmpeg.FullName)" >> $env:GITHUB_ENV
-            "AGENT_OS_FFPROBE=$(Join-Path $ffmpeg.Directory.FullName 'ffprobe.exe')" >> $env:GITHUB_ENV
-          } elseif (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue)) {
-            brew install ffmpeg
-            if ($LASTEXITCODE -ne 0) { throw 'FFmpeg installation failed' }
-          }
       - name: Run packaging and platform regression tests
         run: >-
           pnpm exec vitest run apps/desktop/tests/strugend-preview.spec.ts
           apps/desktop/tests/agentos-media-executable.spec.ts
-          apps/desktop/tests/agentos-media.spec.ts
           apps/desktop/tests/package-target.spec.ts
           apps/desktop/tests/package-target-stages.spec.ts
           apps/desktop/tests/desktop-package-environment.spec.ts
@@ -93,12 +78,23 @@ jobs:
           apps/desktop-host/tests/strugend-laya-local.spec.ts
           apps/desktop-host/tests/strugend-persistence.spec.ts
           apps/desktop-host/tests/strugend-advisor.spec.ts
+          apps/desktop-host/tests/optional-components.spec.ts
+          apps/desktop-host/tests/primary-runtime.spec.ts
+          apps/desktop/tests/runtime-file-policy.spec.ts
           --maxWorkers=2 --testTimeout=90000 --hookTimeout=90000
+      - name: Exercise Windows installer choices and animated installation
+        if: matrix.target == 'win-x64'
+        run: pnpm --dir apps/desktop run test:installer
       - name: Verify native terminal startup and prompt detection
         run: pnpm exec vitest run packages/terminal/terminal-bash/tests --maxWorkers=2 --testTimeout=90000 --hookTimeout=90000
       - name: Build native installer and run bundled runtime smokes
         run: pnpm strugend:package ${{ matrix.target }} --version "$env:PREVIEW_VERSION"
         shell: pwsh
+      - name: Verify optional archives through the download manager
+        env:
+          STRUGEND_COMPONENT_TEST: '1'
+          LAYA_PACKAGED_ROOT: apps/desktop/.desktop-build/targets/${{ matrix.target }}
+        run: pnpm exec vitest run apps/desktop-host/tests/optional-components.built.spec.ts --maxWorkers=1
       - name: Measure real native inference and memory release
         env:
           LAYA_MODEL_TEST: '1'
@@ -130,13 +126,20 @@ jobs:
           path: |
             .artifacts/strugend/packaged-*
             .artifacts/strugend/local-laya-*.json
+            apps/desktop/.desktop-build/installer-tests/run-*/*/results.json
+            apps/desktop/.desktop-build/installer-tests/run-*/*/*.png
           if-no-files-found: ignore
           retention-days: 14
       - name: Record artifact hashes
         shell: pwsh
         run: |
           $output = "apps/desktop/.desktop-build/targets/${{ matrix.target }}/unsigned-artifacts"
-          $files = Get-ChildItem $output -File | Where-Object { $_.Extension -in '.exe', '.dmg', '.zip' }
+          $packs = "apps/desktop/.desktop-build/targets/${{ matrix.target }}/component-artifacts"
+          Copy-Item "$packs/*.tar.gz" $output
+          Copy-Item "$packs/components-*.json" $output
+          $core = Get-ChildItem $output -File | Where-Object { $_.Extension -in '.exe', '.dmg', '.zip' }
+          if ($core.Count -eq 0 -or ($core | Where-Object Length -gt 419430400)) { throw 'Core installers must exist and remain at most 400 MiB' }
+          $files = Get-ChildItem $output -File | Where-Object { $_.Extension -in '.exe', '.dmg', '.zip', '.gz', '.json' }
           if ($files.Count -eq 0) { throw 'No installers were produced' }
           $lines = $files | ForEach-Object { "{0}  {1}" -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant(), $_.Name }
           $lines | Set-Content -Encoding utf8NoBOM "$output/SHA256-${{ matrix.target }}.txt"
@@ -150,6 +153,8 @@ jobs:
             apps/desktop/.desktop-build/targets/${{ matrix.target }}/unsigned-artifacts/*.exe
             apps/desktop/.desktop-build/targets/${{ matrix.target }}/unsigned-artifacts/*.dmg
             apps/desktop/.desktop-build/targets/${{ matrix.target }}/unsigned-artifacts/*.zip
+            apps/desktop/.desktop-build/targets/${{ matrix.target }}/unsigned-artifacts/*.tar.gz
+            apps/desktop/.desktop-build/targets/${{ matrix.target }}/unsigned-artifacts/components-*.json
             apps/desktop/.desktop-build/targets/${{ matrix.target }}/unsigned-artifacts/SHA256-*.txt
 
   release:

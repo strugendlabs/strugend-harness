@@ -44,6 +44,7 @@ Load the package with a default mode; the fail-safe default is `read-only`, and 
 
 | Field | Default | Meaning |
 |---|---|---|
+| `includeHarnessName` | `true` | Include the DSH name in policy text; `false` uses provider-neutral wording without changing enforcement |
 | `mode` | `read-only` | The deployment default mode a session starts from, validated at load |
 | `workspaceRoot` | `process.cwd()` | Absolute fallback root for agentless calls or sessions without a cwd; relative values fail at load. Normal agent calls use the session's immutable cwd |
 
@@ -109,7 +110,7 @@ Start with the subsystem reference for the shared vocabulary, then the seam cont
 
 #### What the model sees
 
-One `sandbox:policy` contribution in the current runtime-context snapshot for every agent session. It does not enumerate mounted capabilities. Tool plugins retain operation and escalation guidance, approval policy contributes separately to the same snapshot, and plan guidance remains `dsh-plan-mode`'s system section.
+One `sandbox:policy` contribution in the current runtime-context snapshot for every agent session. The examples below use the default `includeHarnessName: true`; setting it to `false` replaces `Current DSH file policy` with `Current file access policy` and `DSH file sandbox` with `file sandbox`. It does not enumerate mounted capabilities. Tool plugins retain operation and escalation guidance, approval policy contributes separately to the same snapshot, and plan guidance remains `dsh-plan-mode`'s system section.
 
 ##### Read-only
 

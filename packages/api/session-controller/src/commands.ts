@@ -324,6 +324,16 @@ export class SessionCommandController {
         { provider: selection.provider, model: selection.model },
       )
     }
+    try {
+      await this.ctx.llm.validateConnection(selection.provider, selection.model)
+    } catch (error) {
+      throw new RemoteError(
+        'session/model-not-connected',
+        'Connect the selected model in Settings → Connections, or select a connected model. Your draft has been kept.',
+        { provider: selection.provider, model: selection.model,
+          reason: error instanceof Error && 'code' in error ? String(error.code) : 'UNAVAILABLE' },
+      )
+    }
     const source: MessageSource = {
       kind: 'user',
       rpcId: request.requestId,

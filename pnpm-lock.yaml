@@ -616,6 +616,9 @@ importers:
       '@deepseek-ai/dsh-agent':
         specifier: workspace:^
         version: link:../../packages/core/agent
+      '@deepseek-ai/dsh-agent-default-model':
+        specifier: workspace:^
+        version: link:../../packages/core/agent-default-model
       '@deepseek-ai/dsh-agentos-protocol':
         specifier: workspace:^
         version: link:../../packages/util/agentos-protocol
@@ -646,6 +649,9 @@ importers:
       '@deepseek-ai/dsh-llm':
         specifier: workspace:^
         version: link:../../packages/llm/llm
+      '@deepseek-ai/dsh-office-to-pdf':
+        specifier: workspace:^
+        version: link:../../packages/document/office-to-pdf
       '@deepseek-ai/dsh-permission-presets':
         specifier: workspace:^
         version: link:../../packages/interaction/permission-presets
@@ -679,22 +685,34 @@ importers:
       '@deepseek-ai/schemastery':
         specifier: link:../../vendor/schemastery
         version: link:../../vendor/schemastery
+      tar:
+        specifier: ^7.5.0
+        version: 7.5.22
+    devDependencies:
+      '@deepseek-ai/dsh-agent-loop-testkit':
+        specifier: workspace:^
+        version: link:../../packages/test-support/agent-loop-testkit
+      '@deepseek-ai/dsh-session-persistence':
+        specifier: workspace:^
+        version: link:../../packages/session/session-persistence
+      '@deepseek-ai/dsh-session-snapshot':
+        specifier: workspace:^
+        version: link:../../packages/test-support/session-snapshot
+      '@deepseek-ai/libreoffice-kit':
+        specifier: 0.0.1
+        version: 0.0.1
       '@huggingface/tokenizers':
         specifier: 0.2.0
         version: 0.2.0
+      '@receptron/laya':
+        specifier: 0.1.2
+        version: 0.1.2(patch_hash=b139ae5150de2cf583cb84c5fb9acc7337711514ab8214b6d189b63b8dd7d6e4)
       onnxruntime-node:
         specifier: 1.30.0
         version: 1.30.0
       onnxruntime-node-intel-mac:
         specifier: npm:onnxruntime-node@1.22.0
         version: onnxruntime-node@1.22.0
-    devDependencies:
-      '@deepseek-ai/dsh-session-persistence':
-        specifier: workspace:^
-        version: link:../../packages/session/session-persistence
-      '@receptron/laya':
-        specifier: 0.1.2
-        version: 0.1.2(patch_hash=b139ae5150de2cf583cb84c5fb9acc7337711514ab8214b6d189b63b8dd7d6e4)
 
   apps/web:
     devDependencies:
@@ -2799,6 +2817,9 @@ importers:
       '@deepseek-ai/dsh-agent':
         specifier: workspace:^
         version: link:../../core/agent
+      '@deepseek-ai/dsh-agentos-protocol':
+        specifier: workspace:^
+        version: link:../../util/agentos-protocol
       '@deepseek-ai/dsh-api-remotes':
         specifier: workspace:^
         version: link:../../api/remotes
@@ -5279,6 +5300,9 @@ importers:
       '@deepseek-ai/dsh-client-ui-session':
         specifier: workspace:^
         version: link:../ui-session
+      '@deepseek-ai/dsh-client-ui-settings':
+        specifier: workspace:^
+        version: link:../ui-settings
       '@deepseek-ai/dsh-client-ui-sidebar':
         specifier: workspace:^
         version: link:../ui-sidebar

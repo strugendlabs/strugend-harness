@@ -9,3 +9,9 @@ export const WELCOME_NOTICE_ACK_FIELD = 'welcomeNoticeVersion'
  * again. The acknowledgement is compared for exact equality.
  */
 export const WELCOME_NOTICE_VERSION = '2026-08-13.1'
+
+/** Durable opt-out for automatic provider setup; manual Connections remains available. */
+export const PROVIDER_SETUP_ACK_FIELD = 'providerSetupDeferredVersion'
+
+/** Version of the provider setup choice; unrelated to welcome notice copy. */
+export const PROVIDER_SETUP_VERSION = '1'

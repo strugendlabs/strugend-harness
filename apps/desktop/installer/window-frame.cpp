@@ -50,6 +50,7 @@ extern "C" __declspec(dllexport) int __cdecl InstallerFindProcess(LPCWSTR execut
 struct ProgressPage {
     InstallProgress progress{GetTickCount64()};
     bool dark;
+    bool animate;
     UINT dpi;
     ULONG_PTR gdiplus;
     Image* brand;
@@ -84,7 +85,7 @@ static LRESULT CALLBACK ProgressProc(HWND window, UINT message, WPARAM wparam, L
     if (message == WM_CREATE) {
         page = static_cast<ProgressPage*>(reinterpret_cast<CREATESTRUCTW*>(lparam)->lpCreateParams);
         SetWindowLongPtrW(window, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(page));
-        SetTimer(window, 1, 16, nullptr);
+        SetTimer(window, 1, page->animate ? 33 : 250, nullptr);
     }
     if (message == WM_ERASEBKGND) return 1;
     if (message == WM_TIMER) { InvalidateRect(window, nullptr, FALSE); return 0; }
@@ -109,6 +110,10 @@ static LRESULT CALLBACK ProgressProc(HWND window, UINT message, WPARAM wparam, L
             graphics.Clear(page->dark ? Color(255, 21, 21, 23) : Color(255, 255, 255, 255));
             graphics.SetSmoothingMode(SmoothingModeAntiAlias);
             graphics.DrawImage(page->brand, Rect(0, 174, 600, 196));
+            // Motion is decorative; extraction and stage events still own progress.
+            Pen accent(Color(255, 242, 135, 72), 3.0f);
+            const REAL angle = page->animate ? static_cast<REAL>((GetTickCount64() % 1600) * 360.0 / 1600) : -90.0f;
+            graphics.DrawArc(&accent, RectF(285, 397, 30, 30), angle, 250.0f);
             const int stage = static_cast<int>(reinterpret_cast<INT_PTR>(GetPropW(GetParent(window), L"HarnessInstaller.Stage")));
             const double fraction = reinterpret_cast<UINT_PTR>(GetPropW(GetParent(window), L"HarnessInstaller.ExtractProgress")) / 100.0;
             page->progress.Advance(stage, fraction, GetTickCount64());
@@ -166,6 +171,9 @@ extern "C" __declspec(dllexport) HWND __cdecl InstallerShowProgress(HWND parent,
     }
     ShowWindow(stockPage, SW_HIDE);
     page->dark = dark != FALSE;
+    BOOL clientAnimation = TRUE;
+    SystemParametersInfoW(SPI_GETCLIENTAREAANIMATION, 0, &clientAnimation, 0);
+    page->animate = clientAnimation != FALSE;
     page->dpi = dpi;
     const WCHAR* captions[] = {preparing, extracting, copying, registering, cleaning};
     for (int i = 0; i < 5; ++i) lstrcpynW(page->captions[i], captions[i], 128);
@@ -179,24 +187,14 @@ extern "C" __declspec(dllexport) HWND __cdecl InstallerShowProgress(HWND parent,
     return window;
 }
 
-// NSIS has already reported success. Pump the UI for the bounded final animation,
-// including a painted 100% frame, before constructing the interactive finish page.
+// Completion paints immediately; decorative animation never delays the installer.
 extern "C" __declspec(dllexport) BOOL __cdecl InstallerFinishProgress(HWND window) {
     auto* page = reinterpret_cast<ProgressPage*>(GetWindowLongPtrW(window, GWLP_USERDATA));
     if (!page) return FALSE;
     const ULONGLONG started = GetTickCount64();
     SetPropW(GetParent(window), L"HarnessInstaller.Succeeded", reinterpret_cast<HANDLE>(1));
     page->progress.Complete(started);
-    while (IsWindow(window) && GetTickCount64() - started < 750) {
-        MSG message;
-        if (PeekMessageW(&message, nullptr, 0, 0, PM_REMOVE)) {
-            if (message.message == WM_QUIT) { PostQuitMessage(static_cast<int>(message.wParam)); return FALSE; }
-            TranslateMessage(&message);
-            DispatchMessageW(&message);
-        } else {
-            MsgWaitForMultipleObjectsEx(0, nullptr, 16, QS_ALLINPUT, MWMO_INPUTAVAILABLE);
-        }
-    }
+    page->progress.value = page->progress.target = page->progress.from = 100;
     if (!IsWindow(window)) return FALSE;
     InvalidateRect(window, nullptr, FALSE);
     UpdateWindow(window);

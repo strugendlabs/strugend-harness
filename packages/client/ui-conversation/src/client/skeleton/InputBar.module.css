@@ -401,4 +401,7 @@
 
 :global([data-strugend]) .card { border:1px solid var(--dsw-alias-border-l3); border-radius:16px; box-shadow:none; padding-top:14px; gap:24px; }
 :global([data-strugend]) .hero .card { min-height:140px; }
-:global([data-strugend]) :global([data-ds-dark-theme]) .primary { color:#18251b; }
+:global([data-strugend]) :global([data-ds-dark-theme]) .primary { color:var(--strugend-on-accent); }
+
+.connectionNotice { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 14px; margin-bottom: 8px; border: 1px solid var(--dsw-alias-border-l3); border-radius: 8px; color: var(--dsw-alias-label-secondary); font-size: 13px; line-height: 1.5; }
+.connectionNotice button { flex: none; border: 0; border-radius: 6px; background: var(--dsw-alias-button-info-fill); color: var(--strugend-on-accent, var(--dsw-alias-label-primary)); padding: 8px 12px; font: inherit; cursor: pointer; }

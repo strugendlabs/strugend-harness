@@ -45,6 +45,7 @@
   config:
     mode: workspace-write
     workspaceRoot: /tmp
+    includeHarnessName: false
 
 - insert:
     - id: llm-replay

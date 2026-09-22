@@ -10,6 +10,7 @@ import { resolveDesktopLocale } from './locale.ts'
 export function installWindowsMenu(): { update(): void; dispose(): void } {
   const host = document.createElement('div')
   host.dataset.windowsMenu = ''
+  let compact = false
   const shadow = host.attachShadow({ mode: 'open' })
   const style = document.createElement('style')
   style.textContent = `
@@ -17,6 +18,12 @@ export function installWindowsMenu(): { update(): void; dispose(): void } {
       height: var(--dsh-windows-titlebar-height); display: flex; align-items: center;
       font-family: var(--dsw-font-family); -webkit-app-region: no-drag; }
     [role=menubar] { display: flex; gap: 2px; }
+    :host([data-compact]) { left: auto; right: 150px; height: 56px; }
+    :host([data-compact]) [role=menubar] { position: absolute; top: 48px; right: 0; padding: 6px;
+      min-width: 160px; flex-direction: column; border: 1px solid var(--dsw-alias-border-l3);
+      border-radius: 8px; background: var(--dsw-alias-bg-overlay); }
+    [hidden] { display: none !important; }
+    .trigger { font-size: 22px; padding: 0 8px; }
     button { height: 28px; padding: 0 10px; border: 0; border-radius: 6px;
       background: transparent; color: var(--dsw-alias-label-secondary);
       font: inherit; font-size: 14px; cursor: default; }
@@ -26,6 +33,20 @@ export function installWindowsMenu(): { update(): void; dispose(): void } {
   `
   const bar = document.createElement('div')
   bar.setAttribute('role', 'menubar')
+  const trigger = document.createElement('button')
+  trigger.type = 'button'
+  trigger.className = 'trigger'
+  trigger.textContent = '⋯'
+  trigger.setAttribute('aria-haspopup', 'menu')
+  trigger.setAttribute('aria-expanded', 'false')
+  const showMenu = (open: boolean): void => {
+    if (!compact) return
+    bar.hidden = !open
+    trigger.setAttribute('aria-expanded', String(open))
+  }
+  trigger.hidden = true
+  trigger.addEventListener('click', () => { showMenu(bar.hidden !== false) })
+  shadow.append(trigger)
   let restoreEditor = (): void => {}
   const rememberEditor = (event: FocusEvent): void => {
     const target = event.composedPath()[0]
@@ -61,6 +82,7 @@ export function installWindowsMenu(): { update(): void; dispose(): void } {
     const open = async (): Promise<void> => {
       if (button.getAttribute('aria-expanded') === 'true') return
       const rect = button.getBoundingClientRect()
+      showMenu(false)
       button.setAttribute('aria-expanded', 'true')
       if (document.activeElement === host) restoreEditor()
       try { await ipcRenderer.invoke(DESKTOP_IPC.windowsMenu, name, rect.left, rect.bottom) }
@@ -84,10 +106,27 @@ export function installWindowsMenu(): { update(): void; dispose(): void } {
     return button
   }
   const buttons = [createButton('application', 0), createButton('edit', 1)] as const
+  const keyboard = (event: KeyboardEvent): void => {
+    if (!compact) return
+    if (event.key === 'F10' && !event.shiftKey) {
+      event.preventDefault(); trigger.focus(); showMenu(bar.hidden !== false)
+    } else if (event.key === 'Escape' && !bar.hidden) {
+      showMenu(false); trigger.focus()
+    }
+  }
+  const outside = (event: PointerEvent): void => {
+    if (!event.composedPath().includes(host)) showMenu(false)
+  }
+  document.addEventListener('keydown', keyboard)
+  document.addEventListener('pointerdown', outside)
   shadow.append(style, bar)
   const mount = (): void => {
     // AppFrame owns this seat; boot readiness alone precedes the rendered application.
     if (document.querySelector('[data-shell-overlay]') === null) return
+    compact = document.documentElement.hasAttribute('data-strugend')
+    host.toggleAttribute('data-compact', compact)
+    trigger.hidden = !compact
+    bar.hidden = compact
     document.body.append(host)
     observer.disconnect()
   }
@@ -97,6 +136,7 @@ export function installWindowsMenu(): { update(): void; dispose(): void } {
   const update = (): void => {
     const { messages } = resolveDesktopLocale(document.documentElement.lang)
     bar.setAttribute('aria-label', messages.menuBar)
+    trigger.setAttribute('aria-label', messages.menuBar)
     buttons[0].textContent = messages.application
     buttons[1].textContent = messages.edit
   }
@@ -106,6 +146,8 @@ export function installWindowsMenu(): { update(): void; dispose(): void } {
     dispose: () => {
       observer.disconnect()
       document.removeEventListener('focusout', rememberEditor, true)
+      document.removeEventListener('keydown', keyboard)
+      document.removeEventListener('pointerdown', outside)
       host.remove()
     },
   }

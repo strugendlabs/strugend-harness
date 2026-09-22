@@ -20,7 +20,9 @@ kind: "package-reference"
 - [已知限制与延期工作](#known-limitations-and-deferred-work)
 - [开发备注](#dev-note)
 
-使用 `DSH_CLIENT_TITLE="Strugend Harness"` 构建时，会加入限定作用域的石墨色和鼠尾草绿色调，同时保留用户的明暗模式偏好。样式表及文档标记的生命周期由主题插件管理。
+使用 `DSH_CLIENT_TITLE="Strugend Harness"` 构建时，会加入限定作用域的石墨色和橘色色调，同时保留用户的明暗模式偏好。样式表及文档标记的生命周期由主题插件管理。
+
+Strugend 深色外观使用石墨色界面和橘色操作，浅色外观保留对应强调色。继续遵循用户的外观和减少动态效果偏好。
 
 -----
 

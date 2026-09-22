@@ -1,6 +1,7 @@
 /** Host LibreOffice kit provider with reusable converters and private disk input/output. */
 import { randomUUID } from 'node:crypto'
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, rm, writeFile, stat } from 'node:fs/promises'
+import { pathToFileURL } from 'node:url'
 import { tmpdir } from 'node:os'
 import { extname, isAbsolute, join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
@@ -29,6 +30,8 @@ declare module '@deepseek-ai/cordis' {
 
 /** Provider concurrency and kit rendering/font configuration. */
 export interface Config {
+  /** Optional application-owned component root. Missing installed metadata rejects conversion without loading native code. */
+  moduleRoot?: string
   /** Maximum simultaneous conversions; queued callers remain cancellable. */
   maxConcurrentConversions: number
   /** Maximum metadata-only jobs awaiting source admission. */
@@ -71,6 +74,7 @@ export interface Config {
 
 /** Deployment defaults resolved before provider construction. */
 export const Config: z<Partial<Config>, Config> = z.object({
+  moduleRoot: z.string().min(1).extra('default', undefined),
   maxConcurrentConversions: z.natural().min(1).max(Number.MAX_SAFE_INTEGER).default(2),
   maxQueuedJobs: z.natural().min(1).max(Number.MAX_SAFE_INTEGER).default(8),
   maxReaders: z.natural().min(1).max(Number.MAX_SAFE_INTEGER).default(32),
@@ -114,6 +118,7 @@ export class OfficeToPdf extends TypertRemoteService {
    */
   constructor(ctx: Context, private readonly config: Config) {
     super(ctx, 'officeToPdf')
+    if (config.moduleRoot !== undefined && !isAbsolute(config.moduleRoot)) throw new Error('moduleRoot must be an absolute directory.')
     if (config.fontDirectories?.some(path => !isAbsolute(path))) throw new Error('fontDirectories must contain absolute paths.')
     if (config.maxSourceBytes < config.maxInputBytes) throw new Error('maxSourceBytes must be at least maxInputBytes.')
     const { fontDirectories, fontFallbacks, timeoutMs, maxInputBytes, maxOutputBytes, maxImageResolution,
@@ -237,7 +242,7 @@ export class OfficeToPdf extends TypertRemoteService {
     let directory: string | undefined
     try {
       if (slot.converter === undefined) {
-        slot.converter = createConverter(this.options).catch((error: unknown) => {
+        slot.converter = this.createConverter().catch((error: unknown) => {
           delete slot.converter
           throw error
         })
@@ -273,6 +278,17 @@ export class OfficeToPdf extends TypertRemoteService {
       try { if (directory !== undefined) await rm(directory, { recursive: true, force: true }) }
       finally { slot.busy = false }
     }
+  }
+
+  private async createConverter(): Promise<Converter> {
+    if (this.config.moduleRoot === undefined) return createConverter(this.options)
+    try { await stat(join(this.config.moduleRoot, '.installed.json')) }
+    catch (cause) { throw new OfficeToPdfError('unavailable', 'Install Documents & data in Settings > Optional tools to preview Office documents.', { cause }) }
+    const module: unknown = await import(pathToFileURL(join(this.config.moduleRoot, 'node_modules', '@deepseek-ai', 'libreoffice-kit', 'lib', 'index.js')).href)
+    if (!module || typeof module !== 'object' || !('createConverter' in module) || typeof module.createConverter !== 'function') {
+      throw new OfficeToPdfError('unavailable', 'The document component is damaged. Reinstall it in Settings > Optional tools.')
+    }
+    return (module.createConverter as typeof createConverter)(this.options)
   }
 }
 

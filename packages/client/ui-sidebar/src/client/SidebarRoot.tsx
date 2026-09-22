@@ -26,6 +26,7 @@ import type {
   SidebarPanelMetadata, SidebarRootComponentProps, SidebarRootInjected, SidebarSectionOwnerProps,
 } from './contract/slots.ts'
 import css from './SidebarRoot.module.css'
+import { MinimalNavigation } from './MinimalNavigation.tsx'
 
 /** Wide-content unmount delay; matches the 150ms wide-content fade-out. */
 const COLLAPSE_SETTLE_MS = 150
@@ -85,7 +86,7 @@ function PanelRow({ id, label, wide, usePanelInfo, selectPanel, renderSlot }: Pa
  * @param props - composed slot props (runtime share + injected callbacks, contract/slots.ts).
  * @returns the sidebar element tree.
  */
-export function SidebarRoot({
+function ClassicSidebarRoot({
   collapsed,
   width,
   startSession,
@@ -286,4 +287,14 @@ export function SidebarRoot({
       </div>
     </div>
   )
+}
+
+/** Render the product navigation without changing the shared workspace controls.
+ * @param props - Sidebar slot data and actions.
+ * @returns A history drawer for Strugend, or the configured classic sidebar.
+ */
+export function SidebarRoot(props: SidebarRootComponentProps) {
+  return process.env.DSH_CLIENT_TITLE === 'Strugend Harness'
+    ? <MinimalNavigation {...props} />
+    : <ClassicSidebarRoot {...props} />
 }

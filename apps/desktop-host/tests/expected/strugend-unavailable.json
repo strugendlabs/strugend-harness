@@ -2,7 +2,7 @@
   "decision": [
     {
       "type": "text",
-      "text": "{\"available\":false,\"status\":\"unavailable\",\"runtime\":\"local\",\"reason\":\"Local Laya model is not installed. Reinstall the full Strugend build or select the remote runtime.\"}"
+      "text": "Error: unknown tool \"decision_check\""
     }
   ],
   "memory": [

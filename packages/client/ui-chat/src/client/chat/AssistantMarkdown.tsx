@@ -27,6 +27,8 @@ export function localPathMediaUrl(protocol: string, origin: string, value: strin
 
 export interface AssistantMarkdownProps {
   blocks: readonly AssistantBlock[]
+  /** Mount reasoning only when the reader enables technical details. */
+  showReasoning?: boolean | undefined
   streaming: boolean
   /** Frozen partial of an aborted turn: rendered with a stopped marker. */
   interrupted?: boolean | undefined
@@ -44,7 +46,7 @@ export interface AssistantMarkdownProps {
 
 /** Reasoning block as the Think variant summary row (figma 39:28304). */
 export const AssistantMarkdown = memo(function AssistantMarkdown({
-  blocks, streaming, interrupted, renderMessageImages,
+  blocks, streaming, interrupted, renderMessageImages, showReasoning = true,
   reasoningHidden = false, revealProcess, mentions, t,
 }: AssistantMarkdownProps) {
   // Stable per locale revision (t identity changes on switch): a fresh object
@@ -63,7 +65,7 @@ export const AssistantMarkdown = memo(function AssistantMarkdown({
   // between tool groups — skip the shell unless something visible remains.
   const hasVisible = streaming
     || interrupted === true
-    || blocks.some(block => block.kind !== 'tool-call')
+    || blocks.some(block => block.kind !== 'tool-call' && (showReasoning || block.kind !== 'reasoning'))
   if (!hasVisible) return null
   const rendered: ReactNode[] = []
   for (let i = 0; i < blocks.length; i++) {
@@ -83,6 +85,7 @@ export const AssistantMarkdown = memo(function AssistantMarkdown({
         )
         break
       case 'reasoning':
+        if (!showReasoning) break
         rendered.push(
           <ProcessReasoning
             key={i}

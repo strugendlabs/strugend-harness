@@ -24,7 +24,7 @@ File-mention providers receive the viewed Session ID with the closing-turn owner
 - [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
 - [Dev Note](#dev-note)
 
-Strugend builds collapse framework package labels into the context-injection row and present provider connection failures with product terminology. Authentication failures retain their dedicated recovery message; recorded events and expanded context remain unchanged.
+Strugend chat hides system prompts, context injection, and reasoning until the reader enables Diagnostics. Completed process rows use compact display; user messages, final answers, errors, and auxiliary review summaries remain visible. Decision summaries correlate durable requests and results, present the chosen criterion as advisory, and show unavailable or inconclusive outcomes explicitly. Experimental results marked `observedOnly` are labeled recorded only. Technical review data is mounted only after Details is opened; no summary claims that a review improved or verified the result.
 
 -----
 

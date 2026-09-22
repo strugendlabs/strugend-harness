@@ -109,6 +109,9 @@
     },
     {
       "path": "../ui-input-trigger"
+    },
+    {
+      "path": "../../util/agentos-protocol"
     }
   ]
 }

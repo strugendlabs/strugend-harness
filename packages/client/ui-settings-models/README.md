@@ -20,7 +20,9 @@ English | [中文](README.zh.md)
 - [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
 - [Dev Note](#dev-note)
 
-In the Strugend desktop composition, Intelligence provides Core, optional remote Decision, GitHub and Vercel credentials. Automatic is the default Decision runtime and falls back from remote to local only when memory admission allows. Local is unavailable below 8 GiB RAM; the page displays the runtime restriction. Observe records background judgments without changing Core prompts; optional Assist can supply completed advice. Runtime and advice changes use settings revisions. The collapsed Additional AI providers editor configures other Core routes, independently of Decision. Connection tests report actual outcomes separately from saved-key metadata. Graph memory is disabled and marked Coming soon. Keys are write-only and environment credentials are read-only. Other compositions retain the generic provider editor.
+In the Strugend desktop composition, Connections shows the provider editor first. First-run setup offers any configurable provider or a compatible endpoint, then saves the user's explicit model choice as the default. Skipping leaves the app usable; missing credentials refuse prompt admission without consuming a turn or draft. Optional Decision, GitHub and Vercel credentials are in a collapsed section. Decision runtime and advice changes use settings revisions; local memory restrictions remain visible. Connection tests distinguish actual responses from saved-key metadata. Graph memory is disabled and marked Coming soon. Keys are write-only and environment credentials are read-only.
+
+Strugend provider setup offers the configured provider directory and custom endpoints before any credential field. Configure later persists `ui-onboarding.providerSetupDeferredVersion` through the existing settings scope, independently of the welcome notice; subsequent chats and application restarts do not repeat the prompt. Connections remains available manually. Non-loopback browsers retain this choice only for the current client lifetime.
 
 -----
 

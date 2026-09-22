@@ -2,6 +2,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
+import { stat, readFile, writeFile } from 'node:fs/promises'
 import {
   resolveDesktopAppId,
   resolveMacOSNotarizationEnvironment,
@@ -94,6 +95,13 @@ export function createElectronBuilderConfig(
         '-OutputDirectory', join(buildPaths.root, 'installer-ui')], {
         env: scrubWindowsSigningEnvironment(env), windowsHide: true,
       })
+      if (preview) {
+        const catalog = JSON.parse(await readFile(join(buildPaths.runtime, 'component-catalog.json'), 'utf8'))
+        const decision = catalog.components.find(component => component.id === 'decision')
+        if (!decision || !Number.isSafeInteger(decision.downloadBytes) || decision.downloadBytes <= 0) throw new Error('Missing Decision support download size')
+        await writeFile(join(buildPaths.root, 'installer-ui', 'component-size.nsh'),
+          `!define STRUGEND_DECISION_DOWNLOAD_MIB "${Math.ceil(decision.downloadBytes / 1024 ** 2)}"\n`)
+      }
       if (windowsSigner !== undefined) {
         await windowsSigner({ path: join(buildPaths.root, 'installer-ui', 'window-frame.dll'), hash: 'sha256', isNest: false })
       }
@@ -168,7 +176,10 @@ export function createElectronBuilderConfig(
       }
       verifyMacOSSignatureAfterSign(context, macOSSigning ?? resolveMacOSSigningEnvironment(env))
     },
-    artifactBuildCompleted: artifact => {
+    artifactBuildCompleted: async artifact => {
+      if (preview && /\.(?:exe|dmg|zip)$/u.test(artifact.file) && (await stat(artifact.file)).size > 400 * 1024 * 1024) {
+        throw new Error('The Strugend core download exceeds 400 MiB; optional components must remain outside the application.')
+      }
       if (unsigned || !artifact.file.endsWith('.dmg')) return
       return notarizeMacOSDiskImageArtifact(
         artifact,

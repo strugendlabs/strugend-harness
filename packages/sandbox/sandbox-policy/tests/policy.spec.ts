@@ -11,11 +11,11 @@ import { describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import { SESSION_FORMAT_VERSION, Session, SessionId } from '@deepseek-ai/dsh-session'
-import SandboxPolicyService, { SANDBOX_MODES, setSandboxMode } from '@deepseek-ai/dsh-sandbox-policy'
+import SandboxPolicyService, { SANDBOX_MODES, setSandboxMode, type Config } from '@deepseek-ai/dsh-sandbox-policy'
 import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import SystemPrompt, { renderContextSnapshot, renderPrompt } from '@deepseek-ai/dsh-system-prompt'
 
-async function mounted(config: { mode?: 'read-only' | 'workspace-write' | 'danger-full-access'; workspaceRoot?: string } = {}) {
+async function mounted(config: Config = {}) {
   const ctx = new Context()
   await ctx.plugin(SessionProjectionRegistry)
   await ctx.plugin(SandboxPolicyService, config)
@@ -147,6 +147,16 @@ describe('SandboxPolicyService', () => {
     await expect(ctx.plugin(SandboxPolicyService, { mode: 'yolo' as never })).rejects.toThrow()
   })
 
+  it('rejects nonboolean harness-name configuration at load', async () => {
+    const ctx = new Context()
+    try {
+      await ctx.plugin(SessionProjectionRegistry)
+      await expect(ctx.plugin(SandboxPolicyService, { includeHarnessName: 'false' as never })).rejects.toThrow()
+    } finally {
+      await ctx.fiber.dispose()
+    }
+  })
+
   it('disposes the service and context contribution from a child fiber (HMR safety)', async () => {
     const ctx = new Context()
     await ctx.plugin(SystemPrompt)
@@ -161,7 +171,7 @@ describe('SandboxPolicyService', () => {
 })
 
 describe('sandbox:policy request context', () => {
-  async function promptMounted(config: { mode?: 'read-only' | 'workspace-write' | 'danger-full-access'; workspaceRoot?: string } = {}): Promise<Context> {
+  async function promptMounted(config: Config = {}): Promise<Context> {
     const ctx = new Context()
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(SessionProjectionRegistry)
@@ -179,6 +189,22 @@ describe('sandbox:policy request context', () => {
     } as const
 
     expect(await policyContext(ctx, session(`sess-${mode}`, '/projects/../projects/current'))).toBe(expected[mode])
+  })
+
+  it.each(['read-only', 'workspace-write', 'danger-full-access'] as const)('omits the harness name when disabled for %s without changing enforcement', async (mode) => {
+    const ctx = await promptMounted({ mode, includeHarnessName: false })
+    const active = session(`sess-neutral-${mode}`, '/projects/current')
+    const expected = {
+      'read-only': 'Current file access policy: read-only. Any available operation enforced by the file sandbox cannot modify files in the standing mode. Do not refuse a required modification from this policy alone: try an available tool normally and follow any denial and escalation guidance it returns.',
+      'workspace-write': 'Current file access policy: workspace-write. Any available operation enforced by the file sandbox may modify files under the session workspace: "/projects/current". Some platform temporary areas may also be writable.',
+      'danger-full-access': 'Current file access policy: danger-full-access. The file sandbox does not restrict file modifications by available operations.',
+    }
+    try {
+      expect(await policyContext(ctx, active)).toBe(expected[mode])
+      expect(ctx.sandboxPolicy.resolve({ session: active })).toEqual({ mode, workspaceRoot: '/projects/current', sessionId: active.id })
+    } finally {
+      await ctx.fiber.dispose()
+    }
   })
 
   it('keeps the complete rendered prompt byte-stable across TMPDIR changes', async () => {

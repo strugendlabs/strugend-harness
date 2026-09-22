@@ -10,6 +10,8 @@ English | [中文](README.zh.md)
 
 `@deepseek-ai/dsh-api-session-controller` owns the Host `ctx.sessionController` service and the generated Client `session`, `skills`, and `fileReferences` Remote namespaces. It serves Session lifecycle and history, the Host-generation model catalog, workspace-path opening, user-invocable skill discovery, and Agent-scoped file references. Use it through API Gateway when a Client needs operations addressed by a Session.
 
+Prompt admission validates the selected provider's local connection requirements before queueing content or recording a turn. A missing connection returns `session/model-not-connected`, allowing the client to preserve its draft and retry the same request after configuration. The check sends no model request; anonymous adapters remain supported.
+
 ## Table of Contents
 
 - [Use this package](#use-this-package)
@@ -19,6 +21,8 @@ English | [中文](README.zh.md)
 - [Model Experience](#model-experience)
 - [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
 - [Dev Note](#dev-note)
+
+Prompt resolves the selected provider credential before admitting input. A missing connection returns `session/model-not-connected` with provider, model and reason; the Client preserves the draft and can open Connections. No model request or failed turn is created by this refusal.
 
 -----
 

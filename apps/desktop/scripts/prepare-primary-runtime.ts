@@ -89,10 +89,12 @@ export async function prepareOfficeSkillAssets(source: string, destination: stri
 
 /**
  * Materialize the selected Desktop target's primary runtime in its build resources.
- * @param options - Signed Windows packaging defers execution until its supervised signing stage.
+ * @param options - Core or document payload, output directory, and deferred native checks for Windows signing.
  * @returns Resolves after materialization and, unless deferred, native-target execution checks.
  */
-export async function preparePrimaryRuntime(options: { deferSmoke?: boolean } = {}): Promise<void> {
+export async function preparePrimaryRuntime(
+  options: { deferSmoke?: boolean; documents?: boolean; destination?: string } = {},
+): Promise<void> {
   const target = resolveDesktopBuildTarget()
   const paths = resolveDesktopTargetBuildPaths()
   const artifact = lock.targets[target]
@@ -116,7 +118,7 @@ export async function preparePrimaryRuntime(options: { deferSmoke?: boolean } = 
     cpSync(join(nodeSource, ...(target === 'win-x64' ? ['node.exe'] : ['bin', 'node'])),
       join(dependencies, 'node', 'bin', target === 'win-x64' ? 'node.exe' : 'node'))
     cpSync(join(nodeSource, 'LICENSE'), join(dependencies, 'node', 'LICENSE'))
-    await extractTar({ file: await pythonArchive(target, paths.downloads), cwd: dependencies })
+    if (options.documents) await extractTar({ file: await pythonArchive(target, paths.downloads), cwd: dependencies })
     const require = createRequire(import.meta.url)
     const pnpmManifest = require.resolve('pnpm')
     const pnpm = JSON.parse(readFileSync(pnpmManifest, 'utf8')) as { version: string }
@@ -134,20 +136,25 @@ export async function preparePrimaryRuntime(options: { deferSmoke?: boolean } = 
       },
     }
     const entries = workspaceDependencyPaths(output, manifest)
-    for (const wheel of [...artifact.wheels, ...lock.wheels]) {
+    for (const wheel of options.documents ? [...artifact.wheels, ...lock.wheels] : []) {
       await unpackPrimaryRuntimeWheel(await downloadPrimaryRuntimeAsset(wheel.url, wheel.sha256, paths.downloads), entries.pythonPackages)
     }
-    writeFileSync(join(output, 'runtime.json'), `${JSON.stringify(manifest, undefined, 2)}\n`)
-    const destination = join(paths.runtime, 'primary-runtime')
+    writeFileSync(join(output, 'runtime.json'), `${JSON.stringify(options.documents ? manifest : {
+      kind: 'core', desktopVersion: manifest.desktopVersion, platform: manifest.platform, arch: manifest.arch,
+      components: { node: manifest.components.node, pnpm: manifest.components.pnpm },
+    }, undefined, 2)}\n`)
+    const destination = options.destination ?? join(paths.runtime, 'primary-runtime')
     rmSync(destination, { recursive: true, force: true })
     await cp(output, destination, { recursive: true, dereference: true })
   } finally {
     rmSync(staging, { recursive: true, force: true })
   }
-  const hostRequire = createRequire(resolve(import.meta.dirname, '..', '..', 'desktop-host', 'package.json'))
-  await prepareOfficeSkillAssets(join(dirname(hostRequire.resolve('@deepseek-ai/dsh-skill-office/package.json')), 'assets'),
-    join(paths.runtime, 'office-skills'))
-  if (!options.deferSmoke) smokePrimaryRuntime(join(paths.runtime, 'primary-runtime'))
+  if (options.documents) {
+    const hostRequire = createRequire(resolve(import.meta.dirname, '..', '..', 'desktop-host', 'package.json'))
+    await prepareOfficeSkillAssets(join(dirname(hostRequire.resolve('@deepseek-ai/dsh-skill-office/package.json')), 'assets'),
+      join(dirname(options.destination ?? join(paths.runtime, 'primary-runtime')), 'office-skills'))
+  }
+  if (!options.deferSmoke) smokePrimaryRuntime(options.destination ?? join(paths.runtime, 'primary-runtime'))
 }
 
 /**
@@ -155,17 +162,20 @@ export async function preparePrimaryRuntime(options: { deferSmoke?: boolean } = 
  * @param root - Final payload directory, including any platform signatures.
  */
 export function smokePrimaryRuntime(root: string): void {
-  const manifest = JSON.parse(readFileSync(join(root, 'runtime.json'), 'utf8')) as PrimaryRuntimeManifest
+  const manifest = JSON.parse(readFileSync(join(root, 'runtime.json'), 'utf8')) as PrimaryRuntimeManifest & { kind?: 'core' }
   if (manifest.platform !== process.platform || manifest.arch !== process.arch) return
-  if (manifest.pythonPackages === undefined) throw new Error('primary runtime: missing Python distribution versions; prepare the payload before running its smoke checks.')
-  const entries = workspaceDependencyPaths(root, manifest)
+  if (manifest.kind !== 'core' && manifest.pythonPackages === undefined) throw new Error('primary runtime: missing Python distribution versions; prepare the payload before running its smoke checks.')
   const options = { stdio: 'inherit', timeout: 120_000, env: scrubWindowsSigningEnvironment(process.env) } as const
+  const node = join(root, 'dependencies', 'node', 'bin', manifest.platform === 'win32' ? 'node.exe' : 'node')
+  const pnpm = join(root, 'dependencies', 'pnpm', 'bin', 'pnpm.mjs')
+  execFileSync(node, ['-e', `if (process.versions.node !== ${JSON.stringify(manifest.components.node)}) process.exit(1)`], options)
+  execFileSync(node, [pnpm, '--version'], options)
+  if (manifest.kind === 'core') return
+  const entries = workspaceDependencyPaths(root, manifest)
   execFileSync(entries.python, ['-I', '-c', 'import decimal, xml.parsers.expat, lzma, uuid, numpy, pandas; assert numpy.arange(4).sum() == 6; assert pandas.DataFrame({"n": [1, 2]}).n.sum() == 3'], options)
   execFileSync(entries.python, ['-I', '-B', join(import.meta.dirname, 'smoke-primary-runtime.py'), JSON.stringify(manifest.pythonPackages),
     manifest.components.python, join(dirname(root), 'office-skills', 'scripts', 'check_office.py')], options)
   execFileSync(entries.python, ['-I', '-B', '-m', 'pip', 'check'], options)
-  execFileSync(entries.node, ['-e', `if (process.versions.node !== ${JSON.stringify(manifest.components.node)}) process.exit(1)`], options)
-  execFileSync(entries.node, [entries.pnpm, '--version'], options)
 }
 
 if (import.meta.main) await preparePrimaryRuntime()

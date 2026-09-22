@@ -852,6 +852,15 @@ declare abstract class LlmAdapter {
    */
   async prepareCall(provider: string, model: string, signal?: AbortSignal): Promise<PreparedAdapterCall>;
   /**
+   * Check local connection requirements without sending a model request or refreshing OAuth.
+   * Adapters own credential policy; the default permits routes without authentication requirements.
+   * @param _provider - Registered provider route.
+   * @param _model - Exact selected model.
+   * @param signal - Cancellation for local credential checks.
+   * @returns Completion when locally configured; rejects with an actionable provider error otherwise.
+   */
+  validateConnection(_provider: string, _model: string, signal?: AbortSignal): Promise<void>;
+  /**
    * Stream one model call as raw chunks. The only required method.
    * @param options - the fully-assembled request; implementations must honor `options.signal`.
    * @returns the chunk stream, obeying the adapter contract documented on `StreamChunk`.
@@ -1026,6 +1035,16 @@ async resolveModelInfo( provider: string, model: string, signal?: AbortSignal, )
  * @returns a detached config only when a default must be materialized.
  */
 async resolveCallConfig(config: LlmCallConfig, signal?: AbortSignal): Promise<LlmCallConfig>
+
+/**
+ * Validate a selected route's local connection requirements before prompt admission.
+ * No model request or OAuth refresh occurs; dispatch still resolves current credentials.
+ * @param provider - Registered provider route.
+ * @param model - Exact selected model.
+ * @param signal - Cancellation for local credential checks.
+ * @returns Completion when the adapter's local requirements are satisfied.
+ */
+async validateConnection(provider: string, model: string, signal?: AbortSignal): Promise<void>
 
 /**
  * Resolve one call under its current adapter registration. The returned

@@ -80,6 +80,9 @@
     },
     {
       "path": "../../packages/sandbox/sandbox-policy"
+    },
+    {
+      "path": "../../packages/document/office-to-pdf"
     }
   ]
 }

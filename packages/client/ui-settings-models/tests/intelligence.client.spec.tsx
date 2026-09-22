@@ -10,9 +10,8 @@ afterEach(cleanup)
 
 function mount() {
   const snapshot: IntelligenceSnapshot = {
-    graphUrl: '', decisionMode: 'local', adviceMode: 'observe', localAllowed: true, localReason: '', revision: 7, coreRef: 'CORE_TEST_KEY',
+    enabled: true, installed: true, available: true, graphUrl: '', decisionMode: 'local', adviceMode: 'observe', localAllowed: true, localReason: '', revision: 7,
     credentials: {
-      CORE_TEST_KEY: { configured: true, writable: false },
       IMPOSSIBL_API_KEY: { configured: false, writable: true },
       STRUGEND_GITHUB_TOKEN: { configured: false, writable: true },
     },
@@ -40,11 +39,10 @@ describe('Intelligence settings', () => {
   })
   it('shows roles and credential metadata without exposing provider IDs or stored keys', async () => {
     const { container } = mount()
-    await screen.findByRole('heading', { name: 'Core' })
+    await screen.findByRole('heading', { name: 'Decision' })
     expect(container.textContent).not.toMatch(/deepseek|\bdsh\b|CORE_TEST_KEY|IMPOSSIBL_API_KEY/u)
-    expect(screen.getAllByText(en.credentialConfigured)).toHaveLength(1)
-    expect(screen.getByLabelText<HTMLInputElement>('Core API key').disabled).toBe(true)
-    expect(screen.getAllByDisplayValue('')).toHaveLength(4)
+    expect(screen.queryByLabelText('Core API key')).toBeNull()
+    expect(screen.getAllByDisplayValue('')).toHaveLength(3)
     expect(screen.getByText('Coming soon')).toBeTruthy()
   })
 
@@ -61,7 +59,6 @@ describe('Intelligence settings', () => {
     expect(operations.storeCredential).toHaveBeenCalledExactlyOnceWith('IMPOSSIBL_API_KEY', 'synthetic-decision-key')
     expect(input.value).toBe('')
     expect(access.load).toHaveBeenCalledTimes(2)
-    expect(screen.getAllByText(en.credentialConfigured)).toHaveLength(1)
     expect(screen.getByText(en.intelligenceLocalReady)).toBeTruthy()
   })
 

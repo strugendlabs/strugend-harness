@@ -20,6 +20,8 @@ This package provides the Web GUI's three-column AppFrame, edge-column widths, a
 - [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
 - [Dev Note](#dev-note)
 
+Strugend builds reserve a 56px top bar and no left navigation track. History overlays the work area without changing chat or right-panel widths. Existing right-panel sizing, fullscreen, and keyboard behavior remain available.
+
 -----
 
 <a id="use-this-package"></a>

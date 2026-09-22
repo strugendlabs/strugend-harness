@@ -39,14 +39,16 @@ function resolveWorkspaceRoot(path: string): string {
 }
 
 /** Render the policy without claiming which capabilities are mounted. */
-function renderPolicyContext(policy: SandboxExecutionPolicy): string {
+function renderPolicyContext(policy: SandboxExecutionPolicy, includeHarnessName: boolean): string {
+  const label = includeHarnessName ? 'DSH file policy' : 'file access policy'
+  const sandbox = includeHarnessName ? 'DSH file sandbox' : 'file sandbox'
   switch (policy.mode) {
     case 'read-only':
-      return 'Current DSH file policy: read-only. Any available operation enforced by the DSH file sandbox cannot modify files in the standing mode. Do not refuse a required modification from this policy alone: try an available tool normally and follow any denial and escalation guidance it returns.'
+      return `Current ${label}: read-only. Any available operation enforced by the ${sandbox} cannot modify files in the standing mode. Do not refuse a required modification from this policy alone: try an available tool normally and follow any denial and escalation guidance it returns.`
     case 'workspace-write':
-      return `Current DSH file policy: workspace-write. Any available operation enforced by the DSH file sandbox may modify files under the session workspace: ${JSON.stringify(policy.workspaceRoot)}. Some platform temporary areas may also be writable.`
+      return `Current ${label}: workspace-write. Any available operation enforced by the ${sandbox} may modify files under the session workspace: ${JSON.stringify(policy.workspaceRoot)}. Some platform temporary areas may also be writable.`
     case 'danger-full-access':
-      return 'Current DSH file policy: danger-full-access. The DSH file sandbox does not restrict file modifications by available operations.'
+      return `Current ${label}: danger-full-access. The ${sandbox} does not restrict file modifications by available operations.`
     /* v8 ignore next 4 -- SandboxMode is a typed same-process closed union; this branch is only the static exhaustiveness guard. */
     default: {
       const mode: never = policy.mode
@@ -69,6 +71,8 @@ declare module '@deepseek-ai/cordis' {
  * is any per-family knob: this is the one shared policy home.
  */
 export interface Config {
+  /** Include the DSH name in model-visible policy text (default: `true`). Enforcement is unchanged. */
+  includeHarnessName?: boolean
   /** File-sandbox mode a session starts from (default: `read-only`). */
   mode?: SandboxMode
   /**
@@ -110,6 +114,7 @@ declare module '@deepseek-ai/dsh-session-projection/types' {
 export class SandboxPolicyService extends Service {
   // Inline schema call: the config catalog walks `static Config` statically.
   static Config: z<Config> = z.object({
+    includeHarnessName: z.boolean().default(true),
     mode: z.union(['read-only', 'workspace-write', 'danger-full-access'] as const).default('read-only'),
     // No schema default: process.cwd() is resolved in the constructor so the
     // stored root is always absolute regardless of how it was supplied.
@@ -146,7 +151,7 @@ export class SandboxPolicyService extends Service {
           const session = context.agent?.session
           return session === undefined
             ? ''
-            : renderPolicyContext(this.resolve({ session }))
+            : renderPolicyContext(this.resolve({ session }), config.includeHarnessName as boolean)
         },
       })
     })

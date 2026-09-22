@@ -37,6 +37,8 @@ export async function runCli(): Promise<void> {
       try {
         await runProfile({
           environment: loadLayeredEnv('dsh'),
+          // Source hooks must resolve one tools module, including profile-owned plugin imports.
+          resolutionMode: import.meta.url.endsWith('.ts') ? 'link' : 'runtime',
           profile: invocation.profile,
           fromDefaultProfile: invocation.fromDefaultProfile,
           patchFiles: invocation.patches,

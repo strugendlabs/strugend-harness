@@ -20,6 +20,8 @@ kind: "package-reference"
 - [已知限制与延期工作](#known-limitations-and-deferred-work)
 - [开发备注](#dev-note)
 
+功能可发送包含已注册分区 ID 的 `settings/open` 事件请求导航。设置外壳负责显示状态，并通过框架绑定的数据源接收请求；该请求不修改持久化偏好。
+
 -----
 
 <a id="use-this-package"></a>

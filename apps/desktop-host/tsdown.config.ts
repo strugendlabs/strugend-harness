@@ -5,7 +5,6 @@ export default defineConfig({
   outDir: 'lib',
   format: ['esm'],
   platform: 'node',
-  deps: { alwaysBundle: ['@receptron/laya'] },
   target: 'es2024',
   fixedExtension: false,
   dts: false,

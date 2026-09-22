@@ -12,7 +12,7 @@ Creator 和 Web Plugin Manager 在 Electron Node 模式下使用 Desktop 内置 
 
 ## Strugend 本地应用
 
-[Strugend 开发指南](../../AGENT_OS_README.md) 定义本地分支的启动及服务配置。显示品牌使用 Strugend Harness；原生凭据标识和已有数据路径保持稳定，以便继续访问已保存的密钥、浏览器配置和聊天。[智能服务实现](../desktop-host/src/strugend-intelligence.ts) 与规划和工具执行并行运行可选的 Laya 检查，不让智能体等待。观察模式记录判断而不改变 Core 上下文；辅助模式可加入已完成的新近建议。安装包在 `runtime/laya` 中携带固定校验和的离线多语言 ONNX 模型；单个 CPU worker 串行推理并在空闲时卸载。物理内存小于 8 GiB 或内存不足时禁用本地推理。自动模式在 Impossibl 失败后根据这些限制考虑本地回退。参见[资源策略与验证限制](../../STRUGEND_PLAN.md)。图谱记忆已禁用并显示即将推出。任务拥有的交付作业构建应用或将验证过的提交发布到 GitHub 和 Vercel，并保留恢复所需的回执。Finder/Explorer 操作使用 Electron 原生 shell 并报告失败。
+[Strugend 开发指南](../../AGENT_OS_README.md) 定义本地分支的启动及服务配置。产品品牌使用 Strugend Harness；原生凭据标识和已有数据路径保持稳定。服务商中立的设置流程选择主模型。可选 Laya 检查在受监督的辅助进程中并行运行；只有经版本验证的配方可以进入 Core 上下文。模型权重和文档运行时是独立的可选下载。参见[资源策略与验证限制](../../STRUGEND_PLAN.md)。图谱记忆和视频工作室已禁用并标记即将推出。任务拥有的交付作业保留构建与发布回执；Finder/Explorer 操作使用 Electron 原生 shell 并报告失败。
 
 本地推理在 Windows 和 Apple Silicon 上使用 ONNX Runtime 1.30.0。Intel Mac 选择独立的 1.22.0 兼容依赖，因为[后续 npm 归档缺少 Intel Mac 绑定](https://github.com/microsoft/onnxruntime/issues/27961)。仅加载选中的运行时。发布前，原生验证会加载打包的 worker 和模型权重。
 
@@ -28,15 +28,15 @@ macOS PNG 使用带留白的圆角底板，供传统 ICNS 打包使用，包含�
 
 Windows 签名打包保留有效的上游签名，并在执行冒烟检查前，为第一方运行时中未签名的 PE 可执行文件、DLL、Python 扩展和 Node 插件补签。每个新签名必须匹配配置的证书且带时间戳；已有签名无效、签名错误或验签错误都会停止本轮执行，不自动重试。electron-builder 只有在校验复制后运行时可执行文件的签名、且文件与已准备的源文件逐字节一致后，才保留其签名，避免复制资源时重复签名。检查覆盖 decimal、XML、LZMA、UUID、numpy 和 pandas。开发、仅准备和未签名构建不使用硬件令牌，可能被 Windows 代码完整性策略阻止；任何构建模式都不会关闭该策略。冒烟检查通过不代表所有扩展或企业策略都兼容。
 
-Desktop 携带独立的 Python、Node.js 和 pnpm 分发包。Python 包含 numpy、pandas、python-docx、python-pptx、openpyxl、Pillow、lxml、XlsxWriter 及其完整依赖。`load_workspace_dependencies` 工具首次使用时，将该产物离线安装到 `$DSH_HOME/dsh-runtimes/dsh-primary-runtime`（通常为 `~/.dsh/dsh-runtimes/dsh-primary-runtime`），并返回解释器、pnpm 脚本和库目录的绝对路径，以及记录内置分发包名称与版本的 `pythonDistributions`。版本报告不包含用户自行安装的包。Office 任务默认使用这些库，用户或工作区指令指定其他环境时遵循其要求。pnpm 脚本通过返回的 Node 可执行文件运行。返回的 Node 库目录为随包交付的库预留，不是 pnpm 的全局安装目录。
+基础应用携带 Node.js 和 pnpm。`load_workspace_dependencies` 立即返回其绝对路径。Python、文档库、Office 技能和原生 Office 渲染器属于可选的 Documents & data 下载；安装前，工具说明如何在设置 → 可选工具中启用。普通应用启动时不会运行 Python 解释器。
 
-Desktop 默认注册 `office-docx`、`office-pptx` 和 `office-xlsx`。这些技能使用内置 Python 库创建文件和进行定点编辑，随后重新打开文件，并在交付前运行共享结构检查器。PowerPoint 的创建和编辑使用 python-pptx。技能资源复制到 ASAR 外的 `runtime/office-skills`，让 Python 可以读取检查器。可用的 `render_document` 工具可以补充视觉检查；缺少该工具不妨碍创作或交付。检查范围与限制见 [Office 技能包](../../packages/skill/skill-office/README.zh.md)。
+Documents & data 包含 numpy、pandas、python-docx、python-pptx、openpyxl、Pillow、lxml、XlsxWriter 及锁定依赖。安装后，工具返回解释器、库和分发包版本路径；Desktop 注册 `office-docx`、`office-pptx` 和 `office-xlsx`。技能在交付前重新打开文件并执行结构检查。限制见 [Office 技能包](../../packages/skill/skill-office/README.zh.md)。
 
-该产物随 Desktop 版本发布。`runtime.json` 记录 Desktop 版本、目标平台、组件与 Python 分发包版本，以及所选目标的锁定产物输入与组装格式的摘要。分发包名称按 PEP 503 归一化；名称归一化后重复，或 numpy/pandas 的组件版本与分发包版本冲突时，清单会被拒绝。匹配的安装会被复用；依赖或压缩包变化后，即使 Desktop 版本不变，也会在完整暂存副本完成后替换目录。不含摘要的旧清单会在下次安装时被替换。用户自行添加的 Python 包仅在产物身份一致时保留。目录替换失败时保留之前的安装；解释器仍在运行时，Windows 可能拒绝替换。
+决策支持和 Documents & data 使用独立的目标平台归档，由随包目录选择。归档具有固定 URL、SHA256、压缩与解压大小及文件数。下载恢复到私有临时文件；验证和解压完成后，原子发布到 `$DSH_HOME/strugend-components/<component>/<content-version>`。跳过任一下载不影响编码智能体。可选原生决策进程仅在已安装且资源允许时启动。Windows 安装程序记录默认不勾选的选择；macOS 在首次启动时询问。设置支持以后安装、取消及移除。
 
-Desktop 私有的 `runtime/bin` 目录仅添加到包安装进程，不进入 PTC 和 agent shell 从 Host 继承的 PATH。该工具不修改 PATH、环境变量或用户包管理器配置。pnpm 的全局包、命令入口和 store 保留自身默认值及用户设置，包括环境不支持全局安装时的原生错误。不提供独立依赖更新器。[第一方 Runtime 决策](../../.agents/notes/implemented/feature/2026-09-14-desktop-primary-runtime.zh.md)记录这些选择。
+Desktop 私有的 `runtime/bin` 目录仅添加到包安装进程，不进入 PTC 和 agent shell 从 Host 继承的 PATH。依赖工具不修改 PATH、环境变量或用户包管理器配置。使用返回的 Node 可执行文件运行返回的 pnpm 脚本。可选组件随发布版本验证；版本由内容决定，未变化的组件可以跨应用更新复用。
 
-Node 准备内置解释器和 Python 库，无需系统 Python 或 pip。[下载锁](scripts/primary-runtime-lock.json)固定解释器压缩包、Python 分发包版本及目标平台 wheel 的 URL 和哈希；pnpm 使用 Desktop 构建依赖锁。每个目标的 wheel 文件名必须与分发包版本一致。所选目标、wheel 记录及分发包映射内部的键顺序，以及 wheel 条目顺序都会影响产物身份，编辑时须保留；锁文件顶层键的顺序不影响该身份。库 wheel 解压到 site-packages，各 wheel 的 `.data/scripts` 目录保留辅助文件，不生成命令行包装器。其他安装方案会被拒绝。本机目标检查在清理暂存目录后以及 macOS 签名后验证锁定 wheel 的集合与版本，允许解释器自带的 pip，并检查 Python 版本、Office 文档读写和依赖完整性，不写入字节码。独立 Node 可执行文件获得 V8 所需的 JIT 权限。跨目标执行和签名安装需要对应的发布主机。`dev:desktop` 和 `start:desktop` 都会在启动 Electron 前准备 `.desktop-build/targets/<target>/runtime/primary-runtime`；首次准备可能需要下载锁定的依赖。准备未完成时，启动命令不能报告成功退出。
+[下载锁](scripts/primary-runtime-lock.json) 固定解释器归档、Python 分发包版本、目标 wheel URL 和哈希。原生打包在发布文档归档前检查 Office 文档读写和依赖完整性。`dev:desktop` 和 `start:desktop` 启动 Electron 前只准备 Node/pnpm 核心运行时。完整发布准备在应用载荷之外创建可选归档。未签名预览安装产物每个不得超过 400 MiB；可选工具页面显示归档大小。
 
 | 决策 | 原因 | 直接结果 |
 |---|---|---|

@@ -271,9 +271,9 @@ export class DeliveryCoordinator {
       await this.runtime.decision(JSON.stringify({ kind: 'website', commit, files: sources.map(x => x.file).slice(0, 30), checks: run.log }), signal)
       await advance('connecting', 'Checking GitHub and Vercel access.')
       const github = await this.runtime.key('github')
-      if (!github) { run.connection = 'github'; throw new Error('Connect GitHub in Settings → Intelligence, then resume this delivery.') }
+      if (!github) { run.connection = 'github'; throw new Error('Connect GitHub in Settings → Connections, then resume this delivery.') }
       const vercel = await this.runtime.key('vercel')
-      if (!vercel) { run.connection = 'vercel'; throw new Error('Connect Vercel in Settings → Intelligence, then resume this delivery.') }
+      if (!vercel) { run.connection = 'vercel'; throw new Error('Connect Vercel in Settings → Connections, then resume this delivery.') }
       const request = (provider: 'github' | 'vercel', path: string, method: 'GET' | 'POST', body?: JsonValue | Uint8Array) =>
         deliveryHttp(provider === 'github' ? this.runtime.http.githubUrl : this.runtime.http.vercelUrl, path, provider === 'github' ? github : vercel, method, body, this.runtime.http, signal)
       const user = await request('github', '/user', 'GET')

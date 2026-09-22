@@ -73,6 +73,22 @@ beforeEach(() => {
 })
 
 describe('PiAiAdapter provider routing', () => {
+  it('checks native auth availability without refreshing an expired OAuth grant', async () => {
+    const auth = memoryAuth()
+    const modify = vi.spyOn(auth.credentials, 'modify')
+    const adapter = new PiAiAdapter({
+      profiles: () => resolveProfiles({ 'openai-codex': {} }),
+      resolveApiKey: () => Promise.resolve(undefined),
+      auth,
+    })
+    const model = (await adapter.listModels('openai-codex'))[0]!.id
+    await expect(adapter.validateConnection('openai-codex', model)).rejects.toMatchObject({ code: 'MISSING_CREDENTIAL' })
+    auth.stored.set('openai-codex', { type: 'oauth', access: 'synthetic-access', refresh: 'synthetic-refresh', expires: 0 })
+    await expect(adapter.validateConnection('openai-codex', model)).resolves.toBeUndefined()
+    expect(modify).not.toHaveBeenCalled()
+    modify.mockRestore()
+  })
+
   it('resolves a catalog model dynamically and uses a private endpoint', async () => {
     const server = await mockServer([{ events: textEvents }])
     const ctx = await harness(server.url)

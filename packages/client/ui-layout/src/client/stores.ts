@@ -80,7 +80,7 @@ export function createLayoutStore(): EngineStoreHandle<LayoutState, LayoutAction
     init: (): LayoutState => ({
       panelInfo: { activePanelId: null },
       layoutInfo: {
-        sidebar: SIDEBAR_DEFAULT,
+        sidebar: process.env.DSH_CLIENT_TITLE === 'Strugend Harness' ? 0 : SIDEBAR_DEFAULT,
         viewportWidth: window.innerWidth,
         narrowExpanded: false,
         rightbar: null,

@@ -20,6 +20,8 @@ kind: "package-reference"
 - [已知限制与延期工作](#known-limitations-and-deferred-work)
 - [开发备注](#dev-note)
 
+外壳处理 `settings/open` 请求，打开指定的已注册分区，包括提示提交失败后的恢复操作。历史抽屉关闭时，设置仍可从 Strugend 顶栏进入。
+
 -----
 
 <a id="use-this-package"></a>

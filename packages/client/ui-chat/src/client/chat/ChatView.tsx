@@ -243,6 +243,8 @@ export function ChatView({
   const hasMore = useSession(s => s.hasMore)
   const loadingOlder = useSession(s => s.loadingOlder)
   const compactTranscript = useTranscriptView(mode => mode === 'compact')
+  const minimal = process.env.DSH_CLIENT_TITLE === 'Strugend Harness'
+  const [diagnostics, setDiagnostics] = useState(false)
   const inspectCall = useCallback((callId: string) => {
     openView('trajectory', callId)
   }, [openView])
@@ -759,7 +761,9 @@ export function ChatView({
   }, [loadingOlder, loadThrough])
 
   return (
-    <div className={css.root}>
+    <div className={css.root} data-chat-diagnostics={diagnostics || undefined}>
+      {minimal && <button type="button" className={css.diagnostics} aria-pressed={diagnostics}
+        onClick={() => { setDiagnostics(value => !value) }}>{t(diagnostics ? 'chat.hideDiagnostics' : 'chat.diagnostics')}</button>}
       <div ref={listRef} className={css.scroll}>
         <TurnNavigator
           items={railItems}
@@ -788,7 +792,8 @@ export function ChatView({
               useChatNode={useChatNode}
               useChatNodeProcess={useChatNodeProcess}
               historyIncomplete={hasMore}
-              compactTranscript={compactTranscript}
+              compactTranscript={compactTranscript && !diagnostics}
+              showDiagnostics={!minimal || diagnostics}
               useStore={useStore}
               actions={actions}
               cwd={cwd}

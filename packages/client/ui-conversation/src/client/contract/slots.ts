@@ -357,6 +357,8 @@ export interface ComposerBarOwnerProps {
 
 /** Package-private operations injected into the resident composer bar. */
 export interface ComposerBarInjected {
+  /** Open provider connection settings without discarding the current draft. */
+  connectModel?: (() => void) | undefined
   keyboard: ComposerKeyboard | undefined
   addFiles: ((files: readonly File[]) => string | null) | undefined
   removeAttachment: ((id: DraftAttachmentId) => void) | undefined

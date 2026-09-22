@@ -18,12 +18,12 @@ const OUT = fs.mkdtempSync(path.join(evidenceRoot, 'packaged-' + process.platfor
  const root=fs.mkdtempSync(path.join(os.tmpdir(),'strugend-e2e-'));
  const home=path.join(root,'home'), workspace=path.join(root,'workspace');
  fs.mkdirSync(home); fs.mkdirSync(workspace);
- const errors=[], checks=[], serviceCalls=[]; let app,page,base,step=0,probeStep=0,probing=true,finalCount=0,decisionFails=false,backgroundProbe=false,waitingForDecision,heldDecision,delivering=false,deliveryStep=0,deliveryJob,mainLog='';
+ const errors=[], checks=[], serviceCalls=[]; let app,page,base,step=0,probeStep=0,probing=true,finalCount=0,decisionFails=false,backgroundProbe=false,backgroundStep=0,waitingForDecision,heldDecision,delivering=false,deliveryStep=0,deliveryJob,mainLog='';
  const redact=value=>value.replace(/token=[^\s]+/g,'token=[redacted]');
  const record=(name,data={})=>{checks.push({name,...data}); console.log('PASS:',name)};
  const send=(res,model,delta,finish)=>{res.setHeader('Content-Type','text/event-stream');for(const[d,f]of[[delta,null],[{},finish]])res.write('data: '+JSON.stringify({id:'strugend-e2e',object:'chat.completion.chunk',created:Math.floor(Date.now()/1000),model,choices:[{index:0,delta:d,finish_reason:f}]})+'\n\n');res.end('data: [DONE]\n\n')};
- const toolResult=body=>{const message=[...body.messages].reverse().find(x=>x.role==='tool');assert(message,'Missing tool result');const content=typeof message.content==='string'?message.content:message.content.filter(x=>x.type==='text').map(x=>x.text).join('\n');return JSON.parse(content.split('\n')[0])};
- const questions={evidence:{type:'noul',instructions:'Does the supplied test evidence show a saved draft?'}};
+ const toolResult=body=>{const message=[...body.messages].reverse().find(x=>x.role==='tool');assert(message,'Missing tool result');const content=typeof message.content==='string'?message.content:message.content.filter(x=>x.type==='text').map(x=>x.text).join('\n');try{return JSON.parse(content)}catch{return JSON.parse(content.split('\n')[0])}};
+ const review={intent:'review_evidence',goal:'Verify the changed software behavior.',evidence:'The build exited with code zero, but no behavior test has run.'};
  const server=http.createServer(async(req,res)=>{
   if(req.method==='POST'){
    let body;
@@ -39,20 +39,22 @@ const OUT = fs.mkdtempSync(path.join(evidenceRoot, 'packaged-' + process.platfor
     }
     if(req.url.endsWith('/chat/completions')){
      if(!body.tools){send(res,body.model,{content:JSON.stringify(body.messages).includes('whether optional')?'Optional service check':'Workspace verification'},'stop');return}
-     assert(body.tools.some(x=>x.function?.name==='decision_check'));
+     const system=JSON.stringify(body.messages.filter(x=>x.role==='system'));assert(!/DeepSeek Harness|powered by the deepseek|Current DSH file policy/i.test(system),'Received branded system prompt contains upstream identity');
+     assert.equal(body.tools.some(x=>x.function?.name==='decision_check'),!probing);
+     assert(!body.tools.some(x=>/video/i.test(x.function?.name)));
      assert(!body.tools.some(x=>x.function?.name==='memory_graph'));
      assert(body.tools.some(x=>x.function?.name==='deliver_project'));
      assert(body.tools.some(x=>x.function?.name==='crawl_website'));
      if(backgroundProbe){
+      if(backgroundStep++===0){const name=process.platform==='win32'?'pwsh':'bash';send(res,body.model,{role:'assistant',tool_calls:[{index:0,id:'background-proof',type:'function',function:{name,arguments:JSON.stringify({command:'echo build-observation',description:'Produce observed output for optional background review'})}}]},'tool_calls');return}
       await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('Core waited for auxiliary inference')),5000);waitingForDecision=()=>{clearTimeout(timer);resolve()};if(serviceCalls.includes('Background held'))waitingForDecision()});
       assert(heldDecision&&!heldDecision.destroyed&&!heldDecision.writableEnded,'Core waited until auxiliary inference stopped');
       send(res,body.model,{content:'Core completed while Decision was still pending.'},'stop');return;
      }
      if(probing){
-      let name,args;
-      if(probeStep===0){name='decision_check';args={state:'No keys are configured.',questions}}
-      else{assert.equal(toolResult(body).available,false);send(res,body.model,{content:'Core remains available without optional services.'},'stop');return}
-      probeStep++;send(res,body.model,{role:'assistant',tool_calls:[{index:0,id:'probe-'+probeStep,type:'function',function:{name,arguments:JSON.stringify(args)}}]},'tool_calls');return;
+      if(probeStep++===0){send(res,body.model,{role:'assistant',tool_calls:[{index:0,id:'base-runtime',type:'function',function:{name:'load_workspace_dependencies',arguments:'{}'}}]},'tool_calls');return}
+      const dependencies=toolResult(body);assert.equal(dependencies.documents.state,'absent');assert.equal(dependencies.python,undefined);assert(fs.existsSync(dependencies.node));assert(fs.existsSync(dependencies.pnpm));
+      send(res,body.model,{content:'Core remains available without optional services.'},'stop');return;
      }
      if(delivering){
       let name='deliver_project',args;
@@ -63,8 +65,8 @@ const OUT = fs.mkdtempSync(path.join(evidenceRoot, 'packaged-' + process.platfor
       deliveryStep++;send(res,body.model,{role:'assistant',tool_calls:[{index:0,id:'delivery-'+deliveryStep,type:'function',function:{name,arguments:JSON.stringify(args)}}]},'tool_calls');return;
      }
      let name='desktop_browser',args;
-     if(step===0){name='decision_check';args={state:'The local form reported Saved: draft.',questions}}
-     else if(step===1){assert.equal(toolResult(body).answers.evidence.noul,0.94);args={action:'open',url:base+'form'}}
+     if(step===0){name='decision_check';args=review}
+     else if(step===1){assert.equal(toolResult(body).answers.review.choice,'check_behavior');args={action:'open',url:base+'form'}}
      else if(step===5){const seen=toolResult(body);assert.equal(seen.engine,'Spider (Rust)');assert(seen.pages.some(p=>p.title==='Draft editor'&&p.text.includes('Local verification')));record('Packaged Rust crawler reads the local page through its isolated worker');send(res,body.model,{content:finalCount++===0?'Workspace verification passed.':'Final decision review complete.'},'stop');return}
      else{
       const seen=toolResult(body);assert.equal(seen.state.error,undefined);
@@ -104,9 +106,14 @@ const OUT = fs.mkdtempSync(path.join(evidenceRoot, 'packaged-' + process.platfor
  }
  async function settings(){await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Intelligence',exact:true}).click();await page.getByLabel('Decision API key').waitFor()}
  async function closeSettings(){await page.keyboard.press('Escape');await page.locator('[contenteditable="true"]').first().waitFor()}
- const noVendor=async()=>{const text=await page.locator('body').innerText();assert(!/deepseek|\bdsh\b/i.test(text),'Visible vendor name: '+text.match(/.{0,50}(deepseek|\bdsh\b).{0,50}/i)?.[0])};
+ const noVendor=async()=>{const text=await page.locator('body').innerText();assert(!/DeepSeek Harness|\bdsh\b|@deepseek-ai/i.test(text),'Visible upstream branding: '+text.match(/.{0,50}(DeepSeek Harness|\bdsh\b|@deepseek-ai).{0,50}/i)?.[0])};
  try{
-  const started=await launch();await page.getByRole('button',{name:'Continue',exact:true}).click({timeout:60000});await page.getByRole('dialog').waitFor({state:'hidden'});
+  const started=await launch();await page.getByRole('button',{name:'Continue',exact:true}).click({timeout:60000});
+  const initialComponents=await page.evaluate(async()=>{const response=await fetch('/api/strugend/components');return response.json()});
+  if(!initialComponents.setupComplete)await page.getByRole('button',{name:'Skip for now',exact:true}).last().click({timeout:60000});
+  await page.getByRole('dialog').waitFor({state:'hidden'});
+  const componentsBefore=await page.evaluate(async()=>{const response=await fetch('/api/strugend/components');return response.json()});
+  assert.equal(componentsBefore.setupComplete,true);assert(componentsBefore.components.every(x=>x.state==='absent'||x.state==='incompatible'));record('Fresh base opens with optional components absent and persists Skip');
   record('Cold launch reaches Strugend onboarding',{elapsedMs:Date.now()-started});
   await app.evaluate(({dialog},folder)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[folder]})},workspace);
   await page.getByRole('button',{name:'Choose workspace',exact:true}).click();
@@ -117,13 +124,14 @@ const OUT = fs.mkdtempSync(path.join(evidenceRoot, 'packaged-' + process.platfor
   await noVendor();assert.equal(await page.locator('[data-agent-os-browser]').count(),0);
   await page.screenshot({path:path.join(OUT,'empty-chat.png')});
   record('Minimal empty chat hides tools until needed and has no vendor labels');
+  const disabledVideo=await page.evaluate(async()=>{try{await window.agentOS.request({type:'media.import'});return ''}catch(error){return String(error)}});assert.match(disabledVideo,/coming soon/i);record('Video studio is unavailable through the native bridge as well as agent tools');
   const native=await app.evaluate(({app,nativeImage})=>{const image=nativeImage.createFromPath(process.resourcesPath+'/icon.png');return {name:app.getName(),empty:image.isEmpty(),size:image.getSize()}});
   assert.equal(native.empty,false);assert.deepEqual(native.size,{width:1024,height:1024});
   record('New desktop icon decodes; internal profile identity remains stable',{applicationName:native.name,size:native.size});
   await page.locator('[contenteditable="true"]').first().fill('Check whether optional Decision is configured; continue with Core if missing.');
   await page.getByRole('button',{name:'Send message',exact:true}).click();
   await page.getByText('Core remains available without optional services.',{exact:true}).waitFor({timeout:60000});
-  assert.equal(probeStep,1);assert.deepEqual(serviceCalls,[]);record('Missing Decision returns an unavailable result without network calls; graph tool is absent');
+  assert.equal(probeStep,2);assert.deepEqual(serviceCalls,[]);record('Absent Decision is omitted from Core tools and context; graph and video tools are absent');
   probing=false;await page.getByRole('button',{name:'New chat',exact:true}).last().click();await page.locator('[contenteditable="true"]').first().waitFor();
   await settings();
   for(const [role,value] of [['Decision','synthetic-decision-key']]){
@@ -147,9 +155,16 @@ const OUT = fs.mkdtempSync(path.join(evidenceRoot, 'packaged-' + process.platfor
   await page.screenshot({path:path.join(OUT,'chat-after-action.png')});
   await noVendor();record('Real agent loop operates the visible sidebar form after focus moves the button');
   await page.getByText('Workspace verification',{exact:true}).first().waitFor();
-  await closeApp();await launch();
-  await page.getByText('Workspace verification',{exact:true}).first().waitFor({timeout:60000});await page.getByText('Workspace verification',{exact:true}).first().click();
-  await page.getByText('Workspace verification passed.',{exact:true}).waitFor();
+  await closeApp();
+  const resources=process.platform==='darwin'?path.resolve(path.dirname(executable),'../Resources'):path.join(path.dirname(executable),'resources');
+  const catalog=JSON.parse(fs.readFileSync(path.join(resources,'runtime','component-catalog.json'),'utf8'));
+  const decisionPack=catalog.components.find(x=>x.id==='decision');assert(decisionPack);
+  const staged=process.env.LAYA_COMPONENT_ROOT||path.join(APP,'.desktop-build','targets',`${process.platform==='darwin'?'mac':'win'}-${process.arch}`,'components','decision');
+  const installedPack=path.join(home,'strugend-components','decision',decisionPack.version);
+  fs.mkdirSync(path.dirname(installedPack),{recursive:true});fs.cpSync(staged,installedPack,{recursive:true,dereference:true});
+  fs.writeFileSync(path.join(installedPack,'.installed.json'),JSON.stringify({sha256:decisionPack.sha256,version:decisionPack.version}));
+  await launch();
+  await page.getByText('Workspace verification passed.',{exact:true}).waitFor({timeout:60000});
   await page.waitForFunction(expected=>document.querySelector('[data-agent-os-browser] input')?.value===expected,base+'form');
   await settings();assert.equal(await page.getByLabel('Decision API key').getAttribute('placeholder'),'Configured — enter a new value to replace');
   record('Restart retains chat, browser URL and encrypted Decision key');
@@ -171,7 +186,7 @@ const OUT = fs.mkdtempSync(path.join(evidenceRoot, 'packaged-' + process.platfor
   decisionFails=true;await page.getByLabel('Decision runtime').selectOption('auto');
   await page.getByLabel('Decision API key').locator('xpath=ancestor::form').getByRole('button',{name:'Test connection',exact:true}).click();
   await page.getByRole('status').getByText('Connection verified',{exact:true}).waitFor({timeout:90000});
-  assert.equal(serviceCalls.length,localCalls+1);record('Unavailable remote Decision automatically falls back to the bundled model');
+  assert.equal(serviceCalls.length,localCalls+1);record('Unavailable remote Decision automatically falls back to the installed optional model');
   } else {assert.equal(runtime.resident,false);record('Memory admission keeps local weights unloaded',{reason:runtime.reason})}
   await page.getByLabel('Decision runtime').selectOption('remote');
   decisionFails=false;

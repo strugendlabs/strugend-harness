@@ -20,6 +20,8 @@ kind: "package-reference"
 - [已知限制与延期工作](#known-limitations-and-deferred-work)
 - [开发备注](#dev-note)
 
+Strugend 构建保留 56px 顶栏，不占用左侧导航列。历史抽屉覆盖工作区，不改变对话和右面板宽度。右面板仍支持原有的尺寸调整、全屏和键盘操作。
+
 -----
 
 <a id="use-this-package"></a>

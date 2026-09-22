@@ -1,5 +1,5 @@
 /** Installs Agent OS capabilities behind the owned desktop's narrow IPC surface. */
-import { app, clipboard, dialog, ipcMain, safeStorage, shell, type BrowserWindow, type IpcMainInvokeEvent } from 'electron'
+import { app, clipboard, ipcMain, safeStorage, shell, type BrowserWindow, type IpcMainInvokeEvent } from 'electron'
 import { extname, join } from 'node:path'
 import { cpSync, existsSync, mkdirSync, readdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
@@ -63,17 +63,9 @@ export class AgentOsDesktop {
           return openLocation(command, shell)
         case 'media.list':
           return this.media.list()
-        case 'media.import': {
-          const target = window()
-          if (target === undefined) throw new Error('Open the application window.')
-          const selected = await dialog.showOpenDialog(target, {
-            properties: ['openFile', 'multiSelections'],
-            filters: [{ name: 'Videos', extensions: ['mp4', 'mov', 'webm', 'mkv', 'm4v'] }],
-          })
-          return selected.canceled ? this.media.list() : this.media.import(selected.filePaths)
-        }
+        case 'media.import':
         case 'media.edit':
-          return this.media.edit(command.edit)
+          throw new Error('Video studio is coming soon.')
         case 'media.recipe':
           return this.media.recipe(command.assetId)
         case 'media.cancel':
@@ -177,7 +169,7 @@ export class AgentOsDesktop {
     )
       return { path: this.store.saveSkill(request.id, request.name, request.instructions) }
     if (request.method === 'media' && request.edit !== undefined)
-      return this.media.edit(request.edit, request.workspace, signal)
+      throw new Error('Video studio is coming soon.')
     if (request.method === 'media-list') return this.media.list()
     if (request.method === 'browser' && typeof request.sessionId === 'string' && request.command !== undefined) {
       if (request.command.action === 'upload') {

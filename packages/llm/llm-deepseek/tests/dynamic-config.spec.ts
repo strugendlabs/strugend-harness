@@ -128,6 +128,19 @@ async function boot(dir: string, config: object): Promise<Harness> {
   return { ctx, settingsFiber }
 }
 
+it.each(['chat-completions', 'messages'])('checks %s credentials before admission without a provider request', async (protocol) => {
+  const ref = credentialRef('PREFLIGHT_DEEPSEEK_KEY')
+  vi.stubEnv(ref, undefined)
+  const server = await mockServer([])
+  const { ctx } = await boot(await home(), { protocol, apiKeyEnv: ref, baseURL: server.url })
+  await expect(ctx.llm.validateConnection('deepseek-official', 'deepseek-flash')).rejects.toMatchObject({ code: 'MISSING_CREDENTIAL' })
+  await ctx.credentials.set(ref, 'synthetic-key')
+  await expect(ctx.llm.validateConnection('deepseek-official', 'deepseek-flash')).resolves.toBeUndefined()
+  await ctx.credentials.set(ref, 'invalid\nkey')
+  await expect(ctx.llm.validateConnection('deepseek-official', 'deepseek-flash')).rejects.toMatchObject({ code: INVALID_CREDENTIAL_CODE })
+  expect(server.requests).toHaveLength(0)
+})
+
 function prompt(ctx: Context) {
   return assemble(ctx, { model: 'deepseek-v4-flash', messages: [] })
 }

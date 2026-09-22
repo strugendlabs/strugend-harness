@@ -29,7 +29,7 @@ function generatePassword(): string {
  * @returns The decorative Strugend initial.
  */
 export function AgentOsMark({ size, className, t }: { size: number; className?: string | undefined } & PropsLocale<'workspace'>): ReactNode {
-  return <span className={className} style={{ fontFamily: 'Georgia, serif', fontSize: size, lineHeight: 1 }} aria-hidden="true">{t('agentos.initial')}</span>
+  return <span className={className} style={{ fontSize: size, fontWeight: 750, lineHeight: 1, color: 'var(--dsw-alias-state-business-primary)' }} aria-hidden="true">{t('agentos.initial')}</span>
 }
 
 /**
@@ -279,12 +279,11 @@ export function AgentOsWorkspace(props: Props): ReactNode {
             </button>
             <button
               type="button"
-              disabled={active === undefined}
-              title={active === undefined ? t('agentos.videoWorkspace') : undefined}
-              onClick={props.openVideoStudio}
+              disabled
+              title={t('agentos.comingSoon')}
             >
               <span aria-hidden="true">▷</span>
-              {t('agentos.video')}
+              {t('agentos.video')}<small>{t('agentos.comingSoon')}</small>
             </button>
           </nav>
           <section className={css.organization} aria-label={t('agentos.groups')}>

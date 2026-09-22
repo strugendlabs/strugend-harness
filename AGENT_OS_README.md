@@ -1,6 +1,6 @@
 # Strugend Harness for macOS
 
-Strugend Harness is a local Electron assistant with an agent-controlled sidebar browser, nested chat groups, video editing, recorded skills, a password vault, and personal memory. It uses the upstream Harness runtime; internal package names and existing profile paths remain stable. The initial Windows and macOS distribution is a BYOK test preview; hosted subscriptions and billing are deferred. See the [preview installation notes](apps/desktop/PREVIEW.md).
+Strugend Harness is a local Electron assistant with an agent-controlled sidebar browser, nested chat groups, recorded skills, a password vault, and personal memory. It uses the upstream Harness runtime; internal package names and existing profile paths remain stable. The initial Windows and macOS distribution is a BYOK test preview; hosted subscriptions and billing are deferred. See the [preview installation notes](apps/desktop/PREVIEW.md).
 
 ## Open this build
 
@@ -18,17 +18,17 @@ pnpm run agent-os:start
 The development command uses a separate development profile under `apps/desktop/.desktop-build/development/`. The Finder launcher uses `~/Library/Application Support/Agent OS/harness/`. They do not share settings.
 
 1. Choose a workspace folder.
-2. Open Settings → Intelligence and enter the Core API key.
-3. Decision defaults to background Observe mode. Automatic uses an optional Impossibl key or bundled Laya when memory allows. Connect GitHub and Vercel when publishing websites.
-4. Describe a task, use a recorded skill, or open Video studio.
+2. Choose a provider in first-run setup or Settings → Connections, enter your own key, and select its model. Setup can be skipped; a missing connection preserves the draft and offers Connect model before a turn starts.
+3. Optional tools offers separate Laya and Documents downloads. Skip either and install it later from Settings. Laya requires at least 8 GiB RAM and 3 GiB available memory. Connect GitHub and Vercel when publishing websites.
+4. Describe a task or use a recorded skill. History opens projects, groups and previous tasks; tools appear beside the conversation when needed.
 
 ## Intelligence services
 
-Core plans, writes, codes, sees screenshots and executes tools through the selected provider. Additional AI providers are configurable in Intelligence. Optional Decision checks run concurrently; default Observe records them without changing Core context. Assist can add fresh, confident advice already available. Local inference uses one CPU thread, unloads when idle, and stays disabled below 8 GiB RAM. Four-GB machines use optional remote checks or Core alone. See the [architecture and qualification limits](STRUGEND_PLAN.md); tests and observed receipts remain authoritative.
+Core plans, writes, codes and executes tools through the selected provider. Visual inspection uses that same model when it declares image support; choosing another provider does not require a separate default-provider key. Optional Laya reviews run concurrently after edits, execution and repeated failures. The harness compiles the short `intent`, `goal`, `evidence` and optional `candidates` fields into the provider format. Low-confidence and insufficient-evidence responses remain inconclusive. Review rows show the actual suggestion and elapsed time; they do not claim that a task improved.
 
-Intelligence settings keep credentials write-only. Core follows its provider's credential reference; optional remote Decision resolves `IMPOSSIBL_API_KEY`; delivery resolves `STRUGEND_GITHUB_TOKEN` and `STRUGEND_VERCEL_TOKEN`. Test connection verifies the selected runtime or account. Graph memory is disabled and marked Coming soon: no graph tool or requests are registered. Local `soul.md` remains available.
+Background advice is eligible for model context only when the exact model revision and review intent have recorded qualification evidence. The release qualification manifest currently has no enabled intents. Core never waits for background reviews. The [architecture and qualification limits](STRUGEND_PLAN.md) describe memory admission and useful-advice checks.
 
-`deliver_project` starts a task-owned background job. A website recipe requires a clean committed project, build and verification commands, a new repository name and a deployment target. It creates a private GitHub repository and deploys the checked commit's files to Vercel; IDs persist for recovery. An app recipe runs the appropriate build and checks actual distributables with hashes. Missing credentials pause delivery after local checks and can be supplied through settings. Inspect the final job receipt and live sidebar page before reporting success. See the [implementation plan](STRUGEND_PLAN.md).
+Connections keep credentials write-only. Provider keys belong to their own provider editor; optional remote Decision resolves `IMPOSSIBL_API_KEY`; delivery resolves `STRUGEND_GITHUB_TOKEN` and `STRUGEND_VERCEL_TOKEN`. Decision and delivery connection tests report actual responses separately from saved-key metadata. Graph memory is Coming soon with no registered graph tool or requests; local `soul.md` remains available.
 
 ## Full access and autonomous work
 
@@ -50,31 +50,9 @@ Desktop workflow instructions direct the agent to open local development servers
 
 The native dependency is pinned to `@spider-rs/spider-rs@0.0.157`, whose published package declares its platform binaries. Version 0.0.163 does not declare the required native package and failed the installation smoke test. The build is qualified on macOS arm64; other platforms need their own runtime checks.
 
-## Video editing and social posting
+## Video studio
 
-Import videos in **Video studio**, add clips to the sequence, adjust their in/out times, choose portrait, square, or landscape, and choose cropping or letterboxing. Optional captions use one cue per line, for example:
-
-```text
-0 - 3 | Meet our new product
-3 - 6.5 | Available today
-```
-
-Export produces an actual H.264/AAC MP4, a JSON edit recipe, and a playable library item. Original footage remains unchanged. **Reopen this edit** restores an export's recipe. The agent can also use `edit_video` to replace audio with a workspace music file. Unsaved changes to the editor are currently held in the open tab; export before closing it.
-
-Example task:
-
-> Use agent-os-video-social. Make a square video from my imported footage, trim the first
-> clip to five seconds, add “Available today”, and prepare a LinkedIn post with it.
-
-The LinkedIn and Instagram buttons open their websites in the same native browser used by the agent. Sign in there, or fill a saved login from Vault. The agent uploads the actual export with `desktop_browser`, prepares the caption, and can submit when the request includes publishing. The workflow requires a visible confirmation or permalink before reporting publication. Authentication, CAPTCHA, account restrictions, and site changes may require user takeover. No live social account was used during this build's testing.
-
-FFmpeg and ffprobe must be installed locally:
-
-```sh
-brew install ffmpeg
-```
-
-The renderer uses Sharp for caption images, so it does not depend on FFmpeg having libass/subtitles support. Executable overrides are `AGENT_OS_FFMPEG` and `AGENT_OS_FFPROBE`; both require absolute paths. Video generation from a text prompt, speech generation, and automatic transcription require additional provider integrations and are not included.
+Video studio is marked Coming soon. Import, editing and export commands are disabled, and no video-editing tool is advertised to the agent. Existing media files and edit recipes are preserved. The visible browser remains available for user-authorized social website tasks.
 
 ## Groups, queues, skills, and memory
 
@@ -160,4 +138,4 @@ Do not use upstream publishing scripts for Strugend Harness. A distribution need
 - `packages/client/ui-sidebar-browser`: native browser carrier and Video studio.
 - `apps/desktop/resources/agent-os-skills`: bundled workflow instructions.
 
-Browser website renderers receive no Agent OS API or Node access. The owned application renderer gets a narrow preload API. The model gets registered Harness tools, with the session/workspace owner supplied by the runtime. Screenshots, page content, and tool results used for tasks may be sent to DeepSeek and retained in local conversation logs. This developer build has not undergone an independent security audit.
+Browser website renderers receive no Agent OS API or Node access. The owned application renderer gets a narrow preload API. The model gets registered Harness tools, with the session/workspace owner supplied by the runtime. Screenshots, page content, and tool results used for tasks may be sent to the selected model provider and retained in local conversation logs. This developer build has not undergone an independent security audit.

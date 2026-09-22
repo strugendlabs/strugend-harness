@@ -20,6 +20,8 @@ This package lets web-client features expose editable preferences backed by the 
 - [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
 - [Dev Note](#dev-note)
 
+Features can emit `settings/open` with a registered section ID to request navigation. The Settings shell owns visibility and consumes this request through its framework-bound source; the request does not alter persisted preferences.
+
 -----
 
 <a id="use-this-package"></a>

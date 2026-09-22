@@ -385,3 +385,8 @@
   font-size: 12px;
   line-height: 15px;
 }
+
+.authorLabel { text-transform: uppercase; letter-spacing: .12em; font-size: 11px; line-height: 18px; color: var(--dsw-alias-label-tertiary); }
+:global([data-strugend]) .userRow, :global([data-strugend]) .userStack { align-items: flex-start; }
+:global([data-strugend]) .userStack { max-width: 100%; gap: 6px; }
+:global([data-strugend]) .bubble { padding: 0; background: transparent; border-radius: 0; font-size: calc(var(--dsh-content-font-size, 14px) + 2px); }

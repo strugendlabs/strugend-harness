@@ -16,7 +16,7 @@ $expected = Get-Content (Join-Path $PSScriptRoot 'expected/windows-installer.jso
 $localizedCopy = @{ ENGLISH = @{}; SIMPCHINESE = @{} }
 Get-Content (Join-Path $PSScriptRoot '../installer/strings.nsh') -Encoding UTF8 | ForEach-Object {
     if ($_ -match '^LangString (INSTALLER_\w+) \$\{LANG_(ENGLISH|SIMPCHINESE)\} "(.*)"$') {
-        $localizedCopy[$Matches[2]][$Matches[1]] = $Matches[3]
+        $localizedCopy[$Matches[2]][$Matches[1]] = $Matches[3].Replace('${STRUGEND_DECISION_DOWNLOAD_MIB}', '~600').Replace('$\r$\n', "`r`n")
     }
 }
 function Wait-Control([Diagnostics.Process]$Process, [string]$Text, [switch]$Dialog) {
@@ -132,6 +132,8 @@ function Run-Silent([string]$Arguments, [int]$Code) {
 }
 try {
     $process = Start-Setup light
+    $decisionChoice = Wait-Control $process $copy.INSTALLER_DECISION
+    if ([InstallerCapture]::SendMessage($decisionChoice, 0xF0, [IntPtr]::Zero, [IntPtr]::Zero).ToInt32() -ne 0) { throw 'Optional decision download must start unchecked' }
     $results.Add('welcome-presented-on-first-show')
     $window = [InstallerCapture]::Find($process.Id)
     [void][InstallerCapture]::Save($window, (Join-Path $OutputDirectory 'light-welcome.png'))
@@ -151,6 +153,9 @@ try {
     $bounds = [InstallerCapture]::Bounds($window)
     Click-Control $process $copy.INSTALLER_INSTALL
     Finish-Setup $process $false light $bounds
+    $choice = Get-Content (Join-Path $installPath 'resources/runtime/component-choice.json') -Raw | ConvertFrom-Json
+    if ($choice.decision -ne 'skip') { throw 'Skipping optional download was not preserved' }
+    $results.Add('optional-decision-download-is-unchecked-and-skip-is-durable')
     if (-not (Test-Path -LiteralPath $appPath) -or (Test-Path -LiteralPath (Join-Path $installPath 'launched.txt'))) { throw 'Unchecked launch behavior failed' }
     $results.Add('enter-validates-current-path-and-unchecked-launch')
     $results.Add('completion-preserves-window-position')
@@ -158,6 +163,7 @@ try {
     $results.Add('successful-install-paints-100-before-finish')
 
     $process = Start-Setup dark ''
+    Click-Control $process $copy.INSTALLER_DECISION
     Click-Control $process $copy.INSTALLER_CHOOSE_PATH
     $edit = Wait-Control $process $installPath
     [void][InstallerCapture]::SendMessage($edit, 0xC, [IntPtr]::Zero, ($installPath + '\\'))
@@ -165,6 +171,9 @@ try {
     $bounds = [InstallerCapture]::Bounds([InstallerCapture]::Find($process.Id))
     Click-Control $process $copy.INSTALLER_INSTALL
     Finish-Setup $process $true dark $bounds
+    $choice = Get-Content (Join-Path $installPath 'resources/runtime/component-choice.json') -Raw | ConvertFrom-Json
+    if ($choice.decision -ne 'install') { throw 'Optional download selection was not preserved' }
+    $results.Add('optional-decision-download-selection-is-durable')
     $registration = Get-ItemProperty ('HKCU:\Software\' + $RegistryKey)
     if ($registration.InstallLocation.TrimEnd('\') -ne $installPath -or -not (Test-Path -LiteralPath $appPath)) {
         throw 'Trailing separators changed the registered installation directory'

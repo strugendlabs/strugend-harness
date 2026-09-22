@@ -522,3 +522,15 @@
 :global([data-strugend]) .heroWorkspaceRow { margin-bottom:8px; }
 :global([data-strugend]) .headerBlank { border-bottom:1px solid var(--dsw-alias-border-l3); min-height:54px; }
 :global([data-strugend]) .body { --dsh-composer-card-max-width: min(calc(100% - 32px), 700px); }
+
+.minimalHeader { flex: none; height: 38px; padding: 4px 22px; box-sizing: border-box; display: flex; align-items: center; justify-content: flex-end; gap: 14px; }
+.minimalHeader .headerCorner { margin: 0; }
+.taskControls { position: relative; font-size: 12px; color: var(--dsw-alias-label-tertiary); }
+.taskControls summary { padding: 4px 8px; cursor: pointer; list-style: none; border-radius: 5px; }
+.taskControls summary::-webkit-details-marker { display: none; }
+.taskControls summary:hover { background: var(--dsw-alias-interactive-bg-hover); color: var(--dsw-alias-label-primary); }
+.taskControlsBody { position: absolute; top: calc(100% + 6px); right: 0; z-index: 16; min-width: 240px; display: flex; flex-direction: column; gap: 16px; padding: 16px; border: 1px solid var(--dsw-alias-border-l3); border-radius: 10px; background: var(--dsw-alias-bg-overlay); color: var(--dsw-alias-label-primary); }
+.taskViews { display: flex; gap: 8px; }
+.taskViews button { flex: 1; padding: 7px 12px; background: transparent; border: 1px solid var(--dsw-alias-border-l3); border-radius: 6px; color: inherit; cursor: pointer; }
+.taskViews button[aria-selected='true'] { border-color: var(--strugend-accent-border); color: var(--dsw-alias-state-business-primary); }
+:global([data-strugend]) .body { --dsh-composer-card-max-width: min(calc(100% - 48px), 760px); }

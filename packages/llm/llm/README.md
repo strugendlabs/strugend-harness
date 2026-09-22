@@ -31,6 +31,8 @@ Any composition that calls a model provider — an agent loop, a session-title g
 
 Choose this package whenever a plugin or composition needs to call a model: it is the only supported path into provider adapters, and it keeps one vocabulary across the loop, the session log, and every consumer. Do not reach for it when you need provider-specific wire behavior (that belongs in an adapter such as `dsh-llm-deepseek` or `dsh-llm-pi-ai`) or retry execution (that belongs in `dsh-llm-retry`).
 
+`ctx.llm.validateConnection(provider, model, signal?)` checks the selected adapter's local authentication requirements before accepting a prompt. It sends no model request and does not refresh OAuth. Adapters without authentication requirements inherit a no-op check. Success means local configuration is present, not that a remote service will accept it; each stream still resolves current credentials. `prepareCall()` resolves model metadata and binds dispatch, so it is not an authentication check.
+
 ### Minimal composition
 
 Mount the service and at least one adapter, then select the provider by name in every request:

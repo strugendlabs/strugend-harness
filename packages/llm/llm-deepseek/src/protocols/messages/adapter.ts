@@ -57,6 +57,11 @@ export class DeepSeekMessagesAdapter extends LlmAdapter {
     const connection = this.dependencies.connection()
     return Promise.resolve({ model: modelInfo(connection, provider, model), stream: options => this.generate(options, connection) })
   }
+  override async validateConnection(_provider: string, _model: string, signal?: AbortSignal): Promise<void> {
+    signal?.throwIfAborted()
+    await this.dependencies.apiKey(this.dependencies.connection())
+    signal?.throwIfAborted()
+  }
   stream(options: GenerateOptions): AsyncIterable<StreamChunk> {
     return this.generate(options, this.dependencies.connection())
   }

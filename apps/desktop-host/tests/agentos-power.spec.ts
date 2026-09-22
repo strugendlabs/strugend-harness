@@ -15,7 +15,7 @@ it('pins the desktop access, models, and foreground execution budgets in its pro
   await expect(JSON.stringify(agentOsProfilePatch('/desktop/credentials.js', '/workspace'), null, 2) + '\n')
     .toMatchFileSnapshot('./expected/agentos-profile.json')
   expect(agentOsProfilePatch('/desktop/credentials.js', '/workspace', 'read-only'))
-    .toContainEqual({ id: 'sandbox-policy', config: { mode: 'read-only', workspaceRoot: '/workspace' } })
+    .toContainEqual({ id: 'sandbox-policy', config: { mode: 'read-only', workspaceRoot: '/workspace', includeHarnessName: false } })
   expect(() => agentOsProfilePatch('/desktop/credentials.js', '/workspace', 'unknown')).toThrow('DSH_PERMISSION_MODE')
 })
 

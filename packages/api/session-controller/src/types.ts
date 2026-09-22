@@ -185,6 +185,8 @@ export const SESSION_SEARCH_SNIPPET_MAX_CODE_POINTS = 240
 
 declare module '@deepseek-ai/dsh-typert-protocol' {
   interface RemoteErrorDetailsMap {
+    /** Credential resolution refused the prompt before any turn was admitted. */
+    'session/model-not-connected': { readonly provider: string; readonly model: string; readonly reason: string }
     'session/model-unavailable': { readonly provider: string; readonly model: string }
     'session/conflict': {
       readonly sessionId: SessionId

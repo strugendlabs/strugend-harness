@@ -31,7 +31,7 @@ The host-only `decision-events` export declares logged auxiliary model requests 
 <details>
 <summary>Implementation internals — click to expand</summary>
 
-[`src/index.ts`](src/index.ts) owns the command and event unions. There is no runtime invariant companion because this package owns no mutable state or event dispatch. The [desktop tests](../../../apps/desktop/tests) cover operation validation and persistence; the packaged application smoke checks browser behavior through Electron.
+[`src/index.ts`](src/index.ts) owns the command and event unions. No runtime invariant companion is published because this package owns no mutable state or event dispatch. The [desktop tests](../../../apps/desktop/tests) cover operation validation and persistence; the packaged application smoke checks browser behavior through Electron.
 
 </details>
 

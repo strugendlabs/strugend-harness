@@ -738,3 +738,23 @@ describe('Web session model selection', () => {
     await ctx.fiber.dispose()
   })
 })
+
+it('refuses missing credentials before admitting a turn and accepts the unchanged draft after connection', async () => {
+  const { ctx, agent, sessionId } = await harness()
+  try {
+    const followup = vi.fn()
+    Object.assign(agent, { followup })
+    const remote = createSessionTestRemote(ctx, {
+      defaultModelSelection: () => ({ provider: 'deepseek-official', model: 'deepseek-chat' }), cwd: '/tmp',
+    })
+    const prepare = vi.spyOn(ctx.llm, 'validateConnection')
+    prepare.mockRejectedValueOnce(Object.assign(new Error('missing'), { code: 'MISSING_CREDENTIAL' }))
+    const draft = promptRequest({ sessionId, content: [{ type: 'text', text: 'Build the page' }], mode: 'queue' })
+    const before = agent.session.snapshotEvents().length
+    expect(await remote.prompt(draft)).toMatchObject({ ok: false, error: { code: 'session/model-not-connected', details: { reason: 'MISSING_CREDENTIAL' } } })
+    expect(followup).not.toHaveBeenCalled()
+    expect(agent.session.snapshotEvents()).toHaveLength(before)
+    expect(await remote.prompt(draft)).toMatchObject({ ok: true })
+    expect(followup).toHaveBeenCalledOnce()
+  } finally { await ctx.fiber.dispose(); vi.restoreAllMocks() }
+})

@@ -33,7 +33,7 @@
   config:
     suffix: Your working directory is {{cwd}}.
     prefix: >-
-      You are a coding agent powered by the {{model}} model.
+      You are a coding agent. Use the available tools to implement and verify the user’s request.
 
 - id: agent-instructions
   name: '@deepseek-ai/dsh-agent-instructions'

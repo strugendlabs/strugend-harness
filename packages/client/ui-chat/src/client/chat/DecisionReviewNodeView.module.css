@@ -1,0 +1,22 @@
+.review {
+  padding: 12px 0 12px 14px;
+  border-left: 2px solid var(--dsw-alias-border-l3);
+  color: var(--dsw-alias-label-secondary);
+  font-size: var(--dsh-content-font-size-secondary, 13px);
+}
+.heading { display: flex; align-items: center; gap: 8px; }
+.heading strong { font-weight: 550; color: var(--dsw-alias-label-primary); }
+.symbol { color: var(--dsw-alias-state-business-primary); }
+.heading button {
+  margin-left: auto;
+  background: none;
+  border: 0;
+  padding: 4px 6px;
+  color: var(--dsw-alias-label-secondary);
+  font: inherit;
+  cursor: pointer;
+}
+.heading button:hover { color: var(--dsw-alias-label-primary); }
+.heading button:focus-visible { outline: 2px solid var(--dsw-alias-state-business-primary); outline-offset: 2px; }
+.elapsed, .note { color: var(--dsw-alias-label-tertiary); }
+.review p { margin: 6px 0 0; line-height: 1.5; }

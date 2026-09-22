@@ -17,6 +17,7 @@ import type {} from '@deepseek-ai/dsh-client-connection'
 import type {} from '@deepseek-ai/dsh-host-webserver'
 import { resolveDshHome } from '@deepseek-ai/dsh-home-paths'
 import * as desktopOffice from './office.ts'
+import * as optionalComponents from './optional-components-plugin.ts'
 
 import { installDesktopUpdateTaskControl } from './update-tasks.ts'
 
@@ -26,12 +27,13 @@ async function main(): Promise<void> {
   const installAnchor = join(runtimeDir, 'node_modules', '@deepseek-ai', 'dsh', 'package.json')
   const profile = loadProfileDirectory('dsh', projectDir, installAnchor)
   const overlay = join(resolveDshHome(), 'agent-os-desktop.patch.yml')
+  const catalogPath = join(dirname(process.argv[4] ?? join(runtimeDir, '..', 'runtime', 'primary-runtime')), 'component-catalog.json')
   await mkdir(resolveDshHome(), { recursive: true, mode: 0o700 })
   try { await writeFile(join(resolveDshHome(), 'settings.yaml'), JSON.stringify({ 'ui-theme': { preference: 'dark', fontSize: 14 } }), { flag: 'wx', mode: 0o600 }) }
   catch (error) { if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error }
-  await writeFile(overlay, JSON.stringify(agentOsProfilePatch(
+  await writeFile(overlay, JSON.stringify([...agentOsProfilePatch(
     fileURLToPath(new URL('./agentos-credentials.js', import.meta.url)), projectDir, process.env.DSH_PERMISSION_MODE,
-  )), { mode: 0o600 })
+  ), { id: 'office-to-pdf', disabled: true }]), { mode: 0o600 })
   const application = runProfile({
     environment: loadLayeredEnv('dsh'),
     profile: 'desktop',
@@ -82,11 +84,16 @@ async function main(): Promise<void> {
   })
   process.once('disconnect', () => { void stop() })
   const { ctx } = await application
+  await ctx.plugin(optionalComponents, {
+    root: join(resolveDshHome(), 'strugend-components'),
+    catalog: catalogPath,
+    idleTimeoutMs: 60_000, minimumDecisionMemoryMiB: 8192,
+  })
   await ctx.plugin(agentOsWorkflow)
   await ctx.plugin(agentOsPower)
   await ctx.plugin(agentOsTools)
   await ctx.plugin(agentOsVision)
-  await ctx.plugin(strugendIntelligence, strugendIntelligence.Config({ localModelDir: join(dirname(process.argv[4] ?? join(runtimeDir, '..', 'runtime', 'primary-runtime')), 'laya') } as strugendIntelligence.Config))
+  await ctx.plugin(strugendIntelligence, strugendIntelligence.Config({ localModelDir: '' } as strugendIntelligence.Config))
   const skillRoot = await desktopRequest<string>({ method: 'skill-root' })
   await ctx.plugin(skillFilesystem, { providerName: 'agent-os-recordings', includeDefaultRoots: false, customSkillDirs: [skillRoot] })
   control.updateTasks = installDesktopUpdateTaskControl(ctx)

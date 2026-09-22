@@ -25,7 +25,7 @@ export type HeaderLeadingControlsProps =
  * @returns the two header controls, or null off macOS desktop.
  */
 export function HeaderLeadingControls({ toggleSidebar, startSession, t }: HeaderLeadingControlsProps) {
-  if (!isDarwinDesktop()) return null
+  if (process.env.DSH_CLIENT_TITLE === 'Strugend Harness' || !isDarwinDesktop()) return null
   return (
     <div className={css.controls}>
       <Tooltip label={t('toggle.open')} delayMs={500}>

@@ -52,6 +52,9 @@ export class DeepSeekAdapter extends LlmAdapter {
   override prepareCall(provider: string, model: string, signal?: AbortSignal): Promise<PreparedAdapterCall> {
     return this.implementation().prepareCall(provider, model, signal)
   }
+  override validateConnection(provider: string, model: string, signal?: AbortSignal): Promise<void> {
+    return this.implementation().validateConnection(provider, model, signal)
+  }
   stream(options: GenerateOptions): AsyncIterable<StreamChunk> {
     return this.implementation().stream(options)
   }

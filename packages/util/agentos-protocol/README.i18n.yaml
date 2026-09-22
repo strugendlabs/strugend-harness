@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/util/agentos-protocol/README.md
-README.md: bcc2b8a510a1d34bcca1ad3d089c7f7320bc2fd3
-README.zh.md: d6837a280fc13bae42f2886d2f22be8d639de0d0
+README.md: 02855edbe76baf787b4a60b7534ad7caffc735c9
+README.zh.md: a982c609844c07bca1345b37d50cca2129dcf0e1

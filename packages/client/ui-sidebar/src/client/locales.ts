@@ -2,6 +2,11 @@
 
 /** Simplified Chinese dictionary (the key-set source of truth). */
 export const zh = {
+  'history.title': '历史记录',
+  'history.close': '关闭历史记录',
+  'history.empty': '新会话',
+  'brand.name': 'Strugend',
+  'brand.mark': 'S',
   'session.new': '新会话',
   'session.new.label': '新建会话',
   'toggle.open': '打开侧边栏',
@@ -14,6 +19,11 @@ export type SidebarKey = keyof typeof zh
 
 /** English dictionary, checked complete against the zh key set. */
 export const en = {
+  'history.title': 'History',
+  'history.close': 'Close history',
+  'history.empty': 'New chat',
+  'brand.name': 'Strugend',
+  'brand.mark': 'S',
   'session.new': 'New chat',
   'session.new.label': 'New chat',
   'toggle.open': 'Open sidebar',

@@ -3,7 +3,8 @@ import type { GlobalStandardProps } from '@deepseek-ai/dsh-client-ui-slots'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { useEffect, useState } from 'react'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
+import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
+import { bindSnapshotSelector, makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
 import type { SessionListState } from '@deepseek-ai/dsh-api-session-controller/client'
 import { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { SettingsRootComponentProps } from '../src/client/shell-contract.ts'
@@ -68,6 +69,7 @@ function mount({
   let currentConnectionState = connectionState
   const listeners = new Set<() => void>()
   const connectionListeners = new Set<() => void>()
+  const settingsOpen = createSnapshotStore<{ sectionId: string; revision: number } | null>(null)
   const reconnect = vi.fn()
   const renderSlot = vi.fn(
     ((key: string, _owner: unknown, opts?: { only?: string }) => {
@@ -100,6 +102,7 @@ function mount({
     reconnect,
     openDesktopUpdate: () => {},
     useDesktopUpdate: select => select(desktopUpdate),
+    useSettingsOpen: bindSnapshotSelector(settingsOpen),
     t: makeTranslate(dictionary),
     useConnectionState: (select) => {
       const [, force] = useState(0)
@@ -139,7 +142,7 @@ function mount({
     desktopUpdate = next
     view.rerender(<SettingsRoot {...props} />)
   }
-  return { view, renderSlot, bump, listeners, reconnect, setConnectionState, setDesktopUpdate }
+  return { view, renderSlot, bump, listeners, reconnect, setConnectionState, setDesktopUpdate, settingsOpen }
 }
 
 function openPanel() {
@@ -455,4 +458,10 @@ describe('SettingsPanel navigation', () => {
     view.unmount()
     expect(listeners.size).toBe(0)
   })
+})
+
+it('opens model settings from a recovery request even with narrow navigation', () => {
+  const { view, settingsOpen } = mount({ wide: false, onboardingActive: false })
+  act(() => { settingsOpen.set({ sectionId: 'models', revision: 1 }) })
+  expect(view.getByTestId('section-models')).toBeTruthy()
 })

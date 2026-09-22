@@ -31,7 +31,7 @@ kind: "package-library"
 <details>
 <summary>实现细节 — 点击展开</summary>
 
-[`src/index.ts`](src/index.ts) 定义命令及事件联合类型。此包不拥有可变状态或事件分发，因此没有运行时不变量伴随模块。[桌面测试](../../../apps/desktop/tests) 覆盖操作验证和持久化；打包应用冒烟检查通过 Electron 验证浏览器行为。
+[`src/index.ts`](src/index.ts) 定义命令及事件联合类型。此包不拥有可变状态或事件分发，因此不发布运行时不变量伴随模块。[桌面测试](../../../apps/desktop/tests) 覆盖操作验证和持久化；打包应用冒烟检查通过 Electron 验证浏览器行为。
 
 </details>
 

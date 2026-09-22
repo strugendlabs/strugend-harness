@@ -36,7 +36,7 @@ function turnOf(node: ChatNode | undefined): number | undefined {
 
 /** Subscribe, apply Turn-process visibility, and dispatch one stable Context key. */
 export const ChatNodeSeat = memo(function ChatNodeSeat({
-  nodeKey, useChatNode, useChatNodeProcess, historyIncomplete, compactTranscript,
+  nodeKey, useChatNode, useChatNodeProcess, historyIncomplete, compactTranscript, showDiagnostics = true,
   cwd, openFile, openSkill, inspectCall, forkAt,
   loadImage, renderMessageImages, fileMentions, useStore, actions, renderSlot, t,
 }: ChatNodeSeatProps) {
@@ -104,6 +104,7 @@ export const ChatNodeSeat = memo(function ChatNodeSeat({
     ? null
     : {
       cwd,
+      showDiagnostics,
       openFile,
       openSkill,
       inspectCall,
@@ -113,10 +114,11 @@ export const ChatNodeSeat = memo(function ChatNodeSeat({
       fileMentions,
       turnProcess,
     }, [
-    node, cwd, openFile, openSkill, inspectCall, forkAt,
+    node, cwd, showDiagnostics, openFile, openSkill, inspectCall, forkAt,
     loadImage, renderMessageImages, fileMentions, turnProcess,
   ])
   if (routedNode === undefined || owner === null) return null
+  if (!showDiagnostics && (routedNode.kind === 'system-prompt' || routedNode.kind === 'context')) return null
   const turnData = turnDataOf(routedNode)
   // Runtime dispatch owns the correlation: every Node's discriminant is the
   // keyed-slot entry passed alongside that same Node. TypeScript does not

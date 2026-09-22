@@ -33,6 +33,8 @@ kind: "package-reference"
 
 ### 配置提供方路由
 
+连接验证先检查所选 profile 指定的密钥。没有 `apiKeyEnv` 的 profile 使用 pi-ai 的 `checkAuth()`，在不刷新 token 的情况下保留已存储 OAuth、环境认证和明确匿名的自定义路由。未知模型仍在准入前失败。远程授权仍在请求时检查。
+
 每个 profile 都可以设置 `retryPolicy`；省略时使用 normal mode、最多重试五次。`apiKeyEnv` 是按请求经 harness 凭据 seam 解析的凭据引用，因此配置文件绝不包含密钥；解析为空的引用会让请求以 `MISSING_CREDENTIAL` 失败。省略它会让路由保持已配置但无密钥（configured-but-keyless）状态，对已安装目录路由而言即交由 pi-ai 提供方原生的环境发现。
 
 ```yaml

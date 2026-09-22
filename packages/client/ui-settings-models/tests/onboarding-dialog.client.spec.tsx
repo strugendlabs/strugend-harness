@@ -7,6 +7,8 @@ import Schema from '@deepseek-ai/schemastery'
 import type { SettingsNamespaceView } from '@deepseek-ai/dsh-api-remotes/client'
 import type { JsonValue } from '@deepseek-ai/dsh-util-values'
 import { bindSnapshotSelector, RemoteError } from '@deepseek-ai/dsh-client-test-runtime'
+import { WelcomeNoticeStore } from '../src/client/welcome-store.ts'
+import { ProviderOnboardingDialog } from '../src/client/ProviderOnboardingDialog.tsx'
 import { DeepSeekOnboardingDialog } from '../src/client/DeepSeekOnboardingDialog.tsx'
 import type { DeepSeekOnboardingDialogProps } from '../src/client/DeepSeekOnboardingDialog.tsx'
 import { SettingsDescribeMirror } from '@deepseek-ai/dsh-client-ui-settings/src/client/settings-mirror.ts'
@@ -163,16 +165,59 @@ function harness(options: {
   }
 }
 
+function deferredSetup() {
+  const setupController = new WelcomeNoticeStore({
+    getSnapshot: () => ({ mode: 'memory', status: 'unavailable', value: undefined, base: {}, user: {}, revision: undefined, writable: false }),
+    subscribe: () => () => {}, set: async () => {}, unset: async () => {}, mutate: async () => {},
+  }, { field: 'providerSetupDeferredVersion', version: '1' })
+  return { setupController, useProviderSetup: bindSnapshotSelector(setupController.store) }
+}
+
 describe('DeepSeekOnboardingDialog', () => {
-  it('presents Core setup without upstream labels in Strugend builds', async () => {
-    vi.stubEnv('DSH_CLIENT_TITLE', 'Strugend Harness')
+  it('offers a provider choice and skip before asking for any credential', async () => {
     const h = harness()
-    render(<DeepSeekOnboardingDialog {...h.props} />)
+    const select = vi.fn(async () => {})
+    render(<ProviderOnboardingDialog {...h.props} {...deferredSetup()} models={async () => []} select={select} />)
     const dialog = await screen.findByRole('dialog')
-    expect(dialog.textContent).not.toMatch(/deepseek|\bdsh\b/iu)
-    expect(dialog.textContent).toContain('Core')
-    expect(screen.getByLabelText<HTMLInputElement>(en.keyInput).type).toBe('password')
+    expect(dialog.textContent).toContain(en.providerSetupTitle)
+    expect(screen.queryByLabelText(en.keyInput)).toBeNull()
+    fireEvent.click(screen.getByText(en.onboardingLater))
+    await waitFor(() => expect(h.complete).toHaveBeenCalledOnce())
+    expect(h.set).not.toHaveBeenCalled()
+    expect(select).not.toHaveBeenCalled()
   })
+
+  it('does not reopen provider setup when a deferred step remounts for a new chat', async () => {
+    const h = harness()
+    const setup = deferredSetup()
+    const props = { ...h.props, ...setup, models: async () => [], select: async () => {} }
+    const view = render(<ProviderOnboardingDialog {...props} />)
+    await screen.findByRole('dialog')
+    fireEvent.click(screen.getByText(en.onboardingLater))
+    await waitFor(() => expect(h.complete).toHaveBeenCalledOnce())
+    view.unmount()
+    h.complete.mockClear()
+    render(<ProviderOnboardingDialog {...props} />)
+    await waitFor(() => expect(h.complete).toHaveBeenCalledOnce())
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('keeps setup open after saving a key until the user chooses a primary model', async () => {
+    const h = harness()
+    const models = vi.fn(async () => [{ id: 'test-vision', name: 'Test model' }])
+    const select = vi.fn(async () => {})
+    render(<ProviderOnboardingDialog {...h.props} {...deferredSetup()} models={models} select={select} />)
+    await screen.findByRole('dialog')
+    fireEvent.change(screen.getByLabelText(en.provider), { target: { value: 'deepseek-official' } })
+    h.configure()
+    await act(async () => { await h.controller.load() })
+    expect(h.complete).not.toHaveBeenCalled()
+    await waitFor(() => { expect(screen.getByLabelText<HTMLInputElement>(en.modelId).value).toBe('test-vision') })
+    fireEvent.click(screen.getByText(en.providerUse))
+    await waitFor(() => expect(select).toHaveBeenCalledWith('deepseek-official', 'test-vision'))
+    expect(h.complete).toHaveBeenCalledOnce()
+  })
+
   it('renders when the shell root is absent', async () => {
     const h = harness()
     document.getElementById('root')!.remove()

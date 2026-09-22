@@ -13,6 +13,13 @@ it('omits development artifacts while preserving executable modules, assets and 
   const source = join(root, 'source')
   const output = join(root, 'output')
   const removed = [
+    '@deepseek-ai/libreoffice-kit-win32-x64/bin/libreoffice-kit.exe',
+    '@deepseek-ai/libreoffice-kit-win32-x64/sources/core-source.json',
+    '@deepseek-ai/libreoffice-kit-win32-x64/licenses/MPL-2.0.txt',
+    'onnxruntime-node/bin/napi-v6/win32/x64/onnxruntime.dll',
+    'onnxruntime-node-intel-mac/bin/napi-v6/darwin/x64/libonnxruntime.dylib',
+    '@receptron/laya/dist/index.js',
+    '@huggingface/tokenizers/dist/tokenizers.mjs',
     'example/index.d.ts', 'example/index.d.mts', 'example/index.d.cts',
     'example/index.js.map', 'example/index.mjs.map', 'example/index.cjs.map',
     'example/style.css.map', 'example/index.d.ts.map', 'example/index.d.mts.map',
@@ -46,9 +53,6 @@ it('omits development artifacts while preserving executable modules, assets and 
     '@koromix/koffi-win32-x64/win32_x64/koffi.node',
     '@mixmark-io/domino/lib/HTMLParser.js', '@mixmark-io/domino/lib/EntityParser.js',
     '@img/sharp-win32-x64/lib/libvips-42.dll',
-    '@deepseek-ai/libreoffice-kit-win32-x64/bin/libreoffice-kit.exe',
-    '@deepseek-ai/libreoffice-kit-win32-x64/sources/core-source.json',
-    '@deepseek-ai/libreoffice-kit-win32-x64/licenses/MPL-2.0.txt',
   ]
   try {
     const runtime = runtimeFixture(source)
@@ -89,11 +93,11 @@ it.each([
   ['linux', 'x64', 'linux-x64'],
   ['linux', 'arm64', 'wasm'],
   ['freebsd', 'x64', 'wasm'],
-] as const)('retains only the selected Office engine for %s/%s', (platform, arch, engine) => {
+] as const)('keeps every optional Office engine outside the core package for %s/%s', (platform, arch, engine) => {
   for (const candidate of ['linux-x64', 'darwin-arm64', 'wasm']) {
     const omitted = desktopRuntimeFileExclusion(
       `@deepseek-ai/libreoffice-kit-${candidate}/prebuilds.json`, { platform, arch }, engine,
     )
-    expect(omitted === undefined).toBe(candidate === engine)
+    expect(omitted).toBeDefined()
   }
 })

@@ -9,6 +9,9 @@
  * packages/client/AGENTS.md.
  */
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
+import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
+import { ComponentController } from './component-controller.ts'
+import { OptionalTools, OptionalToolsSetup, type OptionalToolsInjected } from './OptionalTools.tsx'
 import type { Context } from '@deepseek-ai/cordis'
 import type { RemoteHostFacts } from '@deepseek-ai/dsh-api-remotes/client'
 import type { ISessions } from '@deepseek-ai/dsh-api-session-controller/client'
@@ -90,6 +93,21 @@ export function apply(ctx: Context): void {
   ctx.slots.provideRoot({ hooks: { workspaces: workspaces.list } })
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'ui-workspace: dictionaries')
   if (desktopApi !== undefined) {
+    const components = new ComponentController((path, init) => fetch(path, init))
+    ctx.effect(() => () => { components.dispose() }, 'optional tools: status lifecycle')
+    const componentInjected = (): OptionalToolsInjected => ({
+      hooks: { components: components.store },
+      load: () => components.load(),
+      change: (id, action) => components.change(id, action),
+      setup: choice => components.setup(choice),
+    })
+    ctx.slots.inject('settings.section', () => ctx.slots.register({
+      name: 'settings.section', id: 'optional-tools', order: 15, locale: NS,
+      label: () => ctx.locale.bind(NS)('components.title'), inject: componentInjected,
+    }, OptionalTools))
+    ctx.slots.inject('settings.onboarding', () => ctx.slots.register({
+      name: 'settings.onboarding', id: 'optional-tools', order: 20, locale: NS, inject: componentInjected,
+    }, OptionalToolsSetup))
     ctx.slots.inject('sidebar.brand.name', () => ctx.slots.register({ name: 'sidebar.brand.name', locale: NS }, StrugendWordmark))
     ctx.slots.inject('sidebar.brand.mark', () => ctx.slots.register({ name: 'sidebar.brand.mark', locale: NS }, AgentOsMark))
     ctx.slots.inject('conversation.hero.brand.mark', () => ctx.slots.register({ name: 'conversation.hero.brand.mark', locale: NS }, AgentOsMark))

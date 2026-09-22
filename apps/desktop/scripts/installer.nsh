@@ -8,6 +8,10 @@
 !endif
 
 !macro customHeader
+  !if /FileExists "${INSTALLER_BUILD_DIR}\component-size.nsh"
+    !include "${INSTALLER_BUILD_DIR}\component-size.nsh"
+  !endif
+  !define /ifndef STRUGEND_DECISION_DOWNLOAD_MIB "~600"
   !define /ifndef INSTALLER_STRINGS_FILE "${INSTALLER_SOURCE_DIR}\strings.nsh"
   !include "${INSTALLER_STRINGS_FILE}"
   !ifndef BUILD_UNINSTALLER
@@ -163,6 +167,21 @@
   ${EndIf}
   !insertmacro InstallerPublishStage 4
   !insertmacro dshFinishDirectories
+  ${IfNot} ${isUpdated}
+    Push $1
+    CreateDirectory "$INSTDIR\resources\runtime"
+    FileOpen $1 "$INSTDIR\resources\runtime\component-choice.json" w
+    ${IfNot} ${Errors}
+      ${If} $InstallerDecisionChoice == ${BST_CHECKED}
+        FileWrite $1 '{$\"decision$\":$\"install$\"}'
+      ${Else}
+        FileWrite $1 '{$\"decision$\":$\"skip$\"}'
+      ${EndIf}
+      FileClose $1
+    ${EndIf}
+    ClearErrors
+    Pop $1
+  ${EndIf}
   ${If} $0 == 1
     SetErrors
   ${Else}

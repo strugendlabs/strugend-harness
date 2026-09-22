@@ -38,7 +38,7 @@ class FixtureCredentials extends CredentialProvider {
   deleteRecord(): never { throw new Error('Record API is outside this fixture.') }
 }
 
-it('logs unavailable optional services and removes its tools and prompt on disposal', async () => {
+it('omits absent optional tools and prompts and restores the original prompt on disposal', async () => {
   const ctx = new Context()
   try {
     await ctx.plugin(SystemPrompt, {})
@@ -94,9 +94,11 @@ it('refuses local model allocation on a 4 GB device even when Local mode is expl
     await ctx.plugin(connection)
     await ctx.plugin(intelligence, intelligence.Config({ decisionMode: 'local', localModelDir: '/fixture/model' } as intelligence.Config))
     const result = await ctx.tools.execute({ name: 'decision_check', arguments: {
-      state: 'The build exited zero.', questions: { built: { type: 'noul', instructions: 'Did the build pass?' } },
+      intent: 'review_evidence', goal: 'Build a working form.', evidence: 'The build exited zero.',
     }, callId: ToolCallId('low-memory'), signal: new AbortController().signal })
-    expect(JSON.stringify(result.content)).toContain('paused on this memory tier')
+    expect(result.isError).toBe(true)
+    expect(ctx.tools.get('decision_check')).toBeUndefined()
+    expect(renderPrompt(await ctx.systemPrompt.assemble())).not.toContain('Optional Decision')
     expect(evaluate).not.toHaveBeenCalled()
   } finally { await ctx.fiber.dispose(); vi.restoreAllMocks() }
 })
@@ -105,7 +107,7 @@ it('cools down a failed remote provider and immediately retries after its creden
   const ctx = new Context()
   const fetcher = vi.fn()
     .mockResolvedValueOnce(new Response('{}', { status: 503 }))
-    .mockResolvedValueOnce(Response.json({ model: 'convaiinnovations/laya-multilingual', answers: { built: { type: 'noul', noul: 0.99 } }, usage: { input_tokens: 8, output_tokens: 0 } }))
+    .mockResolvedValueOnce(Response.json({ model: 'convaiinnovations/laya-multilingual', answers: { review: { type: 'choice', choice: 'check_behavior', confidence: 0.99, probabilities: { check_behavior: 0.99, inspect_visual_result: 0.004, inspect_deliverable: 0.003, insufficient_evidence: 0.003 } } }, usage: { input_tokens: 8, output_tokens: 0 } }))
   vi.stubGlobal('fetch', fetcher)
   try {
     await ctx.plugin(SystemPrompt, {})
@@ -117,12 +119,12 @@ it('cools down a failed remote provider and immediately retries after its creden
     await ctx.credentials.set(ref, 'synthetic-first')
     await ctx.plugin(intelligence, intelligence.Config({} as intelligence.Config))
     const run = () => ctx.tools.execute({ name: 'decision_check', arguments: {
-      state: 'The build exited zero.', questions: { built: { type: 'noul', instructions: 'Did the build pass?' } },
+      intent: 'review_evidence', goal: 'Build a working form.', evidence: 'The build exited zero.',
     }, callId: ToolCallId('cooldown'), signal: new AbortController().signal })
     await run(); await run()
     expect(fetcher).toHaveBeenCalledTimes(1)
     await ctx.credentials.set(ref, 'synthetic-replacement')
-    ctx.emit('credentials/reference-updated', ref)
+    await ctx.parallel('credentials/reference-updated', ref)
     const result = await run()
     expect(fetcher).toHaveBeenCalledTimes(2)
     expect(JSON.stringify(result.content)).toContain('checked')

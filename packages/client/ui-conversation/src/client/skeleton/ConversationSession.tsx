@@ -67,6 +67,28 @@ export function ConversationSessionHeader({
   const session = useSession(s => s)
   const conversation = useConversation(s => s)
   const hideChrome = session.blank && conversationPhase(session, conversation) === 'blank'
+  if (process.env.DSH_CLIENT_TITLE === 'Strugend Harness') return (
+    <header className={css.minimalHeader}>
+      {!hideChrome && <details className={css.taskControls}>
+        <summary>{t('session.controls')}</summary>
+        <div className={css.taskControlsBody}>
+          <nav className={css.crumbs} aria-label={t('session.hierarchy')}>
+            {ancestry.map(summary => <button key={summary.id} type="button" className={css.crumb}
+              disabled={summary.id === sessionId} onClick={() => { open(summary.id) }}>{summary.displayTitle}</button>)}
+          </nav>
+          {renderSlot('conversation.session.header.actions', {})}
+          {renderSlot('conversation.session.header.utilities', {})}
+          {tabs.length > 1 && <div className={css.taskViews} role="tablist">
+            {tabs.map(view => <button key={view.id} type="button" role="tab" aria-selected={view.id === active?.id}
+              onClick={() => { selectView(view.id) }}>{view.label}</button>)}
+          </div>}
+        </div>
+      </details>}
+      <div className={css.headerCorner} data-conversation-header-corner="">
+        {renderSlot('conversation.session.header.corner', {})}
+      </div>
+    </header>
+  )
   return (
     <header className={clsx(css.header, hideChrome && css.headerBlank)}>
       <div className={css.titleRow}>

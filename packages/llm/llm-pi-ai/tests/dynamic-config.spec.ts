@@ -54,6 +54,24 @@ async function boot(
   return ctx
 }
 
+it('preflights only the selected named credential and preserves anonymous custom endpoints', async () => {
+  const ref = credentialRef('PREFLIGHT_PI_KEY')
+  vi.stubEnv(ref, undefined)
+  const server = await mockServer([])
+  const ctx = await boot(await home(), { providers: {
+    deepseek: { apiKeyEnv: ref, baseURL: server.url },
+    'local-llm': { api: 'openai-completions', baseURL: server.url, models: [{ id: 'local-model', contextWindow: 4096, maxTokens: 128 }] },
+  } })
+  await expect(ctx.llm.validateConnection('deepseek', 'deepseek-v4-flash')).rejects.toMatchObject({ code: 'MISSING_CREDENTIAL' })
+  await expect(ctx.llm.validateConnection('local-llm', 'local-model')).resolves.toBeUndefined()
+  await ctx.credentials.set(ref, 'synthetic-key')
+  await expect(ctx.llm.validateConnection('deepseek', 'deepseek-v4-flash')).resolves.toBeUndefined()
+  await expect(ctx.llm.validateConnection('deepseek', 'missing-model')).rejects.toMatchObject({ code: 'UNKNOWN_MODEL' })
+  await ctx.credentials.set(ref, 'invalid\nkey')
+  await expect(ctx.llm.validateConnection('deepseek', 'deepseek-v4-flash')).rejects.toMatchObject({ code: 'INVALID_CREDENTIAL' })
+  expect(server.requests).toHaveLength(0)
+})
+
 describe('login flows in a real composition', () => {
   it('offers a sign-in for a provider no route names, once the seam is mounted', async () => {
     const ctx = await boot(await home(), {}, { authorization: true })

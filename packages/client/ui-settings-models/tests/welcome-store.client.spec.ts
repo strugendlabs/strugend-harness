@@ -42,6 +42,7 @@ function acknowledgedNamespace(version: string, revision = 1) {
 function buildWelcome(
   api: { describe?: ReturnType<typeof vi.fn>; mutate?: ReturnType<typeof vi.fn> },
   persistence: 'host' | 'memory' = 'host',
+  acknowledgement?: { field: string; version: string },
 ) {
   const ctx = { remote: { settings: api } } as never
   const mirror = new SettingsDescribeMirror(ctx, persistence)
@@ -52,10 +53,28 @@ function buildWelcome(
     persistence,
     schemaService,
   )
-  return { mirror, controller: new WelcomeNoticeStore(scope) }
+  return { mirror, controller: new WelcomeNoticeStore(scope, acknowledgement) }
 }
 
 describe('WelcomeNoticeStore', () => {
+  it('persists provider deferral independently from welcome acknowledgement', async () => {
+    const field = 'providerSetupDeferredVersion'
+    const describe = vi.fn(async () => ok({ namespaces: [namespace({ welcomeNoticeVersion: WELCOME_NOTICE_VERSION })], writable: true }))
+    const mutate = vi.fn(async () => ok(namespace({ welcomeNoticeVersion: WELCOME_NOTICE_VERSION, [field]: '1' }, 1)))
+    const first = buildWelcome({ describe, mutate }, 'host', { field, version: '1' })
+    await first.mirror.ensure()
+    await first.controller.load()
+    expect(first.controller.store.getSnapshot().acknowledged).toBe(false)
+    await expect(first.controller.acknowledge()).resolves.toBe(true)
+    expect(mutate).toHaveBeenCalledWith('ui-onboarding', [{ op: 'set', path: [field], value: '1' }], 0)
+    first.controller.dispose()
+    const second = buildWelcome({ describe: vi.fn(async () => ok({ namespaces: [namespace({ [field]: '1' }, 1)], writable: true })) }, 'host', { field, version: '1' })
+    await second.mirror.ensure()
+    await second.controller.load()
+    expect(second.controller.store.getSnapshot().acknowledged).toBe(true)
+    second.controller.dispose()
+  })
+
   it('acknowledges in memory while Host settings persistence is disabled', async () => {
     const describeCall = vi.fn()
     const mutate = vi.fn()

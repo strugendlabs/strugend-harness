@@ -54,6 +54,27 @@ class ThrowingAdapter extends LlmAdapter {
   }
 }
 
+it('delegates readiness to the selected adapter without streaming, preserving no-auth adapters', async () => {
+  const ctx = new Context()
+  await ctx.plugin(LlmRuntime)
+  const checked: string[] = []
+  class ConnectedAdapter extends ScriptedAdapter {
+    override validateConnection(provider: string, model: string): Promise<void> {
+      checked.push(`${provider}/${model}`)
+      return Promise.reject(new LlmError('Connect the selected provider.', 'MISSING_CREDENTIAL'))
+    }
+  }
+  ctx.llm.registerAdapter(['anonymous'], new ThrowingAdapter(new Error('Must not stream')))
+  ctx.llm.registerAdapter(['connected'], new ConnectedAdapter([]))
+  try {
+    await expect(ctx.llm.validateConnection('anonymous', 'model')).resolves.toBeUndefined()
+    await expect(ctx.llm.validateConnection('connected', 'model')).rejects.toMatchObject({ code: 'MISSING_CREDENTIAL' })
+    expect(checked).toEqual(['connected/model'])
+    await expect(ctx.llm.validateConnection('unknown', 'model')).rejects.toMatchObject({ code: 'NO_ADAPTER' })
+    await expect(ctx.llm.validateConnection('anonymous', 'model', AbortSignal.abort(new Error('cancelled')))).rejects.toThrow('cancelled')
+  } finally { await ctx.fiber.dispose() }
+})
+
 class CatalogAdapter extends ScriptedAdapter {
   constructor(
     private readonly provider: LlmProviderInfo,

@@ -14,6 +14,8 @@
     "running-app-preserved-and-native-progress-hidden",
     "silent-update-retains-directory-and-ignores-unrelated-process",
     "invalid-destination-rejection",
-    "uninstall"
+    "uninstall",
+    "optional-decision-download-is-unchecked-and-skip-is-durable",
+    "optional-decision-download-selection-is-durable"
   ]
 }

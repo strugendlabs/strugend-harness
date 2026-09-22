@@ -79,6 +79,7 @@ interface BenchOptions {
   blocked?: { readonly reason: string }
   workspacePickerOpen?: boolean
   onRequestWorkspace?: () => void
+  connectModel?: () => void
   promptError?: SessionSnapshot['promptError']
   /** Authoritative queue rows served to the machine overlay (empty = none). */
   queue?: InboxState['next-turn']
@@ -202,6 +203,7 @@ function bench(over?: BenchOptions) {
     useLexicon: bindSnapshotSelector(shell.lexicon),
     useMenuLauncher: bindSnapshotSelector(menuLauncher),
     stop,
+    connectModel: over?.connectModel,
     // Mirrors the real lookup chain (conversation namespace, then common).
     t: over?.t ?? makeTranslate(zh, commonZh),
     renderSlot,
@@ -1539,6 +1541,16 @@ describe('strips and variants', () => {
       t: makeTranslate(dictionary, commonZh),
     })
     expect(send.view.getByRole('alert').textContent).toBe(dictionary['error.sessionInUse'])
+  })
+
+  it('keeps the draft and offers model setup when provider admission fails', () => {
+    const connectModel = vi.fn()
+    const view = bench({ draft: 'Build the dashboard', connectModel, t: makeTranslate(en), promptError: {
+      op: 'send', error: new RemoteError('session/model-not-connected', 'Connection missing', { provider: 'custom', model: 'test', reason: 'missing credential' }),
+    } })
+    fireEvent.click(view.view.getByRole('button', { name: 'Connect model' }))
+    expect(connectModel).toHaveBeenCalledOnce()
+    expect(view.textarea.textContent).toBe('Build the dashboard')
   })
 
   it('announces promptError as a fading toast (ordinary failure — no transaction UI, no Retry)', () => {

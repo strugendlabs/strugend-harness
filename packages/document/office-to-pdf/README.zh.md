@@ -44,6 +44,8 @@ kind: "package-reference"
 
 [配置目录](../../../docs/config-catalog.zh.md#deepseek-aidsh-office-to-pdf)定义全部字体、归档和图像设置。`fontDirectories` 接受绝对目录；省略时使用 kit 的平台默认值。显式 `fontFallbacks` 替换 kit 的默认分组。已安装的请求字体仍优先使用，缺失字形仍可由其他系统字体提供。原生引擎可能在应用这些优先规则前选中已安装的度量兼容字体。
 
+Desktop 可将 `moduleRoot` 设为单独安装的 Documents & data 组件目录。只有安装标记存在时才加载其中的文档渲染器；组件缺失时返回 `unavailable`，不加载原生代码。默认 Web 配置仍使用其已安装的 kit 包。
+
 [有界转换决策](../../../.agents/notes/implemented/architecture/2026-09-15-bounded-office-conversion.zh.md)说明队列准入、缓存限额与共享取消的设计依据。
 
 提供方按转换 generation、Office 扩展名和精确源字节的 SHA-256 保留成功 PDF。有界的源版本索引在授权 stat 后避免重读已知内容；内容标识也会在不同源路径之间共享转换。达到任一保留上限时，最近最少使用的 PDF 及其别名一同移除。不保留失败或超过缓存上限的结果。每个结果具有独立的 PDF 与字体缓冲区。已就绪别名命中不占用读取方名额；同一源的最后一个读取方离开时，立即释放其在途定位信息。源的最后一个读取方取消后，再次打开该源会重新读取字节，再按内容摘要共享转换，即使其他源仍保持该转换运行或其 PDF 已就绪。

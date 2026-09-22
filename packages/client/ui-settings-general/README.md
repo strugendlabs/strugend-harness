@@ -20,6 +20,8 @@ Use this package to give the dsh web client a Settings panel, connection-recover
 - [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
 - [Dev Note](#dev-note)
 
+The shell handles `settings/open` requests by opening the requested registered section, including recovery actions from a failed prompt. Settings remains available in the Strugend top bar when History is closed.
+
 -----
 
 <a id="use-this-package"></a>

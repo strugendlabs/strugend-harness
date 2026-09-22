@@ -20,7 +20,7 @@ The dsh web client sidebar lets users recognize the active build, start a new se
 - [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
 - [Dev Note](#dev-note)
 
-Strugend builds use an outlined New chat action and compact navigation, while preserving collapse, resize, and slot ownership.
+Strugend builds use a persistent top bar with History, New chat, and Settings. History opens an on-demand drawer containing the existing project, group, and chat operations. Escape dismisses the drawer and restores focus; selecting a chat closes it. The drawer does not reserve horizontal space.
 
 -----
 

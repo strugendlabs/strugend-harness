@@ -17,6 +17,8 @@ Var InstallerEdit
 Var InstallerEditFrame
 Var InstallerBrowse
 Var InstallerLaunch
+Var InstallerDecision
+Var InstallerDecisionChoice
 Var InstallerExpanded
 !include "${__FILEDIR__}\path.nsh"
 !include "${__FILEDIR__}\drawing.nsh"
@@ -157,6 +159,14 @@ Function InstallerCreate
     ${NSD_OnNotify} $InstallerLaunch InstallerPaintCheckbox
     ${NSD_Check} $InstallerLaunch
 
+    ${NSD_CreateCheckbox} 0 0 0 0 "$(INSTALLER_DECISION)"
+    Pop $InstallerDecision
+    ${NSD_AddStyle} $InstallerDecision ${BS_MULTILINE}
+    !insertmacro InstallerPlace $InstallerDecision 64 384 472 44
+    SendMessage $InstallerDecision ${WM_SETFONT} $InstallerSmallFont 1
+    !insertmacro InstallerControlColors $InstallerDecision
+    ${NSD_Uncheck} $InstallerDecision
+
     ${NSD_CreateButton} 0 0 0 0 "$(INSTALLER_INSTALL)"
     Pop $InstallerButton
     !insertmacro InstallerPlace $InstallerButton ${INSTALLER_BUTTON_X} ${INSTALLER_BUTTON_Y} ${INSTALLER_BUTTON_WIDTH} ${INSTALLER_BUTTON_HEIGHT}
@@ -185,11 +195,15 @@ Function InstallerRender
     ShowWindow $InstallerEditFrame 0
     ShowWindow $InstallerBrowse 0
     ShowWindow $InstallerLaunch 0
+    ShowWindow $InstallerDecision 0
     ShowWindow $InstallerStatus 0
     ${If} $InstallerPhase == "success"
         ${NSD_SetText} $InstallerButton "$(INSTALLER_FINISH)"
         ShowWindow $InstallerLaunch 5
     ${Else}
+        ${IfNot} ${isUpdated}
+            ShowWindow $InstallerDecision 5
+        ${EndIf}
         ${NSD_SetText} $InstallerButton "$(INSTALLER_INSTALL)"
         ${If} $InstallerExpanded == 1
             ShowWindow $InstallerEditFrame 5
@@ -208,6 +222,7 @@ FunctionEnd
 
 ; Page leave callbacks also run when Enter activates NSIS's hidden default button.
 Function InstallerWelcomeLeave
+    ${NSD_GetState} $InstallerDecision $InstallerDecisionChoice
     ${NSD_GetText} $InstallerEdit $InstallerPath
     Call InstallerPreflight
     ${If} $InstallerError != ""

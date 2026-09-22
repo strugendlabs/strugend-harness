@@ -22,6 +22,8 @@ English | [中文](README.zh.md)
 
 Strugend builds use a quiet empty-chat headline and a centered composer. Workspace, mode, access, and model controls retain their behavior; the right panel opens when a tool needs it.
 
+Strugend places session modes, views, and actions behind Task options while preserving the contextual right-panel control. A missing selected-model connection produces a persistent Connect model action beside the composer; it opens Models settings without clearing the draft.
+
 -----
 
 <a id="conversation-assembly"></a>

@@ -16,14 +16,15 @@ export interface IntelligenceSnapshot {
   /** Background judgments are recorded in Observe mode; Assist may offer ready advice to Core. */
   adviceMode: 'observe' | 'assist'
   /** Device admission is read from the Host without loading the model. */
+  enabled: boolean
+  installed: boolean
+  available: boolean
   localAllowed: boolean
   localReason: string
   /** Revision used to prevent overwriting another window's edits. */
   revision: number
   /** Only configured/writable metadata, never credential values. */
   credentials: Record<string, CredentialInfo>
-  /** The actual Core credential reference resolved by its settings. */
-  coreRef: string
 }
 
 /** Registration-owned access to Host settings and credential metadata. */
@@ -91,8 +92,17 @@ export function IntelligenceSettings({ access, operations, t }: {
     } catch { setError(t('intelligenceModeFailed')) }
     finally { setBusy(false) }
   }
+  const setEnabled = async (enabled: boolean): Promise<void> => {
+    if (!snapshot) return
+    setBusy(true); setError('')
+    try {
+      const result = await operations.writeSettings('strugend-intelligence', [{ op: 'set', path: ['enabled'], value: enabled }], snapshot.revision)
+      if (result.kind !== 'written') throw new Error('Settings changed.')
+      setSnapshot(await access.load())
+    } catch { setError(t('intelligenceModeFailed')) }
+    finally { setBusy(false) }
+  }
   const roles = snapshot === undefined ? [] : [
-    { labelKey: 'intelligenceCore', hint: 'intelligenceCoreHint', ref: snapshot.coreRef, provider: undefined },
     { labelKey: 'intelligenceDecision', hint: 'intelligenceDecisionHint', ref: 'IMPOSSIBL_API_KEY', provider: 'decision' },
     { labelKey: 'intelligenceGitHub', hint: 'intelligenceGitHubHint', ref: 'STRUGEND_GITHUB_TOKEN', provider: 'github' },
     { labelKey: 'intelligenceVercel', hint: 'intelligenceVercelHint', ref: 'STRUGEND_VERCEL_TOKEN', provider: 'vercel' },
@@ -108,6 +118,11 @@ export function IntelligenceSettings({ access, operations, t }: {
       return <form className={styles.intelligenceRole} key={role.ref} onSubmit={(event) => { event.preventDefault(); void save(role.ref) }}>
         <h3>{t(role.labelKey)}</h3>
         <p className={styles.intro}>{t(role.hint)}</p>
+        {role.provider === 'decision' && <label className={styles.intelligenceKey}>
+          <input type="checkbox" checked={snapshot?.enabled ?? false} disabled={busy}
+            onChange={(event) => { void setEnabled(event.target.checked) }} />
+          <span>{t('intelligenceEnabled')}</span>
+        </label>}
         {role.provider === 'decision' && <label className={styles.intelligenceKey}>
           <span>{t('intelligenceRuntime')}</span>
           <select className={styles.input} aria-label={t('intelligenceRuntime')} value={snapshot?.decisionMode} disabled={busy}
@@ -129,7 +144,9 @@ export function IntelligenceSettings({ access, operations, t }: {
           {snapshot?.localAllowed === false && <p role="status">{snapshot.localReason || t('intelligenceLowMemory')}</p>}
           <p className={styles.intro}>{t('intelligenceResourceHint')}</p>
         </>}
-        <p className={styles.intelligenceStatus}>{tested[role.ref] ? t('intelligenceTestPassed') : role.provider === 'decision' && snapshot?.decisionMode === 'local' ? t('intelligenceLocalReady') : info?.configured ? t('credentialConfigured') : t('credentialMissing')}</p>
+        <p className={styles.intelligenceStatus}>{tested[role.ref] ? t('intelligenceTestPassed') : role.provider === 'decision' && !snapshot?.enabled ? t('intelligenceDisabled')
+          : role.provider === 'decision' && snapshot?.decisionMode === 'local'
+            ? t(snapshot.installed ? 'intelligenceLocalReady' : 'intelligenceLocalMissing') : info?.configured ? t('credentialConfigured') : t('credentialMissing')}</p>
         <label className={styles.intelligenceKey}>
           <span>{t('keyInput')}</span>
           <input className={styles.input} type="password" autoComplete="off" spellCheck={false}
@@ -138,7 +155,7 @@ export function IntelligenceSettings({ access, operations, t }: {
             onChange={(event) => { const value = event.target.value; setKeys(previous => ({ ...previous, [role.ref]: value })) }} />
         </label>
         {info?.writable === false ? <p>{t('keyEnvLocked')}</p> : <button className={styles.intelligenceSave} disabled={busy || !keys[role.ref]?.trim()} type="submit">{t('apply')}</button>}
-        {role.provider && <button className={styles.intelligenceSave} type="button" disabled={busy} onClick={() => { void test(role.ref, role.provider) }}>{t('intelligenceTest')}</button>}
+        {<button className={styles.intelligenceSave} type="button" disabled={busy} onClick={() => { void test(role.ref, role.provider) }}>{t('intelligenceTest')}</button>}
       </form>
     })}
     <section className={styles.intelligenceRole} aria-disabled="true">

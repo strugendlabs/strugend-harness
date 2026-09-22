@@ -33,7 +33,7 @@ exports[`sidebar shell snapshots > renders Windows caption controls in expanded 
       </button>
     </div>
     <button
-      aria-label="New session"
+      aria-label="New chat"
       class="newSession"
       type="button"
     >
@@ -91,7 +91,7 @@ exports[`sidebar shell snapshots > renders Windows caption controls in expanded 
       class="logoRow"
     >
       <button
-        aria-label="New session"
+        aria-label="New chat"
         class="brand wide"
         type="button"
       >
@@ -129,7 +129,7 @@ exports[`sidebar shell snapshots > renders Windows caption controls in expanded 
                 <span
                   class="localBuildTitle"
                 >
-                  DSH Local Build
+                  Strugend Harness
                 </span>
                 <span
                   class="buildVersion"
@@ -158,7 +158,7 @@ exports[`sidebar shell snapshots > renders Windows caption controls in expanded 
       </button>
     </div>
     <button
-      aria-label="New session"
+      aria-label="New chat"
       class="newSession"
       type="button"
     >
@@ -173,7 +173,7 @@ exports[`sidebar shell snapshots > renders Windows caption controls in expanded 
       <span
         class="newSessionLabel wide"
       >
-        New Session
+        New chat
       </span>
     </button>
     <div
@@ -259,7 +259,7 @@ exports[`sidebar shell snapshots > renders the collapsed rail after the crossfad
       </button>
     </div>
     <button
-      aria-label="New session"
+      aria-label="New chat"
       class="newSession"
       type="button"
     >
@@ -317,7 +317,7 @@ exports[`sidebar shell snapshots > renders the expanded column (wordmark, capsul
       class="logoRow"
     >
       <button
-        aria-label="New session"
+        aria-label="New chat"
         class="brand wide"
         type="button"
       >
@@ -355,7 +355,7 @@ exports[`sidebar shell snapshots > renders the expanded column (wordmark, capsul
                 <span
                   class="localBuildTitle"
                 >
-                  DSH Local Build
+                  Strugend Harness
                 </span>
                 <span
                   class="buildVersion"
@@ -384,7 +384,7 @@ exports[`sidebar shell snapshots > renders the expanded column (wordmark, capsul
       </button>
     </div>
     <button
-      aria-label="New session"
+      aria-label="New chat"
       class="newSession"
       type="button"
     >
@@ -399,7 +399,7 @@ exports[`sidebar shell snapshots > renders the expanded column (wordmark, capsul
       <span
         class="newSessionLabel wide"
       >
-        New Session
+        New chat
       </span>
     </button>
     <div
@@ -485,7 +485,7 @@ exports[`sidebar shell snapshots > renders the expanded column in the default lo
                 <span
                   class="localBuildTitle"
                 >
-                  DSH 本地构建
+                  Strugend Harness
                 </span>
                 <span
                   class="buildVersion"

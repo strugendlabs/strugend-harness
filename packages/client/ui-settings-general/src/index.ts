@@ -10,10 +10,13 @@ const ONBOARDING_SETTINGS_NAMESPACE = 'ui-onboarding'
 interface OnboardingSettings {
   /** Last version acknowledged by the current product welcome step. */
   welcomeNoticeVersion?: string
+  /** Provider setup explicitly deferred by the user. */
+  providerSetupDeferredVersion?: string
 }
 
 const OnboardingSettingsSchema: z<OnboardingSettings> = z.object({
   welcomeNoticeVersion: z.string(),
+  providerSetupDeferredVersion: z.string(),
 })
 
 /** Register the durable GUI-onboarding section when a settings provider exists. */

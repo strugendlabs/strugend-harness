@@ -1,4 +1,6 @@
 ; NSIS owns installer localization independently of the Electron application locale.
+LangString INSTALLER_DECISION ${LANG_ENGLISH} "Optional decision support: ${STRUGEND_DECISION_DOWNLOAD_MIB} MiB; 8 GB RAM.$\r$\nDownload at first launch, or later in Settings."
+LangString INSTALLER_DECISION ${LANG_SIMPCHINESE} "添加决策支持：下载 ${STRUGEND_DECISION_DOWNLOAD_MIB} MiB；至少需要 8 GB 内存。$\r$\n可选项。首次启动时下载，也可稍后在设置中安装。"
 LangString INSTALLER_INSTALL ${LANG_ENGLISH} "Install now"
 LangString INSTALLER_INSTALL ${LANG_SIMPCHINESE} "立即安装"
 LangString INSTALLER_FINISH ${LANG_ENGLISH} "Finish"

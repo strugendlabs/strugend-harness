@@ -53,8 +53,12 @@ export class WelcomeNoticeStore {
   /**
    * @param scope - the welcome settings namespace scope; its memory mode is
    * what keeps a remote browser process-local.
+   * @param acknowledgement - Versioned field owned by the registered onboarding step.
    */
-  constructor(private readonly scope: SettingsScope<WelcomeSection>) {}
+  constructor(
+    private readonly scope: SettingsScope<WelcomeSection>,
+    private readonly acknowledgement = { field: WELCOME_NOTICE_ACK_FIELD, version: WELCOME_NOTICE_VERSION },
+  ) {}
 
   /**
    * Begin following the bound scope (idempotent) and publish its current answer.
@@ -81,7 +85,7 @@ export class WelcomeNoticeStore {
     this.saving = true
     this.store.update((state) => { state.status = 'saving'; state.error = null })
     try {
-      await this.scope.set(WELCOME_NOTICE_ACK_FIELD, WELCOME_NOTICE_VERSION)
+      await this.scope.set(this.acknowledgement.field, this.acknowledgement.version)
     } finally {
       this.saving = false
     }
@@ -125,7 +129,7 @@ export class WelcomeNoticeStore {
         })
         return
       case 'ready': {
-        const acknowledged = scope.value?.[WELCOME_NOTICE_ACK_FIELD] === WELCOME_NOTICE_VERSION
+        const acknowledged = scope.value?.[this.acknowledgement.field] === this.acknowledgement.version
         this.store.update((state) => {
           state.status = 'ready'
           state.acknowledged = acknowledged

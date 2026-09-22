@@ -323,6 +323,19 @@ export class PiAiAdapter extends LlmAdapter {
     })
   }
 
+  override async validateConnection(provider: string, model: string, signal?: AbortSignal): Promise<void> {
+    signal?.throwIfAborted()
+    const snapshot = this.current()
+    const profile = this.profileOf(snapshot, provider)
+    this.modelOf(snapshot, provider, model)
+    const apiKey = await this.config.resolveApiKey(provider, profile)
+    signal?.throwIfAborted()
+    if (apiKey === undefined && await snapshot.models.checkAuth(provider, signal === undefined ? undefined : { signal }) === undefined) {
+      throw new LlmError(`llm-pi-ai: no authentication configured for provider route "${provider}"`, 'MISSING_CREDENTIAL')
+    }
+    signal?.throwIfAborted()
+  }
+
   stream(options: GenerateOptions): AsyncIterable<StreamChunk> {
     return this.streamWithSnapshot(options, this.current())
   }

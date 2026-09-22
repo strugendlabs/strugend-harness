@@ -7,7 +7,7 @@
   "type": "module",
   "main": "lib/index.js",
   "files": [
-    "lib"
+    "lib/*.js"
   ],
   "dependencies": {
     "@deepseek-ai/cordis": "workspace:^",
@@ -34,12 +34,18 @@
     "@deepseek-ai/dsh-tools": "workspace:^",
     "@deepseek-ai/dsh-util-values": "workspace:^",
     "@deepseek-ai/schemastery": "workspace:^",
-    "onnxruntime-node": "1.30.0",
-    "@huggingface/tokenizers": "0.2.0",
-    "onnxruntime-node-intel-mac": "npm:onnxruntime-node@1.22.0"
+    "tar": "^7.5.0",
+    "@deepseek-ai/dsh-agent-default-model": "workspace:^",
+    "@deepseek-ai/dsh-office-to-pdf": "workspace:^"
   },
   "devDependencies": {
     "@receptron/laya": "0.1.2",
-    "@deepseek-ai/dsh-session-persistence": "workspace:^"
+    "@deepseek-ai/dsh-session-persistence": "workspace:^",
+    "onnxruntime-node": "1.30.0",
+    "onnxruntime-node-intel-mac": "npm:onnxruntime-node@1.22.0",
+    "@huggingface/tokenizers": "0.2.0",
+    "@deepseek-ai/dsh-session-snapshot": "workspace:^",
+    "@deepseek-ai/dsh-agent-loop-testkit": "workspace:^",
+    "@deepseek-ai/libreoffice-kit": "0.0.1"
   }
 }

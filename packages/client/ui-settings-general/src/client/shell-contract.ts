@@ -41,6 +41,8 @@ export type SettingsRootInjected = {
   /** Request a fresh logical generation and physical WebSocket immediately. */
   reconnect: () => void
   hooks: {
+    /** Cross-feature navigation requests, consumed by the mounted settings shell. */
+    settingsOpen: HostObservable<{ sectionId: string; revision: number } | null>
     /** Shared Electron status for both sidebar locations. */
     desktopUpdate: HostObservable<DesktopUpdateView>
     /** Connection-owned state for the current Host connection. */

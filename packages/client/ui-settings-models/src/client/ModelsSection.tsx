@@ -203,11 +203,10 @@ export function ModelsSection(props: ModelsSectionProps): ReactNode {
     || schema === undefined || t === undefined
   ) return null
   if (props.intelligence !== undefined) return <>
-    <IntelligenceSettings access={props.intelligence} operations={operations} t={t} />
+    <Loaded injected={{ controller, useSnapshot, operations, schema, t }} renderSlot={renderSlot} />
     <details className={styles.section}>
-      <summary>{t('intelligenceProviders')}</summary>
-      <p className={styles.intro}>{t('intelligenceProvidersHint')}</p>
-      <Loaded injected={{ controller, useSnapshot, operations, schema, t }} renderSlot={renderSlot} additionalOnly />
+      <summary>{t('intelligenceTitle')}</summary>
+      <IntelligenceSettings access={props.intelligence} operations={operations} t={t} />
     </details>
   </>
   return <Loaded injected={{ controller, useSnapshot, operations, schema, t }} renderSlot={renderSlot} />

@@ -19,6 +19,7 @@ import { ModelsSection } from './ModelsSection.tsx'
 import type { ModelsSectionInjected } from './ModelsSection.tsx'
 import { DeepSeekOnboardingDialog } from './DeepSeekOnboardingDialog.tsx'
 import type { DeepSeekOnboardingInjected } from './DeepSeekOnboardingDialog.tsx'
+import { ProviderOnboardingDialog, type ProviderOnboardingInjected } from './ProviderOnboardingDialog.tsx'
 import { WelcomeNotice } from './WelcomeNotice.tsx'
 import type { WelcomeNoticeInjected } from './WelcomeNotice.tsx'
 import { decodeWelcomeSection, WelcomeNoticeStore } from './welcome-store.ts'
@@ -26,7 +27,7 @@ import { ModelsSettingsStore } from './store.ts'
 import { createModelsOperations } from './operations.ts'
 import { createSettingsSchemaOperations } from './schema-operations.ts'
 import { en, zh, type ModelsKey } from './locales.ts'
-import { WELCOME_NOTICE_SETTINGS_NAMESPACE } from '../onboarding-copy.ts'
+import { WELCOME_NOTICE_SETTINGS_NAMESPACE, PROVIDER_SETUP_ACK_FIELD, PROVIDER_SETUP_VERSION } from '../onboarding-copy.ts'
 
 export type { ModelsSectionInjected, ModelsSectionProps } from './ModelsSection.tsx'
 export type { ModelsFooterOwnerProps, ProviderCardExtrasOwnerProps } from './slot-contract.ts'
@@ -63,7 +64,7 @@ export function refreshIfLoaded(controller: ModelsSettingsStore): void {
  */
 export const inject = [
   'slots', 'locale', 'remote', 'remote.credentials', 'remote.llm', 'remote.settings',
-  'settingsScope', 'settingsSchema',
+  'settingsScope', 'settingsSchema', 'remote.session',
 ]
 
 /**
@@ -96,10 +97,7 @@ export function apply(ctx: ClientContext): void {
       const response = await ctx.remote.settings.describe()
       if (!response.ok) throw new Error(response.error.message)
       const service = response.value.namespaces.find(row => row.ns === 'strugend-intelligence')
-      const core = response.value.namespaces.find(row => row.ns === 'llm-deepseek')
-      const coreValue = core === undefined ? undefined : schema.getPath(core.value, ['apiKeyEnv'])
-      const coreRef = typeof coreValue === 'string' ? coreValue : 'DEEPSEEK_API_KEY'
-      const credentials = await ctx.remote.credentials.describe([coreRef, 'IMPOSSIBL_API_KEY', 'STRUGEND_GITHUB_TOKEN', 'STRUGEND_VERCEL_TOKEN'])
+      const credentials = await ctx.remote.credentials.describe(['IMPOSSIBL_API_KEY', 'STRUGEND_GITHUB_TOKEN', 'STRUGEND_VERCEL_TOKEN'])
       const graphUrl = service === undefined ? undefined : schema.getPath(service.value, ['graphUrl'])
       if (!service || !credentials.ok || typeof graphUrl !== 'string') throw new Error('Intelligence settings are unavailable.')
       const decisionMode = schema.getPath(service.value, ['decisionMode'])
@@ -110,8 +108,12 @@ export function apply(ctx: ClientContext): void {
       if (!runtimeResponse.ok) throw new Error('Decision resource information is unavailable.')
       const runtime: unknown = await runtimeResponse.json()
       if (!runtime || typeof runtime !== 'object' || !('localAllowed' in runtime) || typeof runtime.localAllowed !== 'boolean'
-        || !('reason' in runtime) || typeof runtime.reason !== 'string') throw new Error('Invalid Decision resource information.')
-      return { coreRef, graphUrl, decisionMode, adviceMode, localAllowed: runtime.localAllowed, localReason: runtime.reason,
+        || !('reason' in runtime) || typeof runtime.reason !== 'string'
+        || !('enabled' in runtime) || typeof runtime.enabled !== 'boolean'
+        || !('installed' in runtime) || typeof runtime.installed !== 'boolean'
+        || !('available' in runtime) || typeof runtime.available !== 'boolean') throw new Error('Invalid Decision resource information.')
+      return { enabled: runtime.enabled, installed: runtime.installed, available: runtime.available,
+        graphUrl, decisionMode, adviceMode, localAllowed: runtime.localAllowed, localReason: runtime.reason,
         revision: service.revision, credentials: credentials.value }
     },
   } : undefined
@@ -129,6 +131,32 @@ export function apply(ctx: ClientContext): void {
     operations,
     schema,
     t,
+  })
+  const providerSetupController = new WelcomeNoticeStore(ctx.settingsScope.bind({
+    namespace: WELCOME_NOTICE_SETTINGS_NAMESPACE,
+    decode: decodeWelcomeSection,
+  }), { field: PROVIDER_SETUP_ACK_FIELD, version: PROVIDER_SETUP_VERSION })
+  const providerOnboardingInjected = (): ProviderOnboardingInjected => ({
+    ...deepSeekOnboardingInjected(),
+    setupController: providerSetupController,
+    hooks: { models: controller.store, providerSetup: providerSetupController.store },
+    models: async (provider) => {
+      const result = await ctx.remote.session.modelCatalog()
+      if (!result.ok) throw new Error(result.error.message)
+      return result.value.groups.find(row => row.id === provider)?.models.map(row => ({ id: row.id, name: row.name })) ?? []
+    },
+    select: async (provider, model) => {
+      const current = await ctx.remote.settings.describe()
+      if (!current.ok) throw new Error(current.error.message)
+      const namespace = current.value.namespaces.find(row => row.ns === 'agent-default-model')
+      if (!namespace) throw new Error('Default model settings are unavailable.')
+      const result = await operations.writeSettings('agent-default-model', [
+        { op: 'set', path: ['provider'], value: provider },
+        { op: 'set', path: ['model'], value: model },
+        { op: 'unset', path: ['reasoningEffort'] },
+      ], namespace.revision)
+      if (result.kind !== 'written') throw new Error(result.message)
+    },
   })
   // The scope's own memory mode is what keeps a remote browser process-local,
   // so the store needs no isLoopback branch of its own.
@@ -158,6 +186,7 @@ export function apply(ctx: ClientContext): void {
     ]
     return () => {
       welcomeController.dispose()
+      providerSetupController.dispose()
       for (const dispose of disposers) dispose()
     }
   }, 'ui-settings-models: pushed invalidations')
@@ -179,7 +208,10 @@ export function apply(ctx: ClientContext): void {
     order: -100,
     inject: welcomeInjected,
   }, WelcomeNotice))
-  ctx.slots.inject('settings.onboarding', () => ctx.slots.register({
+  if (process.env.DSH_CLIENT_TITLE === 'Strugend Harness') ctx.slots.inject('settings.onboarding', () => ctx.slots.register({
+    name: 'settings.onboarding', id: 'provider-connection', order: 0, inject: providerOnboardingInjected,
+  }, ProviderOnboardingDialog))
+  else ctx.slots.inject('settings.onboarding', () => ctx.slots.register({
     name: 'settings.onboarding',
     id: 'deepseek-official',
     order: 0,

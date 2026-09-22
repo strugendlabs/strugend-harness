@@ -1750,6 +1750,8 @@ export interface Config {
 ```ts config-catalog
 /** Provider concurrency and kit rendering/font configuration. */
 export interface Config {
+  /** Optional application-owned component root. Missing installed metadata rejects conversion without loading native code. */
+  moduleRoot?: string
   /** Maximum simultaneous conversions; queued callers remain cancellable. */
   maxConcurrentConversions: number
   /** Maximum metadata-only jobs awaiting source admission. */
@@ -1791,7 +1793,7 @@ export interface Config {
 }
 ```
 
-来源： [`packages/document/office-to-pdf/src/index.ts:31`](../packages/document/office-to-pdf/src/index.ts)
+来源： [`packages/document/office-to-pdf/src/index.ts:32`](../packages/document/office-to-pdf/src/index.ts)
 
 <a id="deepseek-aidsh-permission-presets"></a>
 
@@ -2088,6 +2090,8 @@ export interface Config {
  * is any per-family knob: this is the one shared policy home.
  */
 export interface Config {
+  /** Include the DSH name in model-visible policy text (default: `true`). Enforcement is unchanged. */
+  includeHarnessName?: boolean
   /** File-sandbox mode a session starts from (default: `read-only`). */
   mode?: SandboxMode
   /**
@@ -2100,7 +2104,7 @@ export interface Config {
 
 Depends on: [`SandboxMode`](subsystems/sandbox.zh.md)
 
-来源：[`packages/sandbox/sandbox-policy/src/index.ts:71`](../packages/sandbox/sandbox-policy/src/index.ts)
+来源：[`packages/sandbox/sandbox-policy/src/index.ts:73`](../packages/sandbox/sandbox-policy/src/index.ts)
 
 <a id="deepseek-aidsh-sdk-app"></a>
 

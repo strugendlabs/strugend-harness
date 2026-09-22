@@ -12,11 +12,12 @@ export function agentOsProfilePatch(credentialsPath: string, workspaceRoot: stri
     throw new Error('DSH_PERMISSION_MODE must be read-only, workspace-write, or danger-full-access.')
   return [
     { id: 'credentials', name: credentialsPath, config: {} },
+    { id: 'system-prompt', config: { includeHarnessIdentity: false, personaPrefix: '', personaSuffix: 'You are Strugend, the user’s coding and everyday-task assistant.' } },
     { id: 'llm-deepseek', config: { models: [
       { id: 'deepseek-flash', name: 'Core', inputModalities: ['text', 'image'], systemPromptUpdate: 'in-history' },
       { id: 'deepseek-v4-flash-vision-exp', name: 'Vision', inputModalities: ['text', 'image'] },
     ] } },
-    { id: 'sandbox-policy', config: { mode: permissionMode, workspaceRoot } },
+    { id: 'sandbox-policy', config: { mode: permissionMode, workspaceRoot, includeHarnessName: false } },
     { id: 'approval', config: { policy: permissionMode === 'danger-full-access' ? 'never' : 'ask' } },
     { id: 'permission', config: {
       defaultPreset: permissionMode,

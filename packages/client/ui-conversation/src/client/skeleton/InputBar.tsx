@@ -43,7 +43,7 @@ export type InputBarProps = ComposerBarProps
 
 export const InputBar = memo(function InputBar({
   useSession, useInput, inputActions, keyboard, addFiles, removeAttachment, resolveDraftAttachments,
-  retryFileUpload,
+  retryFileUpload, connectModel,
   toggleCommandMenu, stop, t,
   renderSlot, useBusyEnter, useFileUploads, useNotices, useLexicon, useMenuLauncher,
   useProjection, sessionId, variant, disabled: inert = false, blocked,
@@ -104,6 +104,7 @@ export const InputBar = memo(function InputBar({
   useEffect(() => {
     if (promptError === null) return
     const { error } = promptError
+    if (error.code === 'session/model-not-connected') return
     if (error.code === 'session/writer-held') {
       showToast(t('error.sessionInUse'))
       return
@@ -352,6 +353,10 @@ export const InputBar = memo(function InputBar({
           onDone={dismissToast}
         />
       )}
+      {promptError?.error.code === 'session/model-not-connected' && <div className={css.connectionNotice} role="alert">
+        <span>{t('input.connectModelHint')}</span>
+        <button type="button" onClick={connectModel}>{t('input.connectModel')}</button>
+      </div>}
       {notice?.level === 'info' && (
         <div className={css.notice} role="status">
           {notice.text}

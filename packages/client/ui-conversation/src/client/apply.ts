@@ -345,6 +345,7 @@ export function apply(ctx: Context, config: Config = Config({})): void {
           removeAttachment: undefined,
           resolveDraftAttachments: undefined,
           retryFileUpload: undefined,
+          connectModel: () => { ctx.emit('settings/open', 'models') },
           toggleCommandMenu: undefined,
           stop: undefined,
           hooks: {
@@ -361,6 +362,7 @@ export function apply(ctx: Context, config: Config = Config({})): void {
       const inputTriggers = inputHub.inputTriggers(sessionId)
       return {
         keyboard: shell,
+        connectModel: () => { ctx.emit('settings/open', 'models') },
         addFiles: (files) => {
           if (sessions.binding(sessionId) === undefined) return t('file.sessionUnavailable')
           try {

@@ -1,6 +1,7 @@
 /** Disk output, resource bounds, and cancellation around the external kit. */
-import { access, mkdir, readFile, stat, writeFile } from 'node:fs/promises'
-import { dirname } from 'node:path'
+import { access, mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
+import { dirname, join } from 'node:path'
+import { tmpdir } from 'node:os'
 import { Context } from '@deepseek-ai/cordis'
 import type { Converter, ConverterOptions } from '@deepseek-ai/libreoffice-kit'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
@@ -265,4 +266,13 @@ it('joins every converter disposal before reporting an engine cleanup failure', 
     await cleanupEntered.promise
     expect(disposed).toBe(false)
   } finally { cleanupRelease.resolve(undefined); await closing }
+})
+
+it('keeps the optional native renderer unloaded when its verified component is absent', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'office-component-'))
+  try {
+    const provider = await mount({ moduleRoot: root })
+    await expect(provider.convert(request)).rejects.toMatchObject({ code: 'unavailable' })
+    expect(kit.create).not.toHaveBeenCalled()
+  } finally { await rm(root, { recursive: true, force: true }) }
 })
