@@ -1,7 +1,7 @@
 /** Shared warm inference worker with bounded queues, cancellation and crash recovery. */
 import { Worker } from 'node:worker_threads'
 import type { JsonValue } from '@deepseek-ai/dsh-util-values'
-import type { DecisionPayload } from './strugend-decision.ts'
+import { decisionEvidence, type DecisionPayload } from './strugend-decision.ts'
 import { decisionResponse } from './strugend-services.ts'
 import manifest from './laya-manifest.json' with { type: 'json' }
 import { decisionResources, localDecisionAdmission, type DecisionResourceLimits } from './strugend-resources.ts'
@@ -106,7 +106,7 @@ export class LocalDecisionRuntime {
         void worker.terminate().then(() =>{  reject(error) }, () =>{  reject(error) })
       }
       const aborted = (): void =>{  stop(signal.reason instanceof Error ? signal.reason : new Error('Local Decision cancelled.')) }
-      const failed = (): void =>{  stop(new Error('Local Decision worker failed; a later request can restart it.')) }
+      const failed = (error: Error): void => { stop(new Error('Local Decision worker failed: ' + decisionEvidence(error.message, 600))) }
       const exited = (): void =>{  stop(new Error('Local Decision worker exited; a later request can restart it.')) }
       const message = (value: unknown): void => {
         if (!value || typeof value !== 'object' || !('id' in value) || value.id !== id) { stop(new Error('Invalid local Decision reply.')); return }

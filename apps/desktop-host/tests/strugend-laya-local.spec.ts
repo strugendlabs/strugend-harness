@@ -18,6 +18,7 @@ parentPort.on('message', ({id, state}) => {
   writeFileSync(join(workerData.directory, 'started'), state);
   if (state === 'hold') return;
   if (state === 'crash') process.exit(1);
+  if (state === 'load-error') throw new Error('Native fixture missing api_key=synthetic-secret');
   parentPort.postMessage({id, result: { model: ${JSON.stringify(layaManifest.model)}, revision: state === 'wrong' ? 'bad' : ${JSON.stringify(layaManifest.revision)}, answers: { built: {type: 'noul', noul: .9}}, usage: {input_tokens: 5, output_tokens: 0}}});
 });`)
   const runtime = new LocalDecisionRuntime(pathToFileURL(worker))
@@ -41,6 +42,7 @@ parentPort.on('message', ({id, state}) => {
     await expect.poll(() => runtime.isResident, { timeout: 8000 }).toBe(false)
     await expect(runtime.evaluate({ ...payload, state: 'crash' }, options, signal)).rejects.toThrow('worker exited')
     await expect(runtime.evaluate({ ...payload, state: 'wrong' }, options, signal)).rejects.toThrow('invalid answer')
+    await expect(runtime.evaluate({ ...payload, state: 'load-error' }, options, signal)).rejects.toThrow('Native fixture missing api_key=[removed]')
     await expect(runtime.evaluate(payload, { ...options, timeoutMs: 100 }, signal)).rejects.toThrow('timed out')
     await rm(join(directory, 'started'), { force: true })
     const holding = new AbortController()
