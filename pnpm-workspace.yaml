@@ -15,8 +15,7 @@ packages:
   - python/sdk-runtime
 
 overrides:
-  # Later ONNX npm releases omit Intel Mac bindings; keep the SDK and all desktop targets on the same CPU runtime.
-  '@receptron/laya>onnxruntime-node': '1.22.0'
+  '@receptron/laya>onnxruntime-node': '1.30.0'
   # osx-sign 1.x scans ONNX protobufs; v5 bounds reads instead of allocating their declared length.
   '@electron/osx-sign>isbinaryfile': '5.0.7'
   'extract-zip>yauzl': '3.4.0'
@@ -106,3 +105,9 @@ patchedDependencies:
   '@receptron/laya@0.1.2': patches/@receptron__laya@0.1.2.patch
   '@yao-pkg/pkg@6.21.0': patches/@yao-pkg__pkg@6.21.0.patch
   node-pty@1.2.0-beta.15: patches/node-pty@1.2.0-beta.15.patch
+
+# The patched SDK selects this compatibility runtime only on Intel Macs.
+packageExtensions:
+  '@receptron/laya@0.1.2':
+    dependencies:
+      onnxruntime-node-intel-mac: 'npm:onnxruntime-node@1.22.0'

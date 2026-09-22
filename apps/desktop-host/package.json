@@ -34,8 +34,9 @@
     "@deepseek-ai/dsh-tools": "workspace:^",
     "@deepseek-ai/dsh-util-values": "workspace:^",
     "@deepseek-ai/schemastery": "workspace:^",
-    "onnxruntime-node": "1.22.0",
-    "@huggingface/tokenizers": "0.2.0"
+    "onnxruntime-node": "1.30.0",
+    "@huggingface/tokenizers": "0.2.0",
+    "onnxruntime-node-intel-mac": "npm:onnxruntime-node@1.22.0"
   },
   "devDependencies": {
     "@receptron/laya": "0.1.2",

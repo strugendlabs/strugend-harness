@@ -2,5 +2,5 @@ Laya model weights: Convai Innovations and upstream contributors, Apache License
 Source model: https://huggingface.co/convaiinnovations/laya-multilingual
 Offline ONNX export: https://huggingface.co/mizchi/laya-multilingual-onnx
 The exported model and tokenizer are redistributed unchanged; file names are adapted for the inference SDK.
-@receptron/laya is MIT licensed. Strugend's dependency patch uses the tokenizer's declared special tokens and converts the multilingual export's action logits to probabilities. It does not change model weights.
+@receptron/laya is MIT licensed. Strugend's dependency patch uses the tokenizer's declared special tokens and converts the multilingual export's action logits to probabilities. Intel Macs select an ONNX Runtime compatibility dependency containing the required native binding. The patch does not change model weights.
 The accompanying MODEL_CARD.md describes the export, validation and limitations.

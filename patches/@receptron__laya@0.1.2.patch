@@ -1,8 +1,16 @@
 diff --git a/dist/laya.js b/dist/laya.js
-index 6ea05046dfc012f2934fe92c454348a0eae8a899..00e9b44185b04690d8e00490c0b1ba810a7c3bf3 100644
 --- a/dist/laya.js
 +++ b/dist/laya.js
-@@ -32,14 +32,16 @@ export class Laya {
+@@ -8,7 +8,7 @@
+  */
+ import { readFile } from "node:fs/promises";
+ import path from "node:path";
+-import * as ort from "onnxruntime-node";
++const ort = await import(process.platform === "darwin" && process.arch === "x64" ? "onnxruntime-node-intel-mac" : "onnxruntime-node");
+ import { Tokenizer } from "@huggingface/tokenizers";
+ import { buildSequence, confidenceFromProbs, QTYPES, renderOptions, softmax, tempBucket, toInternal } from "./sequence.js";
+ import { ensureBundle } from "./download.js";
+@@ -32,14 +32,16 @@
          const modelDir = opts.modelDir ? path.resolve(opts.modelDir) : await ensureBundle(opts);
          const read = async (f) => JSON.parse(await readFile(path.join(modelDir, f), "utf8"));
          const config = (await read("laya_config.json"));
@@ -21,7 +29,7 @@ index 6ea05046dfc012f2934fe92c454348a0eae8a899..00e9b44185b04690d8e00490c0b1ba81
          const session = await ort.InferenceSession.create(path.join(modelDir, "laya.onnx"), {
              executionProviders: opts.executionProviders ?? ["cpu"],
              graphOptimizationLevel: "all",
-@@ -92,12 +94,16 @@ export class Laya {
+@@ -92,12 +94,16 @@
              qtype: new ort.Tensor("int64", qtype, [n]),
          });
          const logits = out["logits"]?.data;

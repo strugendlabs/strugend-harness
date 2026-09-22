@@ -14,7 +14,7 @@ Creator 和 Web Plugin Manager 在 Electron Node 模式下使用 Desktop 内置 
 
 [Strugend 开发指南](../../AGENT_OS_README.md) 定义本地分支的启动及服务配置。显示品牌使用 Strugend Harness；原生凭据标识和已有数据路径保持稳定，以便继续访问已保存的密钥、浏览器配置和聊天。[智能服务实现](../desktop-host/src/strugend-intelligence.ts) 与规划和工具执行并行运行可选的 Laya 检查，不让智能体等待。观察模式记录判断而不改变 Core 上下文；辅助模式可加入已完成的新近建议。安装包在 `runtime/laya` 中携带固定校验和的离线多语言 ONNX 模型；单个 CPU worker 串行推理并在空闲时卸载。物理内存小于 8 GiB 或内存不足时禁用本地推理。自动模式在 Impossibl 失败后根据这些限制考虑本地回退。参见[资源策略与验证限制](../../STRUGEND_PLAN.md)。图谱记忆已禁用并显示即将推出。任务拥有的交付作业构建应用或将验证过的提交发布到 GitHub 和 Vercel，并保留恢复所需的回执。Finder/Explorer 操作使用 Electron 原生 shell 并报告失败。
 
-本地推理在 Windows x64 和两种 Mac 架构上使用相同的 CPU 运行时。依赖固定为 ONNX Runtime 1.22.0，因为[后续 npm 归档缺少 Intel Mac 绑定](https://github.com/microsoft/onnxruntime/issues/27961)。发布前，原生验证会加载打包的 worker 和模型权重。
+本地推理在 Windows 和 Apple Silicon 上使用 ONNX Runtime 1.30.0。Intel Mac 选择独立的 1.22.0 兼容依赖，因为[后续 npm 归档缺少 Intel Mac 绑定](https://github.com/microsoft/onnxruntime/issues/27961)。仅加载选中的运行时。发布前，原生验证会加载打包的 worker 和模型权重。
 
 浏览器元素操作先聚焦并滚动目标，再测量位置，等待两个布局稳定的帧，并在发送指针输入前拒绝已禁用、被遮挡、已移除或不可见的目标。页面无法产生稳定帧时，操作会在五秒内失败。浏览器视图隐藏时仍保持帧调度，以便后台任务完成检查。
 
