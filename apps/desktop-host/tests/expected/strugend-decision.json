@@ -1,5 +1,5 @@
 {
-  "model": "jev-latest",
+  "model": "convaiinnovations/laya",
   "answers": {
     "task": {
       "type": "choice",

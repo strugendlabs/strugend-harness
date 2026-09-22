@@ -1,6 +1,7 @@
 /** Validated configuration for the local PTY backend. */
 
 import z from '@deepseek-ai/schemastery'
+import { CONTROLLED_PROMPT } from './sanitize.ts'
 import { resolvePwshPath } from '@deepseek-ai/dsh-pwsh-local'
 
 /** One supported interactive shell dialect. */
@@ -10,6 +11,8 @@ export type ShellDialect = 'bash' | 'pwsh'
 export interface Config {
   /** Backend registry type (default: `shell`). */
   backendType?: string
+  /** Printable shell prompt shared by startup and readiness detection. */
+  promptText?: string
   /** Interactive shell dialect (default: `bash`); selects the argv/env/startup defaults. */
   shellDialect?: ShellDialect
   /** Interactive shell executable (default per dialect: `/bin/bash`, or the resolved pwsh). */
@@ -71,6 +74,7 @@ export function resolveConfig(config: Config): ResolvedConfig {
   return {
     ...(config as Required<Config>),
     shellDialect,
+    promptText: config.promptText ?? CONTROLLED_PROMPT,
     shellPath: config.shellPath !== undefined && config.shellPath.length > 0
       ? config.shellPath
       : (shellDialect === 'pwsh' ? resolvePwshPath() : DEFAULT_BASH_SHELL),
@@ -83,6 +87,7 @@ export function resolveConfig(config: Config): ResolvedConfig {
 /** Schemastery config exposed by the plugin. */
 export const Config: z<Config> = z.object({
   backendType: z.string().default('shell'),
+  promptText: z.string().default(CONTROLLED_PROMPT),
   shellDialect: z.union(['bash', 'pwsh'] as const).default('bash'),
   shellPath: z.string().required(false),
   shellArgs: z.array(z.string()).required(false),
@@ -106,6 +111,7 @@ export const Config: z<Config> = z.object({
  */
 export function validateConfig(config: Config): asserts config is ResolvedConfig {
   const resolved = config as ResolvedConfig
+  if (!/^[A-Za-z0-9 ._>:-]{1,64}$/u.test(resolved.promptText)) throw new Error('Terminal prompt must contain 1–64 plain ASCII letters, digits, spaces or ._>:-.')
   if (resolved.backendType.length === 0) throw new Error('terminal-bash: backendType must be non-empty')
   if (resolved.shellPath.length === 0) throw new Error('terminal-bash: shellPath must be non-empty')
   for (const [name, value] of Object.entries(resolved)) {

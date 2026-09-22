@@ -55,7 +55,7 @@ async function measure(capacityBytes: number, mode: string): Promise<TerminalIoR
   global.gc?.()
   const heapBefore = process.memoryUsage().heapUsed
   const session = new LocalPtySession(terminal, {
-    backendType: 'shell', shellDialect: 'bash', shellPath: '/bin/bash', shellArgs: [],
+    backendType: 'shell', shellDialect: 'bash', promptText: 'strugend> ', shellPath: '/bin/bash', shellArgs: [],
     rows: 40, cols: 160, scrollbackLines: 10_000, scrollbackMaxBytes: capacityBytes,
     maxReadBytes: Math.min(256 * 1024, capacityBytes),
     pollIntervalMs: 1, exactProbeAfterMs: 150, idleSilenceMs: 1,

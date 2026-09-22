@@ -27,6 +27,8 @@ kind: "package-reference"
 
 当组合需要持久 shell 会话时挂载此后端——cwd、导出的变量、函数或正在运行的交互式子进程等状态必须跨工具调用存活。它是默认的 `shell` 类型：组合只挂载 `@deepseek-ai/dsh-terminal` 而不挂载它时，将没有任何会话可打开。
 
+受控提示符默认为 `strugend> `。`promptText` 配置 bash 和 PowerShell 的可打印提示符；启动与就绪检测使用同一值。它接受 1–64 个 ASCII 字母、数字、空格及 `._>:-`，不允许 shell 替换或终端控制字符。
+
 ### 何时选择
 
 当工作需要状态持续存在的交互式 shell 或 REPL 时选择此后端：在调试器中单步执行、在 Python 或 Node REPL 中探索，或中断前台命令后回到 shell。对于应当一次调用即开始并结束的有界命令，请选择单次 bash 工具。bash 方言面向 POSIX；pwsh 方言面向 `dsh-pwsh-local` 能解析出 pwsh 可执行文件的 Windows 主机。

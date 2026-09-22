@@ -2928,6 +2928,8 @@ export interface Config {
 export interface Config {
   /** Backend registry type (default: `shell`). */
   backendType?: string
+  /** Printable shell prompt shared by startup and readiness detection. */
+  promptText?: string
   /** Interactive shell dialect (default: `bash`); selects the argv/env/startup defaults. */
   shellDialect?: ShellDialect
   /** Interactive shell executable (default per dialect: `/bin/bash`, or the resolved pwsh). */
@@ -2965,7 +2967,7 @@ export interface Config {
 export type ShellDialect = 'bash' | 'pwsh'
 ```
 
-来源：[`packages/terminal/terminal-bash/src/config.ts:10`](../packages/terminal/terminal-bash/src/config.ts)
+来源：[`packages/terminal/terminal-bash/src/config.ts:11`](../packages/terminal/terminal-bash/src/config.ts)
 
 <a id="deepseek-aidsh-time-context"></a>
 

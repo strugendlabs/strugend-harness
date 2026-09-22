@@ -27,6 +27,8 @@ English | [中文](README.zh.md)
 
 Mount this backend when a composition needs persistent shell sessions — state such as cwd, exported variables, functions, or running interactive children must survive across tool calls. It is the default `shell` type: a composition that mounts `@deepseek-ai/dsh-terminal` without it has no sessions to open.
 
+The controlled prompt defaults to `strugend> `. `promptText` configures the printable prompt for bash and PowerShell; startup and readiness detection use the same value. It accepts 1–64 plain ASCII letters, digits, spaces and `._>:-`, excluding shell substitutions and terminal controls.
+
 ### When to choose it
 
 Choose this backend when work needs an interactive shell or REPL whose state persists: stepping a debugger, exploring in a Python or Node REPL, or returning to a shell after interrupting a foreground command. Choose the one-shot bash tool for bounded commands that should start and end in one call. The bash dialect targets POSIX; the pwsh dialect targets Windows hosts where `dsh-pwsh-local` can resolve a pwsh executable.

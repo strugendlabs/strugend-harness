@@ -23,6 +23,8 @@ kind: "package-library"
 
 实现桌面 IPC 或消费浏览器、媒体、分组及技能事件时，从 `@deepseek-ai/dsh-agentos-protocol` 导入类型。类型不会认证 IPC 或验证不可信的运行时值；调用方必须使用主进程的操作验证。
 
+仅供 Host 使用的 `decision-events` 导出声明辅助模型请求及结果的持久化事件。这些记录保留脱敏后的准确输入、运行时及已验证结果；Core 上下文另外通过普通插件消息持久化。`location.open` 通过经过认证的桌面桥接打开目录或显示文件。
+
 <a id="understand-the-implementation"></a>
 ## 了解实现
 

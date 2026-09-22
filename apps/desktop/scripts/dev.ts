@@ -8,6 +8,8 @@ import { parseArgs } from 'node:util'
 import { DESKTOP_HOST_PROTOCOL_VERSION } from '../src/host-protocol.ts'
 import type { DesktopRelease } from '../src/release.ts'
 import { prepareDevelopmentProject } from './development-project.ts'
+import { resolveDesktopTargetBuildPaths } from './desktop-build-paths.mjs'
+import { prepareLaya } from './prepare-laya.ts'
 import { preparePrimaryRuntime } from './prepare-primary-runtime.ts'
 
 const APP_ROOT = resolve(import.meta.dirname, '..')
@@ -109,6 +111,7 @@ async function main(): Promise<void> {
     dependencyDir: join(REPOSITORY_ROOT, 'node_modules', '.pnpm', 'node_modules'),
     release,
   })
+  await prepareLaya(join(resolveDesktopTargetBuildPaths().runtime, 'laya'))
   await preparePrimaryRuntime()
   await launchElectron()
 }

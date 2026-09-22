@@ -23,7 +23,7 @@ import type {
   TerminalWaitReason,
 } from '@deepseek-ai/dsh-terminal'
 import type { ResolvedConfig } from './config.ts'
-import { CONTROLLED_PROMPT, TerminalSanitizer } from './sanitize.ts'
+import { TerminalSanitizer } from './sanitize.ts'
 
 const requireHeadless = createLazyRequire<typeof import('@xterm/headless')>('@xterm/headless', import.meta.url)
 
@@ -507,10 +507,10 @@ export class LocalPtySession implements TerminalBackendSession {
       this.lastOutputAt = Date.now()
     }
     if (this.promptSeen && sanitized.promptTail !== undefined) {
-      const remaining = Math.max(0, CONTROLLED_PROMPT.length + 1 - this.promptTail.length)
+      const remaining = Math.max(0, this.config.promptText.length + 1 - this.promptTail.length)
       this.promptTail += sanitized.promptTail.slice(0, remaining)
-      if (sanitized.promptTail.length > remaining) this.promptTail = `${CONTROLLED_PROMPT}\0`
-      this.promptTextSeen = this.promptTail === CONTROLLED_PROMPT
+      if (sanitized.promptTail.length > remaining) this.promptTail = `${this.config.promptText}\0`
+      this.promptTextSeen = this.promptTail === this.config.promptText
     }
   }
 

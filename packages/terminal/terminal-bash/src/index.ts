@@ -61,7 +61,7 @@ function ensureSandboxModeFence(ctx: Context, owner: Agent): void {
   }, { global: true })
 }
 
-function childEnvironment(spec: TerminalBackendSpawnSpec, dialect: ShellDialect): Record<string, string> {
+function childEnvironment(spec: TerminalBackendSpawnSpec, dialect: ShellDialect, promptText: string): Record<string, string> {
   // The subprocess provider supplies its own scrubbed ambient base; these are
   // deliberate terminal-specific overrides layered after it.
   const common = {
@@ -79,11 +79,11 @@ function childEnvironment(spec: TerminalBackendSpawnSpec, dialect: ShellDialect)
   }
   return {
     ...common,
-    PS1: CONTROLLED_PROMPT,
+    PS1: promptText,
     // Re-asserting PS1 after the marker keeps prompt readiness working when a
     // command overwrote the shell variable: bash runs PROMPT_COMMAND before
     // rendering each prompt, so an override never survives to the next prompt.
-    PROMPT_COMMAND: `printf "\\033]133;D;%s\\007" "$?"; PS1='${CONTROLLED_PROMPT}'`,
+    PROMPT_COMMAND: `printf "\\033]133;D;%s\\007" "$?"; PS1='${promptText}'`,
     BASH_SILENCE_DEPRECATION_WARNING: '1',
   }
 }
@@ -116,6 +116,7 @@ async function startupSession(
   dialect: ShellDialect,
   timeoutMs: number,
   signal?: AbortSignal,
+  promptText = CONTROLLED_PROMPT,
 ): Promise<void> {
   let startupOperation: TerminalSendOperation | undefined
   const start = async (): Promise<void> => {
@@ -132,7 +133,7 @@ async function startupSession(
     for (;;) {
       const first = viewport.length === 0
       startupOperation = session.startSend({
-        text: first ? ENCODING_PREAMBLE + PWSH_PROMPT_SETUP : '',
+        text: first ? ENCODING_PREAMBLE + PWSH_PROMPT_SETUP.replace(CONTROLLED_PROMPT, promptText) : '',
         submit: first,
         ...signal !== undefined ? { signal } : {},
       })
@@ -208,7 +209,7 @@ export class BashTerminalBackend implements TerminalBackend {
     const terminal = await this.spawnTerminal({
       argv,
       cwd: spec.cwd ?? policy.workspaceRoot,
-      env: childEnvironment(spec, this.config.shellDialect),
+      env: childEnvironment(spec, this.config.shellDialect, this.config.promptText),
       rows: this.config.rows,
       cols: this.config.cols,
       terminalType: 'dumb',
@@ -222,7 +223,7 @@ export class BashTerminalBackend implements TerminalBackend {
       return rejectAfterStartupCleanup(error, () => terminal.terminate())
     }
     try {
-      await startupSession(session, this.config.shellDialect, this.config.timeoutMs, spec.signal)
+      await startupSession(session, this.config.shellDialect, this.config.timeoutMs, spec.signal, this.config.promptText)
       return session
     } catch (error) {
       return rejectAfterStartupCleanup(error, () => session.close('PTY startup failed'))

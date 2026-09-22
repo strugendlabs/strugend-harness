@@ -46,6 +46,10 @@ jobs:
         with:
           node-version: '24'
           cache: pnpm
+      - uses: actions/cache@v4
+        with:
+          path: .artifacts/laya-model
+          key: laya-multilingual-${{ hashFiles('apps/desktop-host/src/laya-manifest.json') }}
       - run: pnpm install --frozen-lockfile
       - name: Validate preview and native build host
         run: pnpm strugend:package ${{ matrix.target }} --version "$env:PREVIEW_VERSION" --check
@@ -78,11 +82,24 @@ jobs:
           apps/desktop/tests/agentos-browser-target.spec.ts
           apps/desktop/tests/main-startup.spec.ts
           apps/desktop/tests/smoke-desktop-bridge.spec.ts
+          apps/desktop/tests/strugend-location.spec.ts
+          apps/desktop-host/tests/strugend-services.spec.ts
+          apps/desktop-host/tests/strugend-intelligence.spec.ts
+          apps/desktop-host/tests/strugend-decision.spec.ts
+          apps/desktop-host/tests/strugend-delivery.spec.ts
+          apps/desktop-host/tests/strugend-laya-local.spec.ts
+          apps/desktop-host/tests/strugend-persistence.spec.ts
+          apps/desktop-host/tests/strugend-advisor.spec.ts
           --maxWorkers=2 --testTimeout=90000 --hookTimeout=90000
       - name: Build native installer and run bundled runtime smokes
         run: pnpm strugend:package ${{ matrix.target }} --version "$env:PREVIEW_VERSION"
         shell: pwsh
-      - name: Exercise packaged chat, credentials, Rust crawling and sidebar browser
+      - name: Measure real native inference and memory release
+        env:
+          LAYA_MODEL_TEST: '1'
+          LAYA_PACKAGED_ROOT: apps/desktop/.desktop-build/targets/${{ matrix.target }}
+        run: pnpm exec vitest run apps/desktop-host/tests/strugend-laya.built.spec.ts --maxWorkers=1
+      - name: Exercise packaged chat, local Laya, delivery, credentials and browser
         shell: pwsh
         run: |
           $output = (Resolve-Path "apps/desktop/.desktop-build/targets/${{ matrix.target }}/unsigned-artifacts").Path
@@ -105,7 +122,9 @@ jobs:
         if: always()
         with:
           name: strugend-evidence-${{ matrix.target }}
-          path: .artifacts/strugend/packaged-*
+          path: |
+            .artifacts/strugend/packaged-*
+            .artifacts/strugend/local-laya-*.json
           if-no-files-found: ignore
           retention-days: 14
       - name: Record artifact hashes

@@ -202,11 +202,22 @@ export function ModelsSection(props: ModelsSectionProps): ReactNode {
     controller === undefined || useSnapshot === undefined || operations === undefined
     || schema === undefined || t === undefined
   ) return null
-  if (props.intelligence !== undefined) return <IntelligenceSettings access={props.intelligence} operations={operations} t={t} />
+  if (props.intelligence !== undefined) return <>
+    <IntelligenceSettings access={props.intelligence} operations={operations} t={t} />
+    <details className={styles.section}>
+      <summary>{t('intelligenceProviders')}</summary>
+      <p className={styles.intro}>{t('intelligenceProvidersHint')}</p>
+      <Loaded injected={{ controller, useSnapshot, operations, schema, t }} renderSlot={renderSlot} additionalOnly />
+    </details>
+  </>
   return <Loaded injected={{ controller, useSnapshot, operations, schema, t }} renderSlot={renderSlot} />
 }
 
-function Loaded({ injected, renderSlot }: { injected: ModelsSectionFace; renderSlot: ModelsRenderSlot }): ReactNode {
+function Loaded({ injected, renderSlot, additionalOnly = false }: {
+  injected: ModelsSectionFace
+  renderSlot: ModelsRenderSlot
+  additionalOnly?: boolean
+}): ReactNode {
   const { controller, operations, schema, t } = injected
   const state = injected.useSnapshot(snapshot => snapshot)
   const [editing, setEditing] = useState<EditorTarget | undefined>(undefined)
@@ -294,8 +305,11 @@ function Loaded({ injected, renderSlot }: { injected: ModelsSectionFace; renderS
   // One fact decides both first-run postures on this page and the onboarding
   // step: whether the user already has a provider to talk to.
   const anyUsable = state.rows.some(providerUsable)
-  const configured = state.rows.filter(row => row.configured)
-  const configurable = state.rows.filter(row => state.namespaces.has(row.entry.settingsNs))
+  const rows = additionalOnly
+    ? state.rows.filter(row => row.entry.settingsNs !== 'llm-deepseek' && !/deepseek|\bdsh\b/iu.test(row.entry.displayName))
+    : state.rows
+  const configured = rows.filter(row => row.configured)
+  const configurable = rows.filter(row => state.namespaces.has(row.entry.settingsNs))
   const addable = configurable.filter(row => !row.configured)
   const addTarget = adding ? editing : undefined
   const addNamespace = addTarget === undefined ? undefined : state.namespaces.get(addTarget.settingsNs)

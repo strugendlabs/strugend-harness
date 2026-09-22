@@ -1,5 +1,18 @@
 /** Typed commands exchanged by the Agent OS desktop, its renderer, and its Harness host. */
 
+/** One independently evaluated question accepted by the Decision runtime. */
+export type DecisionQuestion =
+  | { type: 'noul'; instructions: string }
+  | { type: 'choice'; instructions: string; criteria: Record<string, string> }
+  | { type: 'score'; instructions: string; criteria: string[] }
+
+/** Exact non-secret auxiliary model input, logged before local or remote inference. */
+export interface DecisionPayload {
+  model: string
+  state: string
+  questions: Record<string, DecisionQuestion>
+}
+
 /** An organizational folder; placement never changes a chat's execution workspace. */
 export interface ChatGroup {
   id: string
@@ -136,6 +149,7 @@ export interface VideoEdit {
 
 /** Commands available only to the owned, top-level application renderer. */
 export type AgentOsCommand =
+  | { type: 'location.open'; path: string; reveal?: boolean }
   | { type: 'media.list' }
   | { type: 'media.import' }
   | { type: 'media.edit'; edit: VideoEdit }

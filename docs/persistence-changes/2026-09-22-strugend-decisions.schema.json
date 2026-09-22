@@ -1,0 +1,337 @@
+{
+  "formatVersion": 1,
+  "roots": [
+    {
+      "key": "event:strugend/decision-request",
+      "kind": "event",
+      "event": "strugend/decision-request",
+      "surface": false,
+      "digest": "83a9cee19062525bb336a68f75bd39857823649856afadf3df466399747d46b4",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "data",
+                "type": 1,
+                "optional": false
+              },
+              {
+                "name": "ignorable",
+                "type": 17,
+                "optional": true
+              },
+              {
+                "name": "seq",
+                "type": 18,
+                "optional": false
+              },
+              {
+                "name": "time",
+                "type": 18,
+                "optional": false
+              },
+              {
+                "name": "type",
+                "type": 19,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "checkpoint",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "payload",
+                "type": 3,
+                "optional": false
+              },
+              {
+                "name": "runtime",
+                "type": 14,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "primitive",
+            "type": "string"
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "model",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "questions",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "state",
+                "type": 2,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "object",
+            "properties": [],
+            "indices": [
+              {
+                "key": 2,
+                "value": 5
+              }
+            ]
+          },
+          {
+            "kind": "union",
+            "types": [
+              6,
+              9,
+              12
+            ]
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "criteria",
+                "type": 7,
+                "optional": false
+              },
+              {
+                "name": "instructions",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "type",
+                "type": 8,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "array",
+            "element": 2
+          },
+          {
+            "kind": "literal",
+            "value": "score"
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "criteria",
+                "type": 10,
+                "optional": false
+              },
+              {
+                "name": "instructions",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "type",
+                "type": 11,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "object",
+            "properties": [],
+            "indices": [
+              {
+                "key": 2,
+                "value": 2
+              }
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "choice"
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "instructions",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "type",
+                "type": 13,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "literal",
+            "value": "noul"
+          },
+          {
+            "kind": "union",
+            "types": [
+              15,
+              16
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "local"
+          },
+          {
+            "kind": "literal",
+            "value": "remote"
+          },
+          {
+            "kind": "literal",
+            "value": true
+          },
+          {
+            "kind": "primitive",
+            "type": "number"
+          },
+          {
+            "kind": "literal",
+            "value": "strugend/decision-request"
+          }
+        ]
+      }
+    },
+    {
+      "key": "event:strugend/decision-result",
+      "kind": "event",
+      "event": "strugend/decision-result",
+      "surface": false,
+      "digest": "4345aefd1785c9b24d26179c610b8330534eacd1a357ace958fddc5289c9f412",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "data",
+                "type": 1,
+                "optional": false
+              },
+              {
+                "name": "ignorable",
+                "type": 9,
+                "optional": true
+              },
+              {
+                "name": "seq",
+                "type": 3,
+                "optional": false
+              },
+              {
+                "name": "time",
+                "type": 3,
+                "optional": false
+              },
+              {
+                "name": "type",
+                "type": 10,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "checkpoint",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "requestSeq",
+                "type": 3,
+                "optional": false
+              },
+              {
+                "name": "result",
+                "type": 4,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "primitive",
+            "type": "string"
+          },
+          {
+            "kind": "primitive",
+            "type": "number"
+          },
+          {
+            "kind": "object",
+            "properties": [],
+            "indices": [
+              {
+                "key": 2,
+                "value": 5
+              }
+            ]
+          },
+          {
+            "kind": "union",
+            "types": [
+              2,
+              3,
+              4,
+              6,
+              7,
+              8
+            ]
+          },
+          {
+            "kind": "array",
+            "element": 5
+          },
+          {
+            "kind": "primitive",
+            "type": "boolean"
+          },
+          {
+            "kind": "primitive",
+            "type": "null"
+          },
+          {
+            "kind": "literal",
+            "value": true
+          },
+          {
+            "kind": "literal",
+            "value": "strugend/decision-result"
+          }
+        ]
+      }
+    }
+  ],
+  "types": []
+}

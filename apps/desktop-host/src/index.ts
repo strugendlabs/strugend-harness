@@ -10,7 +10,7 @@ import * as strugendIntelligence from './strugend-intelligence.ts'
 import { agentOsProfilePatch } from './agentos-profile.ts'
 import * as skillFilesystem from '@deepseek-ai/dsh-skill-filesystem'
 import { desktopRequest } from './agentos-bridge.ts'
-import { delimiter, join } from 'node:path'
+import { delimiter, join, dirname } from 'node:path'
 import { loadLayeredEnv, loadProfileDirectory } from '@deepseek-ai/dsh-app-boot'
 import { runProfile } from '@deepseek-ai/dsh/profile-boot'
 import type {} from '@deepseek-ai/dsh-client-connection'
@@ -86,7 +86,7 @@ async function main(): Promise<void> {
   await ctx.plugin(agentOsPower)
   await ctx.plugin(agentOsTools)
   await ctx.plugin(agentOsVision)
-  await ctx.plugin(strugendIntelligence, strugendIntelligence.Config({} as strugendIntelligence.Config))
+  await ctx.plugin(strugendIntelligence, strugendIntelligence.Config({ localModelDir: join(dirname(process.argv[4] ?? join(runtimeDir, '..', 'runtime', 'primary-runtime')), 'laya') } as strugendIntelligence.Config))
   const skillRoot = await desktopRequest<string>({ method: 'skill-root' })
   await ctx.plugin(skillFilesystem, { providerName: 'agent-os-recordings', includeDefaultRoots: false, customSkillDirs: [skillRoot] })
   control.updateTasks = installDesktopUpdateTaskControl(ctx)

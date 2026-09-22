@@ -11,6 +11,13 @@ import styles from './ModelsSection.module.css'
 export interface IntelligenceSnapshot {
   /** The graph origin; an empty value means disconnected. */
   graphUrl: string
+  /** Selected local/hosted inference strategy. */
+  decisionMode: 'local' | 'auto' | 'remote'
+  /** Background judgments are recorded in Observe mode; Assist may offer ready advice to Core. */
+  adviceMode: 'observe' | 'assist'
+  /** Device admission is read from the Host without loading the model. */
+  localAllowed: boolean
+  localReason: string
   /** Revision used to prevent overwriting another window's edits. */
   revision: number
   /** Only configured/writable metadata, never credential values. */
@@ -23,6 +30,8 @@ export interface IntelligenceSnapshot {
 export interface IntelligenceOperations {
   /** @returns Current connection metadata from the Host. */
   load(): Promise<IntelligenceSnapshot>
+  /** @returns Validated connection result without secret values. */
+  testConnection(provider: 'decision' | 'github' | 'vercel'): Promise<{ available: boolean; reason?: string }>
 }
 
 /**
@@ -37,14 +46,14 @@ export function IntelligenceSettings({ access, operations, t }: {
 }): ReactNode {
   const [snapshot, setSnapshot] = useState<IntelligenceSnapshot>()
   const [keys, setKeys] = useState<Record<string, string>>({})
-  const [graphUrl, setGraphUrl] = useState('')
+  const [tested, setTested] = useState<Record<string, boolean>>({})
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   useEffect(() => {
     let disposed = false
     void access.load().then((value) => {
-      if (!disposed) { setSnapshot(value); setGraphUrl(value.graphUrl) }
+      if (!disposed) { setSnapshot(value) }
     }, () => { if (!disposed) setError(t('loadFailed')) })
     return () => { disposed = true }
   }, [access, t])
@@ -55,27 +64,38 @@ export function IntelligenceSettings({ access, operations, t }: {
     try {
       const failure = await operations.storeCredential(ref, (keys[ref] ?? '').trim())
       if (failure !== undefined) throw new Error(failure)
+      setTested(previous => ({ ...previous, [ref]: false }))
       setKeys(previous => ({ ...previous, [ref]: '' }))
       setSnapshot(await access.load())
       setNotice(t('intelligenceSaved'))
     } catch { setError(t('intelligenceSaveFailed')) }
     finally { setBusy(false) }
   }
-  const saveGraph = async (): Promise<void> => {
-    if (!snapshot) return
+  const test = async (ref: string, provider: 'decision' | 'github' | 'vercel'): Promise<void> => {
     setBusy(true); setError(''); setNotice('')
     try {
-      const outcome = await operations.writeSettings('strugend-intelligence', [{ op: 'set', path: ['graphUrl'], value: graphUrl.trim() }], snapshot.revision)
-      if (outcome.kind !== 'written') throw new Error(outcome.message)
-      const next = await access.load()
-      setSnapshot(next); setGraphUrl(next.graphUrl); setNotice(t('intelligenceSaved'))
-    } catch { setError(t('intelligenceGraphFailed')) }
+      const result = await access.testConnection(provider)
+      setTested(previous => ({ ...previous, [ref]: result.available }))
+      if (!result.available) { setError(result.reason ?? t('intelligenceTestFailed')); return }
+      setNotice(t('intelligenceTestPassed'))
+    } catch { setError(t('intelligenceTestFailed')) }
+    finally { setBusy(false) }
+  }
+  const setMode = async (value: string, field: 'decisionMode' | 'adviceMode' = 'decisionMode'): Promise<void> => {
+    if (!snapshot || !(field === 'decisionMode' ? ['local', 'auto', 'remote'] : ['observe', 'assist']).includes(value)) return
+    setBusy(true); setError(''); setNotice('')
+    try {
+      const result = await operations.writeSettings('strugend-intelligence', [{ op: 'set', path: [field], value }], snapshot.revision)
+      if (result.kind !== 'written') throw new Error('Settings changed.')
+      setSnapshot(await access.load()); setTested({})
+    } catch { setError(t('intelligenceModeFailed')) }
     finally { setBusy(false) }
   }
   const roles = snapshot === undefined ? [] : [
-    { labelKey: 'intelligenceCore', hint: 'intelligenceCoreHint', ref: snapshot.coreRef },
-    { labelKey: 'intelligenceDecision', hint: 'intelligenceDecisionHint', ref: 'TYPESAFE_API_KEY' },
-    { labelKey: 'intelligenceMemory', hint: 'intelligenceMemoryHint', ref: 'CHRONOGRAPH_TOKEN' },
+    { labelKey: 'intelligenceCore', hint: 'intelligenceCoreHint', ref: snapshot.coreRef, provider: undefined },
+    { labelKey: 'intelligenceDecision', hint: 'intelligenceDecisionHint', ref: 'IMPOSSIBL_API_KEY', provider: 'decision' },
+    { labelKey: 'intelligenceGitHub', hint: 'intelligenceGitHubHint', ref: 'STRUGEND_GITHUB_TOKEN', provider: 'github' },
+    { labelKey: 'intelligenceVercel', hint: 'intelligenceVercelHint', ref: 'STRUGEND_VERCEL_TOKEN', provider: 'vercel' },
   ] as const
   return <section className={styles.section}>
     <h2 className={styles.title}>{t('intelligenceTitle')}</h2>
@@ -88,7 +108,28 @@ export function IntelligenceSettings({ access, operations, t }: {
       return <form className={styles.intelligenceRole} key={role.ref} onSubmit={(event) => { event.preventDefault(); void save(role.ref) }}>
         <h3>{t(role.labelKey)}</h3>
         <p className={styles.intro}>{t(role.hint)}</p>
-        <p className={styles.intelligenceStatus}>{info?.configured ? t('credentialConfigured') : t('credentialMissing')}</p>
+        {role.provider === 'decision' && <label className={styles.intelligenceKey}>
+          <span>{t('intelligenceRuntime')}</span>
+          <select className={styles.input} aria-label={t('intelligenceRuntime')} value={snapshot?.decisionMode} disabled={busy}
+            onChange={(event) => { void setMode(event.target.value) }}>
+            <option value="local" disabled={snapshot?.localAllowed === false}>{t('intelligenceLocal')}</option>
+            <option value="auto">{t('intelligenceAuto')}</option>
+            <option value="remote">{t('intelligenceRemote')}</option>
+          </select>
+        </label>}
+        {role.provider === 'decision' && <>
+          <label className={styles.intelligenceKey}>
+            <span>{t('intelligenceAdvice')}</span>
+            <select className={styles.input} aria-label={t('intelligenceAdvice')} value={snapshot?.adviceMode} disabled={busy}
+              onChange={(event) => { void setMode(event.target.value, 'adviceMode') }}>
+              <option value="observe">{t('intelligenceObserve')}</option>
+              <option value="assist">{t('intelligenceAssist')}</option>
+            </select>
+          </label>
+          {snapshot?.localAllowed === false && <p role="status">{snapshot.localReason || t('intelligenceLowMemory')}</p>}
+          <p className={styles.intro}>{t('intelligenceResourceHint')}</p>
+        </>}
+        <p className={styles.intelligenceStatus}>{tested[role.ref] ? t('intelligenceTestPassed') : role.provider === 'decision' && snapshot?.decisionMode === 'local' ? t('intelligenceLocalReady') : info?.configured ? t('credentialConfigured') : t('credentialMissing')}</p>
         <label className={styles.intelligenceKey}>
           <span>{t('keyInput')}</span>
           <input className={styles.input} type="password" autoComplete="off" spellCheck={false}
@@ -97,13 +138,13 @@ export function IntelligenceSettings({ access, operations, t }: {
             onChange={(event) => { const value = event.target.value; setKeys(previous => ({ ...previous, [role.ref]: value })) }} />
         </label>
         {info?.writable === false ? <p>{t('keyEnvLocked')}</p> : <button className={styles.intelligenceSave} disabled={busy || !keys[role.ref]?.trim()} type="submit">{t('apply')}</button>}
+        {role.provider && <button className={styles.intelligenceSave} type="button" disabled={busy} onClick={() => { void test(role.ref, role.provider) }}>{t('intelligenceTest')}</button>}
       </form>
     })}
-    {snapshot && <form className={styles.intelligenceRole} onSubmit={(event) => { event.preventDefault(); void saveGraph() }}>
-      <label className={styles.intelligenceKey}><span>{t('intelligenceGraphUrl')}</span><input className={styles.input}
-        type="url" value={graphUrl} placeholder={t('intelligenceGraphPlaceholder')} disabled={busy} onChange={(event) => { setGraphUrl(event.target.value) }} /></label>
-      <p className={styles.intro}>{t('intelligenceGraphHint')}</p>
-      <button className={styles.intelligenceSave} type="submit" disabled={busy || graphUrl === snapshot.graphUrl}>{t('apply')}</button>
-    </form>}
+    <section className={styles.intelligenceRole} aria-disabled="true">
+      <h3>{t('intelligenceMemory')}</h3>
+      <p>{t('intelligenceComingSoon')}</p>
+      <p className={styles.intro}>{t('intelligenceMemoryHint')}</p>
+    </section>
   </section>
 }

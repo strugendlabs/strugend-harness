@@ -41,7 +41,7 @@ afterEach(async () => {
 
 function fixture(overrides: Partial<ResolvedConfig> = {}) {
   const config: ResolvedConfig = {
-    backendType: 'shell', shellDialect: 'bash', shellPath: '/bin/bash', shellArgs: [], rows: 24, cols: 80,
+    backendType: 'shell', shellDialect: 'bash', promptText: 'strugend> ', shellPath: '/bin/bash', shellArgs: [], rows: 24, cols: 80,
     scrollbackLines: 10_000, scrollbackMaxBytes: 4 * 1024 * 1024, maxReadBytes: 256 * 1024,
     pollIntervalMs: 60_000, exactProbeAfterMs: 60_000, idleSilenceMs: 60_000,
     handoffGraceMs: 60_000, timeoutMs: 60_000, disposeGraceMs: 60_000,

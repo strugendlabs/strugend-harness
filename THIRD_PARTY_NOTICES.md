@@ -38,6 +38,7 @@ External packages installed for runtime use or distributed inside the prebuilt b
 | [`@browserbasehq/stagehand`](https://github.com/browserbase/stagehand) | MIT |
 | [`@deepseek-ai/libreoffice-kit`](https://github.com/deepseek-harness/libreoffice-kit) | MPL-2.0 |
 | [`@earendil-works/pi-ai`](https://github.com/earendil-works/pi) | MIT |
+| [`@huggingface/tokenizers`](https://github.com/huggingface/tokenizers.js) | Apache-2.0 |
 | [`@joplin/turndown-plugin-gfm`](https://github.com/laurent22/joplin-turndown-plugin-gfm) | MIT |
 | [`@jridgewell/gen-mapping`](https://github.com/jridgewell/sourcemaps) | MIT |
 | [`@lexical/history`](https://github.com/facebook/lexical) | MIT |
@@ -103,6 +104,7 @@ External packages installed for runtime use or distributed inside the prebuilt b
 | [`negotiator`](https://github.com/jshttp/negotiator) | MIT |
 | [`node-addon-require-builtin`](https://www.npmjs.com/package/node-addon-require-builtin) | MIT |
 | [`node-pty`](https://github.com/microsoft/node-pty) | MIT |
+| [`onnxruntime-node`](https://github.com/Microsoft/onnxruntime) | MIT |
 | [`open`](https://github.com/sindresorhus/open) | MIT |
 | [`pdfjs-dist`](https://github.com/mozilla/pdf.js) | Apache-2.0 |
 | [`picomatch`](https://github.com/micromatch/picomatch) | MIT |
@@ -128,6 +130,7 @@ External packages installed for runtime use or distributed inside the prebuilt b
 pnpm applies local patches to the following packages at install time, so shipped artifacts carry modified copies; each patch file is the complete record of the modification:
 
 - `@electron/osx-sign@1.3.3` — [`patches/@electron__osx-sign@1.3.3.patch`](patches/@electron__osx-sign@1.3.3.patch)
+- `@receptron/laya@0.1.2` — [`patches/@receptron__laya@0.1.2.patch`](patches/@receptron__laya@0.1.2.patch)
 - `@yao-pkg/pkg@6.21.0` — [`patches/@yao-pkg__pkg@6.21.0.patch`](patches/@yao-pkg__pkg@6.21.0.patch)
 - `node-pty@1.2.0-beta.15` — [`patches/node-pty@1.2.0-beta.15.patch`](patches/node-pty@1.2.0-beta.15.patch)
 
@@ -171,6 +174,7 @@ External packages **directly declared** for development, tests, types, or toolin
 | [`@modelcontextprotocol/server-everything`](https://github.com/modelcontextprotocol/servers) | MIT / Apache-2.0 |
 | [`@modelcontextprotocol/server-filesystem`](https://github.com/modelcontextprotocol/servers) | MIT / Apache-2.0 |
 | [`@panzoom/panzoom`](https://github.com/timmywil/panzoom) | MIT |
+| [`@receptron/laya`](https://github.com/receptron/laya) | MIT |
 | [`@stylistic/eslint-plugin`](https://github.com/eslint-stylistic/eslint-stylistic) | MIT |
 | [`@testing-library/dom`](https://github.com/testing-library/dom-testing-library) | MIT |
 | [`@testing-library/react`](https://github.com/testing-library/react-testing-library) | MIT |

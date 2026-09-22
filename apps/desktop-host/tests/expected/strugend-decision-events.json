@@ -1,0 +1,36 @@
+[
+  {
+    "type": "strugend/decision-request",
+    "seq": 0,
+    "time": 0,
+    "data": {
+      "checkpoint": "verification",
+      "runtime": "local",
+      "payload": {
+        "model": "convaiinnovations/laya-multilingual",
+        "state": "The build exited zero.",
+        "questions": {
+          "complete": {
+            "type": "noul",
+            "instructions": "Does this establish the requested result?"
+          }
+        }
+      }
+    }
+  },
+  {
+    "type": "strugend/decision-result",
+    "seq": 1,
+    "time": 0,
+    "data": {
+      "checkpoint": "verification",
+      "requestSeq": 0,
+      "result": {
+        "available": false,
+        "runtime": "local",
+        "status": "unavailable",
+        "reason": "Model file checksum mismatch."
+      }
+    }
+  }
+]

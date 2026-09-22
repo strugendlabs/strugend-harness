@@ -19,20 +19,16 @@ The development command uses a separate development profile under `apps/desktop/
 
 1. Choose a workspace folder.
 2. Open Settings → Intelligence and enter the Core API key.
-3. Add the Decision key for Jev and, optionally, the Memory token and Chronograph service origin.
+3. Decision defaults to background Observe mode. Automatic uses an optional Impossibl key or bundled Laya when memory allows. Connect GitHub and Vercel when publishing websites.
 4. Describe a task, use a recorded skill, or open Video studio.
 
 ## Intelligence services
 
-Core plans, writes, codes, sees screenshots, and executes tools. It uses the existing official model provider directly; no local inference proxy is required. Decision calls Jev for independent choice, score, or evidence questions through `decision_check`. It does not generate prose or grant permission. Memory queries existing temporal relationships through `memory_graph`; it does not automatically ingest files or write graph records. Ordinary tasks can continue when either optional service is absent.
+Core plans, writes, codes, sees screenshots and executes tools through the selected provider. Additional AI providers are configurable in Intelligence. Optional Decision checks run concurrently; default Observe records them without changing Core context. Assist can add fresh, confident advice already available. Local inference uses one CPU thread, unloads when idle, and stays disabled below 8 GiB RAM. Four-GB machines use optional remote checks or Core alone. See the [architecture and qualification limits](STRUGEND_PLAN.md); tests and observed receipts remain authoritative.
 
-Credentials are stored through the desktop credential provider and never read back into settings. A configured indicator means a key was saved, not that the remote service has been verified. Deployment credentials are read-only in the form. The Core credential reference follows its provider settings; Decision resolves `TYPESAFE_API_KEY`, and Memory resolves `CHRONOGRAPH_TOKEN`.
+Intelligence settings keep credentials write-only. Core follows its provider's credential reference; optional remote Decision resolves `IMPOSSIBL_API_KEY`; delivery resolves `STRUGEND_GITHUB_TOKEN` and `STRUGEND_VERCEL_TOKEN`. Test connection verifies the selected runtime or account. Graph memory is disabled and marked Coming soon: no graph tool or requests are registered. Local `soul.md` remains available.
 
-The `strugend-intelligence` settings section controls the exact `decisionUrl`, allowed `decisionModels`, `graphUrl`, `timeoutMs`, `maxBytes`, `maxQuestions`, and `maxGraphRows`. The decision endpoint defaults to `https://api.typesafe.ai/v1/systemone` with `jev-latest`. The graph origin defaults to empty (disconnected). Remote services require HTTPS; HTTP is supported only on loopback. The Memory address must be an origin without path, credentials, query, or fragment. Use a graph token with read scope.
-
-Each service request and response is recorded as a tool call. Requests send only the selected state and questions or graph query; keys are added outside model-visible arguments. Requests have a 10-second deadline, 256-KiB request/response caps, up to eight independent questions, and up to 50 graph rows by default. Cancellation and shutdown abort active requests. Redirects are rejected and failed requests are not retried automatically. Decision answers are validated against their questions; confidence remains advisory. Graph pagination uses an opaque cursor with the original query, and IDs and microsecond timestamps remain decimal strings.
-
-See the [implementation plan](STRUGEND_PLAN.md) for task examples, calibration, memory ingestion, and the comparative showcase. Live service qualification requires credentials and a running graph workspace.
+`deliver_project` starts a task-owned background job. A website recipe requires a clean committed project, build and verification commands, a new repository name and a deployment target. It creates a private GitHub repository and deploys the checked commit's files to Vercel; IDs persist for recovery. An app recipe runs the appropriate build and checks actual distributables with hashes. Missing credentials pause delivery after local checks and can be supplied through settings. Inspect the final job receipt and live sidebar page before reporting success. See the [implementation plan](STRUGEND_PLAN.md).
 
 ## Full access and autonomous work
 

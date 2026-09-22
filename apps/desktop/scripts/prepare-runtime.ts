@@ -8,6 +8,7 @@ import { parseArgs } from 'node:util'
 import { downloadArtifact } from '@electron/get'
 import extractZip from 'extract-zip'
 import { resolveDesktopBuildTarget, resolveDesktopTargetBuildPaths } from './desktop-build-paths.mjs'
+import { prepareLaya } from './prepare-laya.ts'
 import { preparePrimaryRuntime } from './prepare-primary-runtime.ts'
 
 const BUILD_PATHS = resolveDesktopTargetBuildPaths()
@@ -49,6 +50,7 @@ async function main(): Promise<void> {
     node: nodeVersion,
     pnpm: pnpmVersion,
   }, undefined, 2)}\n`)
+  await prepareLaya(join(RUNTIME_ROOT, 'laya'))
   await preparePrimaryRuntime({ deferSmoke: values['defer-primary-runtime-smoke'] })
 }
 

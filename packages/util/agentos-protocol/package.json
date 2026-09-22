@@ -19,11 +19,16 @@
       "default": "./lib/index.js"
     },
     "./src/*": "./src/*",
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./decision-events": {
+      "types": "./lib/types/decision-events.d.ts",
+      "default": "./lib/types/decision-events.js"
+    }
   },
   "files": [
     "lib/index.js",
-    "lib/types/**/*.d.ts"
+    "lib/types/**/*.d.ts",
+    "lib/types/decision-events.js"
   ],
   "license": "MIT",
   "peerDependencies": {
@@ -31,5 +36,9 @@
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "workspace:^"
+  },
+  "dependencies": {
+    "@deepseek-ai/dsh-session": "workspace:^",
+    "@deepseek-ai/dsh-util-values": "workspace:^"
   }
 }

@@ -132,14 +132,13 @@ export function OpenInAppAction(props: OpenInAppActionProps): React.JSX.Element 
   const available = useOpenInAppApps(apps => apps)
   const choice = useOpenInAppChoice(id => id)
   const [open, setOpen] = useState(false)
+  const [failure, setFailure] = useState('')
   const [phase, setPhase] = useState<'idle' | 'busy' | 'error'>('idle')
   const inFlight = useRef(false)
   const busyTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
-  const errorTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   useEffect(() => () => {
     clearTimeout(busyTimer.current)
-    clearTimeout(errorTimer.current)
   }, [])
 
   const apps = (available ?? [])
@@ -155,20 +154,19 @@ export function OpenInAppAction(props: OpenInAppActionProps): React.JSX.Element 
   const launch = (appId: string): void => {
     if (inFlight.current) return
     inFlight.current = true
-    // A pending error decay must not flip the button back to idle mid-launch.
-    clearTimeout(errorTimer.current)
     clearTimeout(busyTimer.current)
     busyTimer.current = setTimeout(() => { setPhase('busy') }, BUSY_DRESS_DELAY_MS)
+    setFailure('')
     props.launch(appId, cwd).then(() => {
       inFlight.current = false
       clearTimeout(busyTimer.current)
       setPhase('idle')
-    }, () => {
+    }, (error: unknown) => {
+      setFailure(error instanceof Error ? error.message : t('open.error'))
       inFlight.current = false
       clearTimeout(busyTimer.current)
       setPhase('error')
-      clearTimeout(errorTimer.current)
-      errorTimer.current = setTimeout(() => { setPhase('idle') }, 2_000)
+
     })
   }
 
@@ -179,50 +177,53 @@ export function OpenInAppAction(props: OpenInAppActionProps): React.JSX.Element 
   }))
 
   return (
-    <Menu
-      open={open}
-      align="end"
-      dense
-      selection="fill"
-      onClose={() => { setOpen(false) }}
-      items={items}
-      selectedId={current}
-      onSelect={(id) => {
-        setOpen(false)
-        // A pick while a launch is in flight is ignored whole: persisting the
-        // choice without launching would leave the button naming an app the
-        // gesture never opened.
-        if (inFlight.current) return
-        props.choose(id)
-        launch(id)
-      }}
-      anchor={(
-        <div className={css.split}>
-          <Tooltip label={phase === 'error' ? t('open.error') : t('open.tooltip')} side="bottom">
+    <div>
+      <Menu
+        open={open}
+        align="end"
+        dense
+        selection="fill"
+        onClose={() => { setOpen(false) }}
+        items={items}
+        selectedId={current}
+        onSelect={(id) => {
+          setOpen(false)
+          // A pick while a launch is in flight is ignored whole: persisting the
+          // choice without launching would leave the button naming an app the
+          // gesture never opened.
+          if (inFlight.current) return
+          props.choose(id)
+          launch(id)
+        }}
+        anchor={(
+          <div className={css.split}>
+            <Tooltip label={phase === 'error' ? t('open.error') : t('open.tooltip')} side="bottom">
+              <button
+                type="button"
+                className={css.main}
+                data-state={phase}
+                disabled={phase === 'busy'}
+                aria-label={title}
+                onClick={() => { launch(current) }}
+              >
+                <AppIcon id={current} url={props.iconUrl(current)} size={15} />
+              </button>
+            </Tooltip>
             <button
               type="button"
-              className={css.main}
-              data-state={phase}
-              disabled={phase === 'busy'}
-              aria-label={title}
-              onClick={() => { launch(current) }}
+              className={css.chevron}
+              aria-expanded={open}
+              aria-haspopup="menu"
+              title={t('menu.toggle')}
+              aria-label={t('menu.toggle')}
+              onClick={() => { setOpen(value => !value) }}
             >
-              <AppIcon id={current} url={props.iconUrl(current)} size={15} />
+              <IconChevronDownOutline14 size={11} />
             </button>
-          </Tooltip>
-          <button
-            type="button"
-            className={css.chevron}
-            aria-expanded={open}
-            aria-haspopup="menu"
-            title={t('menu.toggle')}
-            aria-label={t('menu.toggle')}
-            onClick={() => { setOpen(value => !value) }}
-          >
-            <IconChevronDownOutline14 size={11} />
-          </button>
-        </div>
-      )}
-    />
+          </div>
+        )}
+      />
+      {failure && <div role="alert">{failure} <button type="button" onClick={() => { launch(current) }}>{t('open.retry')}</button> <button type="button" onClick={() => { void navigator.clipboard.writeText(cwd).catch(() => { setFailure(t('open.copyError')) }) }}>{t('open.copyPath')}</button></div>}
+    </div>
   )
 }

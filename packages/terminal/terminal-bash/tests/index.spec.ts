@@ -42,7 +42,7 @@ class RecordingSandbox extends SandboxProvider {
 
 function config(): ResolvedConfig {
   return {
-    backendType: 'shell', shellDialect: 'bash', shellPath: '/bin/bash', shellArgs: [], rows: 24, cols: 80,
+    backendType: 'shell', shellDialect: 'bash', promptText: 'strugend> ', shellPath: '/bin/bash', shellArgs: [], rows: 24, cols: 80,
     scrollbackLines: 10, scrollbackMaxBytes: 100, maxReadBytes: 50,
     pollIntervalMs: 10, exactProbeAfterMs: 20, idleSilenceMs: 50, handoffGraceMs: 10, timeoutMs: 100,
     disposeGraceMs: 10,
@@ -279,8 +279,8 @@ describe('BashTerminalBackend startup rollback', () => {
       cwd: '/work',
       graceMs: 10,
       env: {
-        TERM: 'dumb', PAGER: 'cat', GIT_PAGER: 'cat', PS1: 'dsh> ', BASH_SILENCE_DEPRECATION_WARNING: '1',
-        PROMPT_COMMAND: 'printf "\\033]133;D;%s\\007" "$?"; PS1=\'dsh> \'',
+        TERM: 'dumb', PAGER: 'cat', GIT_PAGER: 'cat', PS1: 'strugend> ', BASH_SILENCE_DEPRECATION_WARNING: '1',
+        PROMPT_COMMAND: 'printf "\\033]133;D;%s\\007" "$?"; PS1=\'strugend> \'',
         DSH_SHELL: '1', DSH_SESSION_ID: 'agent', DSH_PTY_SESSION_ID: 'pty-1',
       },
     })
@@ -406,14 +406,14 @@ describe('BashTerminalBackend startup rollback', () => {
         outcome.resolve({ exitCode: null, signal: 'SIGTERM' })
       },
     }
-    queueMicrotask(() => { output.write(Buffer.from('\x1b]133;D;0\x07dsh> ')) })
+    queueMicrotask(() => { output.write(Buffer.from('\x1b]133;D;0\x07strugend> ')) })
     const backend = new BashTerminalBackend(
       ctx,
       config(),
       async () => terminal,
     )
     const session = await backend.spawn(spec(agent(ctx)))
-    expect(session.motd).toBe('dsh> ')
+    expect(session.motd).toBe('strugend> ')
     await session.close('test complete')
   })
 
@@ -430,7 +430,7 @@ describe('BashTerminalBackend startup rollback', () => {
         sent = request
         return {
           done: Promise.resolve({
-            viewport: 'setup-echo dsh> ', waitReason: 'stdin_read' as const,
+            viewport: 'setup-echo strugend> ', waitReason: 'stdin_read' as const,
             sessionStatus: { kind: 'running' as const }, truncated: false,
           }),
           readOutput: () => ({ delta: '', truncated: false }),
@@ -447,7 +447,7 @@ describe('BashTerminalBackend startup rollback', () => {
     )
     expect(await backend.spawn(spec(agent(ctx)))).toBe(session)
     expect(sent).toMatchObject({ text: ENCODING_PREAMBLE + PWSH_PROMPT_SETUP, submit: true })
-    expect(session.motd).toBe('setup-echo dsh> ')
+    expect(session.motd).toBe('setup-echo strugend> ')
     expect(spawned?.env).toMatchObject({
       TERM: 'dumb', NO_COLOR: '1', DSH_SHELL: '1', DSH_SESSION_ID: 'agent', DSH_PTY_SESSION_ID: 'pty-1',
     })
@@ -468,7 +468,7 @@ describe('BashTerminalBackend startup rollback', () => {
         const second = sends.length > 1
         return {
           done: Promise.resolve({
-            viewport: second ? 'dsh> ' : "function prompt { 'dsh> ' }\n",
+            viewport: second ? 'strugend> ' : "function prompt { 'strugend> ' }\n",
             waitReason: second ? 'stdin_read' as const : 'inferred_idle' as const,
             sessionStatus: { kind: 'running' as const }, truncated: false,
           }),
@@ -487,7 +487,7 @@ describe('BashTerminalBackend startup rollback', () => {
     await backend.spawn(spec(agent(ctx)))
     expect(sends).toHaveLength(2)
     expect(sends[1]).toMatchObject({ text: '', submit: false })
-    expect(session.motd).toBe('dsh> ')
+    expect(session.motd).toBe('strugend> ')
   })
 
   it('rejects a pwsh bootstrap whose shell exits or times out', async () => {
@@ -580,7 +580,7 @@ describe('BashTerminalBackend startup rollback', () => {
         sends.push(request)
         return {
           done: Promise.resolve({
-            viewport: 'dsh> ', waitReason: 'stdin_read' as const,
+            viewport: 'strugend> ', waitReason: 'stdin_read' as const,
             sessionStatus: { kind: 'running' as const }, truncated: false,
           }),
           readOutput: () => ({ delta: '', truncated: false }),
@@ -597,7 +597,7 @@ describe('BashTerminalBackend startup rollback', () => {
     )
     const signal = new AbortController().signal
     const spawned = await backend.spawn({ ...spec(agent(ctx)), signal })
-    expect(spawned.motd).toBe('dsh> ')
+    expect(spawned.motd).toBe('strugend> ')
     expect(sends).toHaveLength(1)
     expect(sends[0]?.signal).toBe(signal)
   })

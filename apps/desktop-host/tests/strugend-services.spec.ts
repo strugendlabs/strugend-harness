@@ -9,7 +9,7 @@ const questions = {
   evidence: { type: 'noul' as const, instructions: 'Does the supplied test output show a passing run?' },
   relevance: { type: 'score' as const, instructions: 'Rate relevance to this task.', criteria: ['Unrelated', 'Related', 'Directly needed'] },
 }
-const response = () => ({ model: 'jev-latest', answers: {
+const response = () => ({ model: 'convaiinnovations/laya', answers: {
   task: { type: 'choice', choice: 'coding', probabilities: { coding: 0.9, writing: 0.1 }, confidence: 0.7 },
   evidence: { type: 'noul', noul: 0.8 },
   relevance: { type: 'score', score: 1.6, probabilities: { '0': 0.1, '1': 0.2, '2': 0.7 }, legend: { '0': 'Unrelated', '1': 'Related', '2': 'Directly needed' }, confidence: 0.6 },
@@ -50,9 +50,9 @@ it.each(['http://example.com/v1', 'https://name:secret@example.com', 'https://ex
 
 it('uses direct decision inference and leaves graph reads disconnected by default', () => {
   const config = Config({} as Config)
-  expect(config.decisionUrl).toBe('https://api.typesafe.ai/v1/systemone')
+  expect(config.decisionUrl).toBe('https://api.impossibl.com/v1/systemone')
   expect(config.graphUrl).toBe('')
-  expect(config.decisionModels).toEqual(['jev-latest'])
+  expect(config.decisionModels).toEqual(['convaiinnovations/laya', 'convaiinnovations/laya-multilingual'])
   expect(serviceUrl('http://127.0.0.1:8080').origin).toBe('http://127.0.0.1:8080')
 })
 
@@ -94,16 +94,16 @@ it('sends only the supplied state/questions/model and rejects redirects, large b
     let raw = ''; for await (const chunk of req) raw += String(chunk)
     res.setHeader('Content-Type', 'application/json'); res.end(raw)
   }, async (base) => {
-    const send = (path: string, body = { state: 'Synthetic state', questions, model: 'jev-latest' }) =>
+    const send = (path: string, body = { state: 'Synthetic state', questions, model: 'convaiinnovations/laya' }) =>
       requestJson(serviceUrl(base + path), 'fixture-key', body, { timeoutMs: 5000, maxBytes: 1024 }, new AbortController().signal)
-    expect(await send('/ok')).toEqual({ state: 'Synthetic state', questions, model: 'jev-latest' })
+    expect(await send('/ok')).toEqual({ state: 'Synthetic state', questions, model: 'convaiinnovations/laya' })
     await expect(send('/redirect')).rejects.toThrow('connection failed')
     expect(requests).toBe(2)
     await expect(send('/large')).rejects.toThrow('byte limit')
     await expect(send('/auth')).rejects.toThrow('HTTP 401')
     await expect(send('/invalid')).rejects.toThrow('invalid JSON')
     const count = requests
-    await expect(send('/ok', { state: 'x'.repeat(1025), questions, model: 'jev-latest' })).rejects.toThrow('byte limit')
+    await expect(send('/ok', { state: 'x'.repeat(1025), questions, model: 'convaiinnovations/laya' })).rejects.toThrow('byte limit')
     expect(requests).toBe(count)
   })
 })

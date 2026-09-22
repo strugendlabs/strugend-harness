@@ -20,7 +20,7 @@ English | [中文](README.zh.md)
 - [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
 - [Dev Note](#dev-note)
 
-In the Strugend desktop composition, Intelligence replaces provider cards with Core, Decision, and Memory credentials plus a Memory service origin. Keys are write-only and remain distinct from connection verification. Environment credentials are read-only. Graph edits use the settings revision; rejected edits retain the draft. The generic provider editor remains available in other compositions.
+In the Strugend desktop composition, Intelligence provides Core, optional remote Decision, GitHub and Vercel credentials. Automatic is the default Decision runtime and falls back from remote to local only when memory admission allows. Local is unavailable below 8 GiB RAM; the page displays the runtime restriction. Observe records background judgments without changing Core prompts; optional Assist can supply completed advice. Runtime and advice changes use settings revisions. The collapsed Additional AI providers editor configures other Core routes, independently of Decision. Connection tests report actual outcomes separately from saved-key metadata. Graph memory is disabled and marked Coming soon. Keys are write-only and environment credentials are read-only. Other compositions retain the generic provider editor.
 
 -----
 

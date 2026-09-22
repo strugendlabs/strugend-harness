@@ -132,10 +132,12 @@ describe('OpenInAppAction launching', () => {
 
     act(() => { reject(new Error('launch failed')) })
     await act(async () => { await vi.runOnlyPendingTimersAsync() })
-    expect(screen.getByRole('button', { name: zh['open.title'].replace('{app}', zh['app.finder']) })).toBeDefined()
+    expect(screen.getByRole('button', { name: zh['open.error'] })).toBeDefined()
+    expect(screen.getByRole('alert').textContent).toContain('launch failed')
+    expect(screen.getByRole('button', { name: zh['open.retry'] })).toBeDefined()
   })
 
-  it('shows the error state and decays back to idle after a fast failure', async () => {
+  it('keeps the error visible and offers a retry after a fast failure', async () => {
     const b = bench({
       apps: ['finder'],
       cwd: '/w/dir',
@@ -147,10 +149,8 @@ describe('OpenInAppAction launching', () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: zh['open.error'] })).toBeDefined()
     })
-    // The error state decays back to idle.
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: zh['open.title'].replace('{app}', zh['app.finder']) })).toBeDefined()
-    }, { timeout: 4_000 })
+    expect(screen.getByRole('alert').textContent).toContain('launch failed')
+    expect(screen.getByRole('button', { name: zh['open.retry'] })).toBeDefined()
   })
 
   it('shows the product tooltip on hover instead of a native title', async () => {
@@ -194,7 +194,7 @@ describe('OpenInAppAction launching', () => {
     await act(async () => {})
   })
 
-  it('clears a pending error decay when a retry starts', async () => {
+  it('keeps a retried launch busy until it settles', async () => {
     vi.useFakeTimers()
     const outcomes: Array<() => Promise<void>> = [
       () => Promise.reject(new Error('launch failed')),

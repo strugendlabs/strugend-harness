@@ -1,0 +1,42 @@
+diff --git a/dist/laya.js b/dist/laya.js
+index 6ea05046dfc012f2934fe92c454348a0eae8a899..00e9b44185b04690d8e00490c0b1ba810a7c3bf3 100644
+--- a/dist/laya.js
++++ b/dist/laya.js
+@@ -32,14 +32,16 @@ export class Laya {
+         const modelDir = opts.modelDir ? path.resolve(opts.modelDir) : await ensureBundle(opts);
+         const read = async (f) => JSON.parse(await readFile(path.join(modelDir, f), "utf8"));
+         const config = (await read("laya_config.json"));
+-        const tok = new Tokenizer((await read("tokenizer/tokenizer.json")), (await read("tokenizer/tokenizer_config.json")));
++        const tokenizerConfig = await read("tokenizer/tokenizer_config.json");
++        const tok = new Tokenizer((await read("tokenizer/tokenizer.json")), tokenizerConfig);
+         const id = (t) => {
+             const v = tok.token_to_id(t);
+             if (v === undefined)
+                 throw new Error(`special token ${t} missing from tokenizer`);
+             return v;
+         };
+-        const ids = { cls: id("[CLS]"), sep: id("[SEP]"), mask: id("[MASK]"), pad: id("[PAD]"), maskTok: "[MASK]" };
++        const cls = tokenizerConfig.cls_token ?? "[CLS]", sep = tokenizerConfig.sep_token ?? "[SEP]", mask = tokenizerConfig.mask_token ?? "[MASK]", pad = tokenizerConfig.pad_token ?? "[PAD]";
++        const ids = { cls: id(cls), sep: id(sep), mask: id(mask), pad: id(pad), maskTok: mask };
+         const session = await ort.InferenceSession.create(path.join(modelDir, "laya.onnx"), {
+             executionProviders: opts.executionProviders ?? ["cpu"],
+             graphOptimizationLevel: "all",
+@@ -92,12 +94,16 @@ export class Laya {
+             qtype: new ort.Tensor("int64", qtype, [n]),
+         });
+         const logits = out["logits"]?.data;
+-        const act = out["act_probs"];
++        const rawAct = out["act_logits"];
++        const act = out["act_probs"] ?? rawAct;
+         if (!(logits instanceof Float32Array) || !act || !(act.data instanceof Float32Array)) {
+             throw new Error("unexpected model outputs (expected float32 logits and act_probs)");
+         }
+-        const actData = act.data;
++        const actData = Float32Array.from(act.data);
+         const nAct = act.dims[1] ?? 1;
++        if (act === rawAct) {
++            for (let row = 0; row < n; row++) actData.set(softmax(Array.from(actData.subarray(row * nAct, (row + 1) * nAct))), row * nAct);
++        }
+         const answers = {};
+         items.forEach((it, r) => {
+             const qid = qids[r];

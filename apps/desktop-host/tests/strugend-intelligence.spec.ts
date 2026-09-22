@@ -1,7 +1,8 @@
 /** Real plugin registration, unavailable-service behavior, and graph query encoding. */
+import * as connection from '@deepseek-ai/dsh-client-connection'
 import { Context } from '@deepseek-ai/cordis'
 import { CredentialProvider, credentialRef } from '@deepseek-ai/dsh-credentials'
-import type { CredentialRef } from '@deepseek-ai/dsh-credentials'
+import type { CredentialRef, CredentialRecord } from '@deepseek-ai/dsh-credentials'
 import { SettingsProvider } from '@deepseek-ai/dsh-settings'
 import type { SettingsNamespace } from '@deepseek-ai/dsh-settings'
 import SystemPrompt, { renderPrompt } from '@deepseek-ai/dsh-system-prompt'
@@ -9,6 +10,8 @@ import ToolRuntime from '@deepseek-ai/dsh-tools'
 import { ToolCallId } from '@deepseek-ai/dsh-llm'
 import { expect, it, vi } from 'vitest'
 import * as intelligence from '../src/strugend-intelligence.ts'
+import * as resources from '../src/strugend-resources.ts'
+import { LocalDecisionRuntime } from '../src/strugend-laya-local.ts'
 
 class FixtureSettings extends SettingsProvider {
   private readonly doc: Record<string, unknown> = {}
@@ -26,10 +29,12 @@ class FixtureCredentials extends CredentialProvider {
   async describe(ref: CredentialRef) { return { configured: this.values.has(ref), writable: true } }
   async set(ref: CredentialRef, value: string) { this.values.set(ref, value) }
   async unset(ref: CredentialRef) { this.values.delete(ref) }
-  readRecord(): never { throw new Error('Record API is outside this fixture.') }
+  async readRecord() { return undefined }
   describeRecord(): never { throw new Error('Record API is outside this fixture.') }
   listRecords(): never { throw new Error('Record API is outside this fixture.') }
-  modifyRecord(): never { throw new Error('Record API is outside this fixture.') }
+  async modifyRecord(
+    _key: unknown, mutate: (current: CredentialRecord | undefined) => Promise<CredentialRecord | undefined>,
+  ) { return mutate(undefined) }
   deleteRecord(): never { throw new Error('Record API is outside this fixture.') }
 }
 
@@ -40,13 +45,14 @@ it('logs unavailable optional services and removes its tools and prompt on dispo
     await ctx.plugin(ToolRuntime)
     await ctx.plugin(FixtureSettings)
     await ctx.plugin(FixtureCredentials)
+    await ctx.plugin(connection)
     const before = renderPrompt(await ctx.systemPrompt.assemble())
     const fiber = ctx.plugin(intelligence, intelligence.Config({} as intelligence.Config))
     await fiber.await()
     const run = (name: string, args: Record<string, unknown>) => ctx.tools.execute({
       name, arguments: args, callId: ToolCallId('fixture'), signal: new AbortController().signal,
     })
-    const decision = await run('decision_check', { model: 'jev-latest', state: 'A task', questions: { relevant: { type: 'noul', instructions: 'Does the evidence support the task?' } } })
+    const decision = await run('decision_check', { state: 'A task', questions: { relevant: { type: 'noul', instructions: 'Does the evidence support the task?' } } })
     const memory = await run('memory_graph', { action: 'stats' })
     await expect(JSON.stringify({ decision: decision.content, memory: memory.content }, null, 2) + '\n')
       .toMatchFileSnapshot('./expected/strugend-unavailable.json')
@@ -58,36 +64,67 @@ it('logs unavailable optional services and removes its tools and prompt on dispo
   } finally { await ctx.fiber.dispose() }
 })
 
-it('preserves exact graph IDs, timestamps and cursors and rejects invalid reads before fetching', async () => {
+it('keeps legacy graph configuration inactive and makes no graph requests', async () => {
   const ctx = new Context()
-  const fetcher = vi.fn(async () => new Response(JSON.stringify({ edges: [], next_cursor: 'next' })))
+  const fetcher = vi.fn()
   vi.stubGlobal('fetch', fetcher)
   try {
     await ctx.plugin(SystemPrompt, {})
     await ctx.plugin(ToolRuntime)
     await ctx.plugin(FixtureSettings)
     await ctx.plugin(FixtureCredentials)
+    await ctx.plugin(connection)
     await ctx.credentials.set(credentialRef('CHRONOGRAPH_TOKEN'), 'synthetic-token')
     await ctx.plugin(intelligence, intelligence.Config({ graphUrl: 'https://memory.example.com' } as intelligence.Config))
-    const run = (args: Record<string, unknown>) => ctx.tools.execute({
-      name: 'memory_graph', arguments: args, callId: ToolCallId('fixture'), signal: new AbortController().signal,
-    })
-    const result = await run({ action: 'neighbors', node: '18446744073709551615', timestamp: '-9223372036854775808', limit: 3, cursor: 'opaque' })
-    expect(result.isError).not.toBe(true)
-    expect(fetcher).toHaveBeenCalledOnce()
-    const [url, options] = vi.mocked(globalThis.fetch).mock.calls[0]!
-    expect(url).toEqual(new URL('https://memory.example.com/v1/neighbors'))
-    if (typeof options?.body !== 'string') throw new Error('Expected a JSON request body')
-    expect(JSON.parse(options.body)).toEqual({ node: '18446744073709551615', t: '-9223372036854775808', limit: 3, cursor: 'opaque' })
-    for (const args of [
-      { action: 'neighbors', node: '18446744073709551616', timestamp: '0' },
-      { action: 'as_of', timestamp: '9223372036854775808' },
-      { action: 'as_of', timestamp: '1.5' },
-      { action: 'as_of' },
-      { action: 'history', limit: 51 },
-      { action: 'history', limit: 0 },
-      { action: 'insert', node: '1' },
-    ]) expect((await run(args)).isError).toBe(true)
-    expect(fetcher).toHaveBeenCalledOnce()
+    const result = await ctx.tools.execute({ name: 'memory_graph', arguments: { action: 'stats' }, callId: ToolCallId('fixture'), signal: new AbortController().signal })
+    expect(result.isError).toBe(true)
+    expect(fetcher).not.toHaveBeenCalled()
+  } finally { await ctx.fiber.dispose(); vi.unstubAllGlobals() }
+})
+
+it('refuses local model allocation on a 4 GB device even when Local mode is explicitly selected', async () => {
+  const ctx = new Context()
+  const evaluate = vi.spyOn(LocalDecisionRuntime.prototype, 'evaluate')
+  vi.spyOn(resources, 'decisionResources').mockReturnValue({ totalMiB: 4096, freeMiB: 3500 })
+  try {
+    await ctx.plugin(SystemPrompt, {})
+    await ctx.plugin(ToolRuntime)
+    await ctx.plugin(FixtureSettings)
+    await ctx.plugin(FixtureCredentials)
+    await ctx.plugin(connection)
+    await ctx.plugin(intelligence, intelligence.Config({ decisionMode: 'local', localModelDir: '/fixture/model' } as intelligence.Config))
+    const result = await ctx.tools.execute({ name: 'decision_check', arguments: {
+      state: 'The build exited zero.', questions: { built: { type: 'noul', instructions: 'Did the build pass?' } },
+    }, callId: ToolCallId('low-memory'), signal: new AbortController().signal })
+    expect(JSON.stringify(result.content)).toContain('paused on this memory tier')
+    expect(evaluate).not.toHaveBeenCalled()
+  } finally { await ctx.fiber.dispose(); vi.restoreAllMocks() }
+})
+
+it('cools down a failed remote provider and immediately retries after its credential changes', async () => {
+  const ctx = new Context()
+  const fetcher = vi.fn()
+    .mockResolvedValueOnce(new Response('{}', { status: 503 }))
+    .mockResolvedValueOnce(Response.json({ model: 'convaiinnovations/laya-multilingual', answers: { built: { type: 'noul', noul: 0.99 } }, usage: { input_tokens: 8, output_tokens: 0 } }))
+  vi.stubGlobal('fetch', fetcher)
+  try {
+    await ctx.plugin(SystemPrompt, {})
+    await ctx.plugin(ToolRuntime)
+    await ctx.plugin(FixtureSettings)
+    await ctx.plugin(FixtureCredentials)
+    await ctx.plugin(connection)
+    const ref = credentialRef('IMPOSSIBL_API_KEY')
+    await ctx.credentials.set(ref, 'synthetic-first')
+    await ctx.plugin(intelligence, intelligence.Config({} as intelligence.Config))
+    const run = () => ctx.tools.execute({ name: 'decision_check', arguments: {
+      state: 'The build exited zero.', questions: { built: { type: 'noul', instructions: 'Did the build pass?' } },
+    }, callId: ToolCallId('cooldown'), signal: new AbortController().signal })
+    await run(); await run()
+    expect(fetcher).toHaveBeenCalledTimes(1)
+    await ctx.credentials.set(ref, 'synthetic-replacement')
+    ctx.emit('credentials/reference-updated', ref)
+    const result = await run()
+    expect(fetcher).toHaveBeenCalledTimes(2)
+    expect(JSON.stringify(result.content)).toContain('checked')
   } finally { await ctx.fiber.dispose(); vi.unstubAllGlobals() }
 })

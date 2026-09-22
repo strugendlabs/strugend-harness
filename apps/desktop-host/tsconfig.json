@@ -5,7 +5,8 @@
     "outDir": "lib/types"
   },
   "include": [
-    "src"
+    "src",
+    "src/**/*.json"
   ],
   "references": [
     {
@@ -73,6 +74,12 @@
     },
     {
       "path": "../../packages/settings/settings"
+    },
+    {
+      "path": "../../packages/shell/shell"
+    },
+    {
+      "path": "../../packages/sandbox/sandbox-policy"
     }
   ]
 }

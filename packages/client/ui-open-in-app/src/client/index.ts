@@ -6,6 +6,7 @@
  * persisted snapshot store.
  */
 
+import type {} from '@deepseek-ai/dsh-agentos-protocol'
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
@@ -45,7 +46,13 @@ export function apply(ctx: ClientContext): void {
         openInAppApps: controller.apps,
         openInAppChoice: controller.choice,
       },
-      launch: (appId, path) => controller.launch(appId, path),
+      launch: async (appId, path) => {
+        if ((appId === 'finder' || appId === 'explorer') && typeof window !== 'undefined' && window.agentOS) {
+          await window.agentOS.request({ type: 'location.open', path })
+          return
+        }
+        await controller.launch(appId, path)
+      },
       choose: (appId) => { controller.choose(appId) },
       iconUrl: appId => `${OPEN_IN_APP_ICON_PREFIX}/${appId}`,
     }),

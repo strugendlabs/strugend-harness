@@ -23,6 +23,8 @@ This package defines command/event unions and data interfaces shared by the trus
 
 Import types from `@deepseek-ai/dsh-agentos-protocol` when implementing desktop IPC or consuming browser, media, group, and skill events. Types do not authenticate IPC or validate untrusted runtime values; callers must use the main process's operation validation.
 
+The host-only `decision-events` export declares logged auxiliary model requests and results. These records retain the exact redacted input, runtime and validated outcome; Core context is separately persisted through ordinary plugin messages. `location.open` opens a directory or reveals a file through the authenticated desktop bridge.
+
 <a id="understand-the-implementation"></a>
 ## Understand the implementation
 

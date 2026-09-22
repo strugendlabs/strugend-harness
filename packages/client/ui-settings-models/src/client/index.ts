@@ -84,6 +84,14 @@ export function apply(ctx: ClientContext): void {
   // one bound translate; copy freshness rides the locale revision.
   const t = ctx.locale.bind(NS) as ModelsSectionInjected['t']
   const intelligence: ModelsSectionInjected['intelligence'] = typeof window !== 'undefined' && 'agentOS' in window ? {
+    testConnection: async (provider) => {
+      const response = await fetch(provider === 'decision' ? '/api/strugend/decision/test' : `/api/strugend/connections/${provider}`, { method: 'POST' })
+      if (!response.ok) throw new Error('Connection test failed.')
+      const value: unknown = await response.json()
+      if (!value || typeof value !== 'object' || !('available' in value) || typeof value.available !== 'boolean'
+        || ('reason' in value && typeof value.reason !== 'string')) throw new Error('Invalid connection result.')
+      return { available: value.available, ...('reason' in value ? { reason: value.reason as string } : {}) }
+    },
     load: async () => {
       const response = await ctx.remote.settings.describe()
       if (!response.ok) throw new Error(response.error.message)
@@ -91,10 +99,20 @@ export function apply(ctx: ClientContext): void {
       const core = response.value.namespaces.find(row => row.ns === 'llm-deepseek')
       const coreValue = core === undefined ? undefined : schema.getPath(core.value, ['apiKeyEnv'])
       const coreRef = typeof coreValue === 'string' ? coreValue : 'DEEPSEEK_API_KEY'
-      const credentials = await ctx.remote.credentials.describe([coreRef, 'TYPESAFE_API_KEY', 'CHRONOGRAPH_TOKEN'])
+      const credentials = await ctx.remote.credentials.describe([coreRef, 'IMPOSSIBL_API_KEY', 'STRUGEND_GITHUB_TOKEN', 'STRUGEND_VERCEL_TOKEN'])
       const graphUrl = service === undefined ? undefined : schema.getPath(service.value, ['graphUrl'])
       if (!service || !credentials.ok || typeof graphUrl !== 'string') throw new Error('Intelligence settings are unavailable.')
-      return { coreRef, graphUrl, revision: service.revision, credentials: credentials.value }
+      const decisionMode = schema.getPath(service.value, ['decisionMode'])
+      if (decisionMode !== 'local' && decisionMode !== 'auto' && decisionMode !== 'remote') throw new Error('Invalid Decision runtime.')
+      const adviceMode = schema.getPath(service.value, ['adviceMode'])
+      if (adviceMode !== 'observe' && adviceMode !== 'assist') throw new Error('Invalid Decision advice mode.')
+      const runtimeResponse = await fetch('/api/strugend/decision/runtime')
+      if (!runtimeResponse.ok) throw new Error('Decision resource information is unavailable.')
+      const runtime: unknown = await runtimeResponse.json()
+      if (!runtime || typeof runtime !== 'object' || !('localAllowed' in runtime) || typeof runtime.localAllowed !== 'boolean'
+        || !('reason' in runtime) || typeof runtime.reason !== 'string') throw new Error('Invalid Decision resource information.')
+      return { coreRef, graphUrl, decisionMode, adviceMode, localAllowed: runtime.localAllowed, localReason: runtime.reason,
+        revision: service.revision, credentials: credentials.value }
     },
   } : undefined
   const injected = (): ModelsSectionInjected => ({

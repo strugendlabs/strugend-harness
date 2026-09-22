@@ -1,5 +1,5 @@
 /** Installs Agent OS capabilities behind the owned desktop's narrow IPC surface. */
-import { app, clipboard, dialog, ipcMain, safeStorage, type BrowserWindow, type IpcMainInvokeEvent } from 'electron'
+import { app, clipboard, dialog, ipcMain, safeStorage, shell, type BrowserWindow, type IpcMainInvokeEvent } from 'electron'
 import { extname, join } from 'node:path'
 import { cpSync, existsSync, mkdirSync, readdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
@@ -7,6 +7,7 @@ import type { AgentOsCommand, AgentOsEvent, BrowserAction, VideoEdit } from '@de
 import { AgentOsMedia } from './agentos-media.ts'
 import { AgentOsStore } from './agentos-store.ts'
 import { AgentOsBrowser } from './agentos-browser.ts'
+import { openLocation } from './strugend-location.ts'
 import { AgentOsCrawler } from './agentos-crawler.ts'
 
 /** Main-process feature composition; untrusted page renderers receive none of these APIs. */
@@ -58,6 +59,8 @@ export class AgentOsDesktop {
       if (typeof input !== 'object' || input === null || !('type' in input)) throw new Error('Invalid desktop command.')
       const command = input as AgentOsCommand
       switch (command.type) {
+        case 'location.open':
+          return openLocation(command, shell)
         case 'media.list':
           return this.media.list()
         case 'media.import': {

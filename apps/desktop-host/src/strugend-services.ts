@@ -1,5 +1,7 @@
 /** Bounded HTTP clients for structured decisions and temporal memory reads. */
 import type { JsonValue } from '@deepseek-ai/dsh-util-values'
+import type { DecisionQuestion } from '@deepseek-ai/dsh-agentos-protocol'
+export type { DecisionQuestion } from '@deepseek-ai/dsh-agentos-protocol'
 
 /** Deployment limits shared by one service request. */
 export interface RequestLimits {
@@ -70,12 +72,6 @@ export async function requestJson(url: URL, key: string, body: JsonValue, limits
     throw error
   } finally { clearTimeout(timer) }
 }
-
-/** One independently evaluated question. */
-export type DecisionQuestion =
-  | { type: 'noul'; instructions: string }
-  | { type: 'choice'; instructions: string; criteria: Record<string, string> }
-  | { type: 'score'; instructions: string; criteria: string[] }
 
 function object(value: unknown): value is Record<string, JsonValue> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
