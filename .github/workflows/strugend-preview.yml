@@ -52,7 +52,8 @@ jobs:
           key: laya-multilingual-${{ hashFiles('apps/desktop-host/src/laya-manifest.json') }}
       - run: pnpm install --frozen-lockfile
       - name: Check native CPU inference bindings
-        run: pnpm --dir apps/desktop-host exec node -e "require(process.platform === 'darwin' && process.arch === 'x64' ? 'onnxruntime-node-intel-mac' : 'onnxruntime-node'); console.log(process.platform, process.arch, 'CPU runtime available')"
+        run: >-
+          pnpm --dir apps/desktop-host exec node -e "require(process.platform === 'darwin' && process.arch === 'x64' ? 'onnxruntime-node-intel-mac' : 'onnxruntime-node'); console.log(process.platform, process.arch, 'CPU runtime available')"
       - name: Validate preview and native build host
         run: pnpm strugend:package ${{ matrix.target }} --version "$env:PREVIEW_VERSION" --check
         shell: pwsh
