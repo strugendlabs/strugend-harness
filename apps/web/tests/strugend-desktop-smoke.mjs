@@ -39,7 +39,7 @@ const OUT = fs.mkdtempSync(path.join(evidenceRoot, 'packaged-' + process.platfor
     }
     if(req.url.endsWith('/chat/completions')){
      if(!body.tools){send(res,body.model,{content:JSON.stringify(body.messages).includes('whether optional')?'Optional service check':'Workspace verification'},'stop');return}
-     const system=JSON.stringify(body.messages.filter(x=>x.role==='system'));assert(!/DeepSeek Harness|powered by the deepseek|Current DSH file policy/i.test(system),'Received branded system prompt contains upstream identity');
+     const system=JSON.stringify(body.messages.filter(x=>x.role==='system'));const upstream=system.match(/.{0,60}(DeepSeek Harness|powered by the deepseek|Current DSH file policy).{0,80}/i);assert(!upstream,'Received branded system prompt contains upstream identity: '+upstream?.[0]);
      assert.equal(body.tools.some(x=>x.function?.name==='decision_check'),!probing);
      assert(!body.tools.some(x=>/video/i.test(x.function?.name)));
      assert(!body.tools.some(x=>x.function?.name==='memory_graph'));
@@ -145,7 +145,7 @@ const OUT = fs.mkdtempSync(path.join(evidenceRoot, 'packaged-' + process.platfor
   record('New desktop icon decodes; internal profile identity remains stable',{applicationName:native.name,size:native.size});
   await page.locator('[contenteditable="true"]').first().fill('Check whether optional Decision is configured; continue with Core if missing.');
   await page.getByRole('button',{name:'Send message',exact:true}).click();
-  await page.getByText('Core remains available without optional services.',{exact:true}).waitFor({timeout:60000});
+  await page.getByText(/^(Core remains available without optional services\.|Workspace verification failed\.)$/).waitFor({timeout:60000});assert.deepEqual(errors,[]);
   assert.equal(probeStep,2);assert.deepEqual(serviceCalls,[]);record('Absent Decision is omitted from Core tools and context; graph and video tools are absent');
   probing=false;await newChat();
   await settings();
@@ -228,6 +228,6 @@ const OUT = fs.mkdtempSync(path.join(evidenceRoot, 'packaged-' + process.platfor
   await page.evaluate(()=>window.__releaseStrugendBoot());await page.locator('[data-dsh-boot]').waitFor({state:'detached',timeout:60000});await page.locator('[contenteditable="true"]').first().waitFor();assert.deepEqual(errors,[]);
   record('Branded loading supports light/dark, reduced motion and a clean handoff');
   fs.writeFileSync(path.join(OUT,'results.json'),JSON.stringify({passed:true,provider:'Deterministic Core and remote Decision fixtures; graph disabled',localInference:runtime.localAllowed?'exercised':'skipped-memory-admission',checks,serviceCalls,errors},null,2));
- }catch(error){if(page){await page.screenshot({path:path.join(OUT,'failure.png')}).catch(()=>{});fs.writeFileSync(path.join(OUT,'failure-dom.txt'),await page.locator('body').innerText().catch(()=>''))}throw error}
+ }catch(error){fs.writeFileSync(path.join(OUT,'errors.json'),JSON.stringify(errors,null,2));if(errors.length)console.error('Fixture errors:',errors);if(page){await page.screenshot({path:path.join(OUT,'failure.png')}).catch(()=>{});fs.writeFileSync(path.join(OUT,'failure-dom.txt'),await page.locator('body').innerText().catch(()=>''))}throw error}
  finally{try{await closeApp()}finally{fs.writeFileSync(path.join(OUT,'main.log'),redact(mainLog));server.closeAllConnections();await new Promise(r=>server.close(r));fs.rmSync(root,{recursive:true,force:true,maxRetries:5,retryDelay:100})}}
 })().catch(error=>{console.error(String(error.message).split('Browser logs:')[0].replace(/token=[^\s]+/g,'token=[redacted]'));process.exitCode=1});

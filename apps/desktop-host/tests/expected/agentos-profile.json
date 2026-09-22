@@ -5,6 +5,19 @@
     "config": {}
   },
   {
+    "id": "web-runtime",
+    "config": {
+      "openBrowser": false,
+      "printUrl": false,
+      "surfaceContext": false,
+      "trustedHosts": []
+    }
+  },
+  {
+    "id": "skill-badge",
+    "disabled": true
+  },
+  {
     "id": "system-prompt",
     "config": {
       "includeHarnessIdentity": false,

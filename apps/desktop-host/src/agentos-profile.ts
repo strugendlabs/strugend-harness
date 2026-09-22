@@ -12,6 +12,8 @@ export function agentOsProfilePatch(credentialsPath: string, workspaceRoot: stri
     throw new Error('DSH_PERMISSION_MODE must be read-only, workspace-write, or danger-full-access.')
   return [
     { id: 'credentials', name: credentialsPath, config: {} },
+    { id: 'web-runtime', config: { openBrowser: false, printUrl: false, surfaceContext: false, trustedHosts: [] } },
+    { id: 'skill-badge', disabled: true },
     { id: 'system-prompt', config: { includeHarnessIdentity: false, personaPrefix: '', personaSuffix: 'You are Strugend, the user’s coding and everyday-task assistant.' } },
     { id: 'llm-deepseek', config: { models: [
       { id: 'deepseek-flash', name: 'Core', inputModalities: ['text', 'image'], systemPromptUpdate: 'in-history' },

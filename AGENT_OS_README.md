@@ -6,7 +6,7 @@ Strugend Harness is a local Electron assistant with an agent-controlled sidebar 
 
 Open `dist/Strugend Harness.app` in Finder. This local launcher uses this checkout's installed Electron runtime and built files; keep the repository in place. It is not a portable, signed installer. It launches without developer tools or exposed debugging ports.
 
-The Strugend identity uses a serif wordmark, an S app icon, graphite surfaces, and sage accents. Browser, files, and terminal appear beside the conversation when needed. The loading screen uses local assets, respects reduced motion, and disappears when the workspace is ready.
+The Strugend identity uses a serif wordmark, an S app icon, graphite surfaces, and tangerine accents. Browser, files, and terminal appear beside the conversation when needed. The loading screen uses local assets, respects reduced motion, and disappears when the workspace is ready. Desktop prompts use the Strugend workflow; the upstream Web development prompt, checkout-location injection, and attribution-badge skill are disabled for this deployment.
 
 Alternatively, from this directory:
 
