@@ -18,7 +18,7 @@ const OUT = fs.mkdtempSync(path.join(evidenceRoot, 'packaged-' + process.platfor
  const root=fs.mkdtempSync(path.join(os.tmpdir(),'strugend-e2e-'));
  const home=path.join(root,'home'), workspace=path.join(root,'workspace');
  fs.mkdirSync(home); fs.mkdirSync(workspace);
- const errors=[], checks=[], serviceCalls=[]; let app,page,base,step=0,probeStep=0,probing=true,finalCount=0,decisionFails=false,backgroundProbe=false,waitingForDecision,delivering=false,deliveryStep=0,deliveryJob,mainLog='';
+ const errors=[], checks=[], serviceCalls=[]; let app,page,base,step=0,probeStep=0,probing=true,finalCount=0,decisionFails=false,backgroundProbe=false,waitingForDecision,heldDecision,delivering=false,deliveryStep=0,deliveryJob,mainLog='';
  const redact=value=>value.replace(/token=[^\s]+/g,'token=[redacted]');
  const record=(name,data={})=>{checks.push({name,...data}); console.log('PASS:',name)};
  const send=(res,model,delta,finish)=>{res.setHeader('Content-Type','text/event-stream');for(const[d,f]of[[delta,null],[{},finish]])res.write('data: '+JSON.stringify({id:'strugend-e2e',object:'chat.completion.chunk',created:Math.floor(Date.now()/1000),model,choices:[{index:0,delta:d,finish_reason:f}]})+'\n\n');res.end('data: [DONE]\n\n')};
@@ -30,7 +30,7 @@ const OUT = fs.mkdtempSync(path.join(evidenceRoot, 'packaged-' + process.platfor
    try{
     let raw=''; for await(const chunk of req)raw+=chunk; body=JSON.parse(raw);
     if(req.url==='/v1/systemone'){
-     if(backgroundProbe){serviceCalls.push('Background held');waitingForDecision?.();return}
+     if(backgroundProbe){serviceCalls.push('Background held');heldDecision=res;waitingForDecision?.();return}
      if(decisionFails){serviceCalls.push('Decision');res.writeHead(503);res.end('{}');return}
      assert.equal(req.headers.authorization,'Bearer synthetic-decision-key');
      assert(['convaiinnovations/laya','convaiinnovations/laya-multilingual'].includes(body.model));
@@ -45,6 +45,7 @@ const OUT = fs.mkdtempSync(path.join(evidenceRoot, 'packaged-' + process.platfor
      assert(body.tools.some(x=>x.function?.name==='crawl_website'));
      if(backgroundProbe){
       await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('Core waited for auxiliary inference')),5000);waitingForDecision=()=>{clearTimeout(timer);resolve()};if(serviceCalls.includes('Background held'))waitingForDecision()});
+      assert(heldDecision&&!heldDecision.destroyed&&!heldDecision.writableEnded,'Core waited until auxiliary inference stopped');
       send(res,body.model,{content:'Core completed while Decision was still pending.'},'stop');return;
      }
      if(probing){
@@ -82,7 +83,7 @@ const OUT = fs.mkdtempSync(path.join(evidenceRoot, 'packaged-' + process.platfor
   res.writeHead(404);res.end();
  });
  await new Promise(r=>server.listen(0,'127.0.0.1',r));base=`http://127.0.0.1:${server.address().port}/`;
- fs.writeFileSync(path.join(home,'settings.yaml'),JSON.stringify({'ui-theme':{preference:'dark'},'llm-deepseek':{protocol:'chat-completions',thinking:'disabled',maxTokens:2048},'strugend-intelligence':{decisionMode:'remote',decisionUrl:base+'v1/systemone'}}));
+ fs.writeFileSync(path.join(home,'settings.yaml'),JSON.stringify({'ui-theme':{preference:'dark'},'llm-deepseek':{protocol:'chat-completions',thinking:'disabled',maxTokens:2048},'strugend-intelligence':{decisionMode:'remote',decisionUrl:base+'v1/systemone',timeoutMs:60000,advisorDeadlineMs:60000}}));
  const env={...process.env,DSH_TELEMETRY_DISABLED:'1',DSH_HOME:home,DSH_DESKTOP_HOST_PORT:'0',DSH_DESKTOP_OPEN_DEVTOOLS:'0',DEEPSEEK_API_KEY:'local-e2e-only',DEEPSEEK_BASE_URL:base+'v1'};
  for(const key of ['ELECTRON_RUN_AS_NODE','IMPOSSIBL_API_KEY','TYPESAFE_API_KEY','CHRONOGRAPH_TOKEN','STRUGEND_GITHUB_TOKEN','STRUGEND_VERCEL_TOKEN'])delete env[key];
  async function launch(){
