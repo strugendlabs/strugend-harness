@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
 import { PassThrough } from 'node:stream'
-import { resolve } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
 import SessionStore, { SESSION_FORMAT_VERSION, Session, SessionId } from '@deepseek-ai/dsh-session'
@@ -288,7 +287,7 @@ describe('BashTerminalBackend startup rollback', () => {
     expect(initialized).toHaveBeenCalledWith(undefined)
     expect((ctx.sandbox as RecordingSandbox).calls).toEqual([{
       argv: ['/bin/bash', '-i'],
-      policy: { mode: 'workspace-write', sessionId: 'agent', workspaceRoot: resolve('/workspace') },
+      policy: { mode: 'workspace-write', sessionId: 'agent', workspaceRoot: '/workspace' },
     }])
   })
 
@@ -317,11 +316,11 @@ describe('BashTerminalBackend startup rollback', () => {
 
     expect(spawned).toMatchObject({
       argv: ['/sandbox', '--', '/bin/bash', '-i'],
-      cwd: resolve('/session-workspace'),
+      cwd: '/session-workspace',
     })
     expect((ctx.sandbox as RecordingSandbox).calls).toEqual([{
       argv: ['/bin/bash', '-i'],
-      policy: { mode: 'workspace-write', sessionId: 'agent', workspaceRoot: resolve('/session-workspace') },
+      policy: { mode: 'workspace-write', sessionId: 'agent', workspaceRoot: '/session-workspace' },
     }])
   })
 
