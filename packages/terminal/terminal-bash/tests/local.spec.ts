@@ -2,7 +2,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'no
 import { spawnSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
 import { join, parse } from 'node:path'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { Session, SessionId } from '@deepseek-ai/dsh-session'
 import AgentRegistry from '@deepseek-ai/dsh-agent'
@@ -16,6 +16,7 @@ import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import LocalSubprocessRuntime from '@deepseek-ai/dsh-subprocess-local'
 import { resolvePwshPath } from '@deepseek-ai/dsh-pwsh-local/src/resolve.ts'
 import * as ptyLocal from '@deepseek-ai/dsh-terminal-bash'
+import { LocalPtySession } from '@deepseek-ai/dsh-terminal-bash/src/session.ts'
 import { unsupportedInbox } from '@deepseek-ai/dsh-agent-loop-testkit'
 
 const roots: string[] = []
@@ -97,6 +98,32 @@ async function waitForOutput(operation: TerminalSendOperation, expected: string,
   expect(output).toContain(expected)
 }
 
+// A failed bootstrap never publishes its session through the registry. Retain its
+// bounded transcript here so native CI can distinguish missing output from a lost prompt.
+async function spawnWithStartupTrace(ctx: Context, agent: Agent, cwd: string) {
+  const sessions = new Set<LocalPtySession>()
+  const events: { text: string; reason?: string; viewport?: string }[] = []
+  // oxlint-disable-next-line typescript/unbound-method -- The observer calls the original with its exact session receiver.
+  const startSend = LocalPtySession.prototype.startSend
+  const observer = vi.spyOn(LocalPtySession.prototype, 'startSend').mockImplementation(function (this: LocalPtySession, request) {
+    sessions.add(this)
+    const event: (typeof events)[number] = { text: request.text }
+    events.push(event)
+    const operation = startSend.call(this, request)
+    void operation.done.then((result) => { event.reason = result.waitReason; event.viewport = result.viewport },
+      (error: unknown) => { event.reason = String(error) })
+    return operation
+  })
+  try {
+    return await ctx.terminals.spawn(agent, { type: 'shell', name: 'main', cwd })
+  } catch (error) {
+    process.stderr.write(`PTY startup trace: ${JSON.stringify({ events, output: [...sessions].map(session => session.read({ offset: 0, count: 100 }).text) })}\n`)
+    throw error
+  } finally {
+    observer.mockRestore()
+  }
+}
+
 // A send the test interrupts settles when bash returns to its prompt, so the
 // kernel may publish the foreground handoff on either side of the silence
 // bound. `handoffGraceMs` widens the window that wins the exact attribution but
@@ -141,7 +168,7 @@ describe.skipIf(process.platform === 'win32')('terminal-bash real shell', () => 
     process.env.DSH_TEST_SECRET = 'must-not-leak'
     try {
       const { ctx, root, agent } = await harness('danger-full-access')
-      const created = await ctx.terminals.spawn(agent, { type: 'shell', name: 'main', cwd: root })
+      const created = await spawnWithStartupTrace(ctx, agent, root)
       expect(created.motd).toContain('strugend> ')
 
       const first = ctx.terminals.startSend(agent, created.sessionId, { text: 'export KEEP=ok; cd /', submit: true })
@@ -329,7 +356,7 @@ describe.skipIf(!hasPwsh)('terminal-bash pwsh real shell', () => {
         handoffGraceMs: 300,
         timeoutMs: 8_000,
       }, 'pwsh')
-      const created = await ctx.terminals.spawn(agent, { type: 'shell', name: 'main', cwd: root })
+      const created = await spawnWithStartupTrace(ctx, agent, root)
       // stdin_read can precede delivery of the printable prompt to the PTY reader.
       await expect.poll(() => ctx.terminals.read(agent, created.sessionId, { offset: 0, count: 100 }).text,
         { timeout: 8_000 }).toContain('strugend> ')
@@ -376,7 +403,7 @@ describe.skipIf(!hasPwsh)('terminal-bash pwsh real shell', () => {
       handoffGraceMs: 300,
       timeoutMs: 8_000,
     }, 'pwsh')
-    const created = await ctx.terminals.spawn(agent, { type: 'shell', name: 'main', cwd: root })
+    const created = await spawnWithStartupTrace(ctx, agent, root)
     // The bootstrap itself must have pinned both encodings: the session byte
     // decode is UTF-8, so an un-pinned console writing its host code page
     // garbles every non-ASCII byte that follows.
