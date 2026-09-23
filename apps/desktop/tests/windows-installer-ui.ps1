@@ -37,12 +37,26 @@ public static class InstallerCapture {
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern IntPtr SendMessage(IntPtr window, uint message, IntPtr wparam, string text);
     [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)] public static extern bool SetWindowText(IntPtr window, string text);
     [DllImport("user32.dll")] public static extern IntPtr SendMessage(IntPtr window, uint message, IntPtr wparam, IntPtr lparam);
+    [DllImport("user32.dll", EntryPoint = "SendMessageTimeoutW", CharSet = CharSet.Unicode, SetLastError = true)]
+    static extern IntPtr SendText(IntPtr window, uint message, IntPtr wparam, string text, uint flags, uint timeout, out UIntPtr result);
+    [DllImport("user32.dll", EntryPoint = "SendMessageTimeoutW", CharSet = CharSet.Unicode, SetLastError = true)]
+    static extern IntPtr ReadText(IntPtr window, uint message, IntPtr wparam, StringBuilder text, uint flags, uint timeout, out UIntPtr result);
     [StructLayout(LayoutKind.Sequential)] struct Rect { public int Left, Top, Right, Bottom; }
 
     public static string Bounds(IntPtr window) {
         Rect rect;
         if (!GetWindowRect(window, out rect)) throw new InvalidOperationException("Could not read window bounds");
         return rect.Left + "," + rect.Top + "," + rect.Right + "," + rect.Bottom;
+    }
+
+    public static void SetControlText(IntPtr window, string value) {
+        UIntPtr result;
+        if (!IsWindow(window) || SendText(window, 0xC, IntPtr.Zero, value, 2, 2000, out result) == IntPtr.Zero || result == UIntPtr.Zero)
+            throw new InvalidOperationException("Could not set installer edit text: " + window);
+        // GetWindowText does not read another process's edit buffer.
+        var actual = new StringBuilder(512);
+        if (ReadText(window, 0xD, new IntPtr(actual.Capacity), actual, 2, 2000, out result) == IntPtr.Zero || actual.ToString() != value)
+            throw new InvalidOperationException("Installer edit did not retain the selected path: " + actual);
     }
 
     public static void MoveBy(IntPtr window, int x, int y) {
