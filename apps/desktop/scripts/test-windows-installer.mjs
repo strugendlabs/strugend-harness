@@ -79,12 +79,13 @@ SectionEnd
   await execute(compiler.path, ['/V2', payloadSource], { ...childOptions, env: { ...childOptions.env, ...compiler.env } })
   if (sign) await sign({ path: join(payload, `${productName}.exe`), hash: 'sha256', isNest: false })
   const sourceStrings = await readFile(join(appRoot, 'installer', 'strings.nsh'), 'utf8')
-  const config = createElectronBuilderConfig()
-  if (sign) {
-    config.win.forceCodeSigning = true
-    config.win.signtoolOptions.sign = sign
-  }
   for (const language of ['en_US', 'zh_CN']) {
+    // electron-builder normalizes and mutates nested configuration during each build.
+    const config = createElectronBuilderConfig()
+    if (sign) {
+      config.win.forceCodeSigning = true
+      config.win.signtoolOptions.sign = sign
+    }
     const languageOutput = join(output, language)
     await mkdir(languageOutput)
     const strings = join(languageOutput, 'strings.nsh')
