@@ -38,7 +38,7 @@ Documents & data 包含 numpy、pandas、python-docx、python-pptx、openpyxl、
 
 Desktop 私有的 `runtime/bin` 目录仅添加到包安装进程，不进入 PTC 和 agent shell 从 Host 继承的 PATH。依赖工具不修改 PATH、环境变量或用户包管理器配置。使用返回的 Node 可执行文件运行返回的 pnpm 脚本。可选组件随发布版本验证；版本由内容决定，未变化的组件可以跨应用更新复用。
 
-[下载锁](scripts/primary-runtime-lock.json) 固定解释器归档、Python 分发包版本、目标 wheel URL 和哈希。原生打包在发布文档归档前检查 Office 文档读写和依赖完整性。`dev:desktop` 和 `start:desktop` 启动 Electron 前只准备 Node/pnpm 核心运行时。完整发布准备在应用载荷之外创建可选归档。未签名预览安装产物每个不得超过 400 MiB；可选工具页面显示归档大小。
+[下载锁](scripts/primary-runtime-lock.json) 固定解释器归档、Python 分发包版本、目标 wheel URL 和哈希。原生打包在发布文档归档前检查 Office 文档读写和依赖完整性。`dev:desktop` 和 `start:desktop` 启动 Electron 前只准备 Node/pnpm 核心运行时。完整发布准备在应用载荷之外创建可选归档。未签名预览安装产物每个不得超过 400 MiB；可选工具页面显示归档大小。 原生归档验证记录安装状态和各阶段耗时，包括 Python 文档创建、PDF 渲染和移除。CI 的十分钟时限包含在运行器文件系统中完整展开及移除可选包的时间。
 
 | 决策 | 原因 | 直接结果 |
 |---|---|---|

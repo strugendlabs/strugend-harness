@@ -95,7 +95,7 @@ jobs:
         env:
           STRUGEND_COMPONENT_TEST: '1'
           LAYA_PACKAGED_ROOT: apps/desktop/.desktop-build/targets/${{ matrix.target }}
-        run: pnpm exec vitest run apps/desktop-host/tests/optional-components.built.spec.ts --maxWorkers=1
+        run: pnpm exec vitest run apps/desktop-host/tests/optional-components.built.spec.ts --maxWorkers=1 --testTimeout=600000 --hookTimeout=120000
       - name: Measure real native inference and memory release
         env:
           LAYA_MODEL_TEST: '1'

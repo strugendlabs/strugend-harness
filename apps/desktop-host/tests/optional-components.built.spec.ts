@@ -14,7 +14,15 @@ import { ComponentManager, parseComponentCatalog, type ComponentId } from '../sr
 const execute = promisify(execFile)
 const enabled = process.env.STRUGEND_COMPONENT_TEST === '1'
 
-it.skipIf(!enabled)('downloads and installs the native decision and document archives through the shipping manager', async () => {
+async function phase<T>(name: string, operation: () => Promise<T>): Promise<T> {
+  const started = performance.now()
+  process.stdout.write(`Native components: ${name} started\n`)
+  const result = await operation()
+  process.stdout.write(`Native components: ${name} completed in ${Math.round(performance.now() - started)} ms\n`)
+  return result
+}
+
+it.skipIf(!enabled)('downloads and installs the native decision and document archives through the shipping manager', async ({ signal, onTestFinished }) => {
   const buildRoot = resolve(process.env.LAYA_PACKAGED_ROOT ?? `apps/desktop/.desktop-build/targets/${process.platform === 'darwin' ? 'mac' : 'win'}-${process.arch}`)
   const packaged = parseComponentCatalog(JSON.parse(await readFile(join(buildRoot, 'runtime', 'component-catalog.json'), 'utf8')))
   const root = await mkdtemp(join(tmpdir(), 'strugend-native-components-'))
@@ -25,8 +33,23 @@ it.skipIf(!enabled)('downloads and installs the native decision and document arc
     createReadStream(join(buildRoot, 'component-artifacts', basename(new URL(artifact.url).pathname))).pipe(response)
   })
   let manager: ComponentManager | undefined
+  let closeConverter: (() => Promise<void>) | undefined
+  let cleanup: Promise<void> | undefined
+  const dispose = () => cleanup ??= (async () => {
+    try {
+      await closeConverter?.()
+    } finally {
+      try { await phase('manager shutdown', async () => { await manager?.dispose() }) }
+      finally {
+        server.closeAllConnections()
+        await new Promise<void>((resolve) => { server.close(() => { resolve() }) })
+        await phase('fixture file cleanup', () => rm(root, { recursive: true, force: true }))
+      }
+    }
+  })()
+  onTestFinished(dispose)
   try {
-    await new Promise<void>((resolve) => { server.listen(0, '127.0.0.1', resolve) })
+    await new Promise<void>((resolve) => { server.listen(0, '127.0.0.1', () => { resolve() }) })
     const address = server.address()
     if (!address || typeof address === 'string') throw new Error('Native component fixture listener is unavailable.')
     const catalog = join(root, 'catalog.json')
@@ -37,15 +60,26 @@ it.skipIf(!enabled)('downloads and installs the native decision and document arc
     await manager.initialize()
     expect(manager.list().every(component => component.state === 'absent' || component.state === 'incompatible')).toBe(true)
     const install = async (id: ComponentId): Promise<string> => {
+      signal.throwIfAborted()
+      let off = () => {}
+      let abort = () => {}
       const completion = new Promise<void>((resolve, reject) => {
-        const off = manager!.onChange((changed) => {
+        abort = () => { reject(new Error('Native component qualification was aborted.', { cause: signal.reason })) }
+        signal.addEventListener('abort', abort, { once: true })
+        off = manager!.onChange((changed) => {
           if (changed !== id) return
           const status = manager!.list().find(component => component.id === id)!
-          if (status.state === 'installed') { off(); resolve() }
-          if (status.state === 'failed') { off(); reject(new Error(status.error)) }
+          process.stdout.write(`Native components: ${id} ${status.state} (${status.progressBytes} bytes)\n`)
+          if (status.state === 'installed') resolve()
+          if (status.state === 'failed') reject(new Error(status.error))
         })
       })
-      manager!.install(id); await completion
+      try {
+        await phase(`install ${id}`, async () => { manager!.install(id); await completion })
+      } finally {
+        off()
+        signal.removeEventListener('abort', abort)
+      }
       return manager!.installedPath(id)!
     }
     if (totalmem() >= 8192 * 1024 ** 2) {
@@ -58,20 +92,19 @@ it.skipIf(!enabled)('downloads and installs the native decision and document arc
     const documents = await install('documents')
     const python = join(documents, 'primary-runtime', 'dependencies', 'python', process.platform === 'win32' ? 'python.exe' : 'bin/python3')
     const inputPath = join(root, 'component-check.docx'), outputPath = join(root, 'component-check.pdf')
-    const result = await execute(python, ['-c', 'import sys, numpy, pandas, docx, pptx, openpyxl; document = docx.Document(); document.add_paragraph("Optional component check"); document.save(sys.argv[1]); print(numpy.add(20, 22))', inputPath], { timeout: 30_000 })
+    const result = await phase('Python document creation', () => execute(python, ['-c', 'import sys, numpy, pandas, docx, pptx, openpyxl; document = docx.Document(); document.add_paragraph("Optional component check"); document.save(sys.argv[1]); print(numpy.add(20, 22))', inputPath], { timeout: 30_000, signal }))
     expect(result.stdout.trim()).toBe('42')
     const kit = await import(pathToFileURL(join(documents, 'node_modules', '@deepseek-ai', 'libreoffice-kit', 'lib', 'index.js')).href) as typeof import('@deepseek-ai/libreoffice-kit')
-    const converter = await kit.createConverter()
+    const converter = await phase('document converter startup', () => kit.createConverter())
+    let converterClosing: Promise<void> | undefined
+    closeConverter = () => converterClosing ??= phase('document converter shutdown', () => converter.dispose())
     try {
-      await converter.render({ inputPath, outputPath })
+      await phase('PDF rendering', () => converter.render({ inputPath, outputPath }))
       expect((await readFile(outputPath)).subarray(0, 5).toString()).toBe('%PDF-')
-    } finally { await converter.dispose() }
-    await manager.remove('documents')
+    } finally { await closeConverter() }
+    await phase('remove documents', () => manager!.remove('documents'))
     expect(manager.installedPath('documents')).toBeUndefined()
   } finally {
-    await manager?.dispose()
-    server.closeAllConnections()
-    await new Promise<void>((resolve) => { server.close(() => resolve()) })
-    await rm(root, { recursive: true, force: true })
+    await dispose()
   }
-}, 180_000)
+})
