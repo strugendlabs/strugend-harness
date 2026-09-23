@@ -76,3 +76,7 @@
   /* Optical align with 28px icon hit targets that pad 6px past the glyph. */
   margin-left: -6px;
 }
+
+:global([data-strugend]) .body { gap: 10px; }
+:global([data-strugend]) .body > [data-turn-process-inline][hidden] { margin-bottom: -10px; }
+:global([data-strugend]) .actions { margin-top: 10px; }

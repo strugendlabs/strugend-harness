@@ -50,7 +50,7 @@ After Assistant replies settle, the completed-turn timing dialog omits TTFT and 
 <a id="completed-turn-footer"></a>
 ## Completed-turn footer
 
-The completed-turn action footer starts 20px below the preceding prose or extension content.
+The completed-turn action footer starts 20px below the preceding prose or extension content in the classic interface. Strugend uses 12px between conversation rows, 10px between answer blocks, and an 8px process-to-answer gap; footer controls retain their existing hit targets. Text line height still follows the font-size preference.
 
 -----
 

@@ -41,6 +41,9 @@
   white-space: nowrap;
 }
 
+:global([data-strugend]) .root { height: 29px; padding-bottom: 4px; }
+:global([data-strugend]) .root:not([data-open]) { margin-bottom: 0; }
+
 @media (prefers-reduced-motion: reduce) {
   .chevron {
     transition: none;

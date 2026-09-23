@@ -180,6 +180,12 @@ const OUT = fs.mkdtempSync(path.join(evidenceRoot, 'packaged-' + process.platfor
   await page.getByRole('button',{name:'Send message',exact:true}).click();
   await page.getByText(/^(Core remains available without optional services\.|Workspace verification failed\.)$/).waitFor({timeout:60000});assert.deepEqual(errors,[]);
   assert.equal(probeStep,2);assert.deepEqual(serviceCalls,[]);record('Absent Decision is omitted from Core tools and context; graph and video tools are absent');
+  const messageSpacing=await page.locator('[data-chat-flow]').evaluate(flow=>{
+   const rows=[...flow.children].filter(row=>!row.hasAttribute('hidden')&&row.getBoundingClientRect().height>0);
+   return rows.slice(1).map((row,index)=>row.getBoundingClientRect().top-rows[index].getBoundingClientRect().bottom);
+  });
+  assert(messageSpacing.length>=3&&messageSpacing.every(gap=>gap>=0&&gap<=12.5),'Chat messages have excessive or overlapping gaps');
+  record('Chat messages and responses use compact nonoverlapping spacing',{gaps:messageSpacing});
   probing=false;await newChat();
   await settings();
   for(const [role,value] of [['Decision','synthetic-decision-key']]){
