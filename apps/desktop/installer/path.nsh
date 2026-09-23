@@ -39,6 +39,24 @@ Function ${PREFIX}InstallerValidatePath
         ${EndIf}
         IntOp $1 $1 + 1
     ${Loop}
+    System::Call 'kernel32::GetFullPathNameW(w "$InstallerPath", i ${NSIS_MAX_STRLEN}, w .r4, p 0) i.r0'
+    ${If} $0 == 0
+    ${OrIf} $0 >= ${NSIS_MAX_STRLEN}
+        Return
+    ${EndIf}
+    StrCpy $InstallerPath $4
+    ; Validate the normalized destination, including roots written with extra separators.
+    ${Do}
+        StrLen $0 $InstallerPath
+        ${If} $0 <= 3
+            Return
+        ${EndIf}
+        StrCpy $0 $InstallerPath 1 -1
+        ${If} $0 != "\"
+            ${ExitDo}
+        ${EndIf}
+        StrCpy $InstallerPath $InstallerPath -1
+    ${Loop}
     StrCpy $2 $InstallerPath
     ${Do}
         StrLen $0 $2
@@ -105,12 +123,6 @@ Function ${PREFIX}InstallerValidatePath
         ${EndIf}
         ${GetParent} $2 $2
     ${Loop}
-    System::Call 'kernel32::GetFullPathNameW(w "$InstallerPath", i ${NSIS_MAX_STRLEN}, w .r4, p 0) i.r0'
-    ${If} $0 == 0
-    ${OrIf} $0 >= ${NSIS_MAX_STRLEN}
-        Return
-    ${EndIf}
-    StrCpy $InstallerPath $4
     StrCpy $InstallerError ""
 FunctionEnd
 !macroend
