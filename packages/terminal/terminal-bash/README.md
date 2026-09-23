@@ -85,7 +85,7 @@ This section explains the design behind the backend and points at the code that 
 
 ### Design concept
 
-One backend serves both dialects: bash and pwsh share the same session machinery — sanitizer, bounded buffers, readiness polling, cancellation, and teardown — and differ only in argv, environment, and prompt installation. Bash receives a private marker through `PS1` plus `PROMPT_COMMAND`. Pwsh writes a prompt function, pins UTF-8 console encoding, and publishes startup only after the backend reports `stdin_read`; echoed setup text cannot publish the shell. A zero-scrollback `@xterm/headless` instance consumes raw PTY data and returns terminal-protocol replies through the same handle, while the line sanitizer remains the only output projection.
+One backend serves both dialects: bash and pwsh share the same session machinery — sanitizer, bounded buffers, readiness polling, cancellation, and teardown — and differ only in argv, environment, and prompt installation. Bash receives a private marker through `PS1` plus `PROMPT_COMMAND`. Pwsh installs its prompt and UTF-8 encoding through `-NoExit -EncodedCommand` at launch, before interactive input begins, and publishes startup only after the backend reports `stdin_read`. A zero-scrollback `@xterm/headless` instance consumes raw PTY data and returns terminal-protocol replies through the same handle, while the line sanitizer remains the only output projection.
 
 Scrollback and unread send output retain independently owned strings with incremental byte and newline counts, so sanitized slices cannot retain discarded control sequences. Appending and evicting text takes amortized time proportional to incoming text; reads assemble the retained chunks. Retention preserves code-point boundaries and counts the empty line after a trailing newline. The [retention decision](../../../.agents/notes/implemented/bug-fix/2026-09-11-incremental-terminal-retention.md) owns the complexity and measurement rationale.
 
@@ -100,7 +100,7 @@ Scrollback and unread send output retain independently owned strings with increm
 
 ### Readiness model
 
-Three bounded tiers settle a send: exact stdin-wait evidence from the subprocess provider (Linux only), the verified private prompt marker with an exact printable tail, and output silence (`inferred_idle`); an absolute timeout always bounds the wait. Pwsh submits its setup command once, even when an early wait receives no output, and uses one deadline across the complete startup loop, so an `inferred_idle` follow-up does not restart the bound. A poll with no input preserves prompt evidence received between sends; an input-bearing send discards earlier evidence at the write boundary, a stdin wait that predates the write is not post-write readiness, and unknown foreground state is never a positive exact-idle signal.
+Three bounded tiers settle a send: exact stdin-wait evidence from the subprocess provider (Linux only), the verified private prompt marker with an exact printable tail, and output silence (`inferred_idle`); an absolute timeout always bounds the wait. Pwsh startup polls without writing to the line editor and uses one deadline across the complete startup loop, so an `inferred_idle` follow-up does not restart the bound. A poll with no input preserves prompt evidence received between sends; an input-bearing send discards earlier evidence at the write boundary, a stdin wait that predates the write is not post-write readiness, and unknown foreground state is never a positive exact-idle signal.
 
 ### Send cancellation and teardown
 

@@ -445,7 +445,9 @@ describe('BashTerminalBackend startup rollback', () => {
       () => session,
     )
     expect(await backend.spawn(spec(agent(ctx)))).toBe(session)
-    expect(sent).toMatchObject({ text: ENCODING_PREAMBLE + PWSH_PROMPT_SETUP, submit: true })
+    expect(sent).toMatchObject({ text: '', submit: false })
+    expect(spawned?.argv.slice(0, -1)).toEqual(['pwsh', '-NoExit', '-EncodedCommand'])
+    expect(Buffer.from(spawned!.argv.at(-1)!, 'base64').toString('utf16le')).toBe(ENCODING_PREAMBLE + PWSH_PROMPT_SETUP)
     expect(session.motd).toBe('setup-echo strugend> ')
     expect(spawned?.env).toMatchObject({
       TERM: 'dumb', NO_COLOR: '1', DSH_SHELL: '1', DSH_SESSION_ID: 'agent', DSH_PTY_SESSION_ID: 'pty-1',
@@ -455,7 +457,7 @@ describe('BashTerminalBackend startup rollback', () => {
   })
 
   it.each(['', "function prompt { 'strugend> ' }\n"])(
-    'submits pwsh setup once and waits for readiness after an idle result: %j', async (initialViewport) => {
+    'waits without writing to pwsh after an idle result: %j', async (initialViewport) => {
       const ctx = new Context()
       await ctx.plugin(EmptySandbox)
       await ctx.plugin(SessionProjectionRegistry)
@@ -486,6 +488,7 @@ describe('BashTerminalBackend startup rollback', () => {
       )
       await backend.spawn(spec(agent(ctx)))
       expect(sends).toHaveLength(2)
+      expect(sends[0]).toMatchObject({ text: '', submit: false })
       expect(sends[1]).toMatchObject({ text: '', submit: false })
       expect(session.motd).toBe('strugend> ')
     })

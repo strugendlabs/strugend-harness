@@ -90,15 +90,18 @@ function childEnvironment(spec: TerminalBackendSpawnSpec, dialect: ShellDialect,
 
 /**
  * The pwsh prompt function that emits the shared OSC `133;D;` + BEL marker
- * before every prompt, mirroring bash's PROMPT_COMMAND. `[char]27`/`[char]7`
- * build the control bytes at runtime because raw ESC characters in submitted
- * input are unreliable under PSReadLine.
+ * before every prompt, mirroring bash's PROMPT_COMMAND. The encoded launch
+ * command installs it before interactive input begins.
  */
 export const PWSH_PROMPT_SETUP =
   "function prompt { [Console]::Write([char]27 + ']133;D;' + [int]$LASTEXITCODE + [char]7); '" + CONTROLLED_PROMPT + "' }"
 
 async function spawnArgv(ctx: Context, config: ResolvedConfig, policy: SandboxExecutionPolicy, signal?: AbortSignal): Promise<string[]> {
   const argv = [config.shellPath, ...config.shellArgs]
+  if (config.shellDialect === 'pwsh') {
+    const setup = ENCODING_PREAMBLE + PWSH_PROMPT_SETUP.replace(CONTROLLED_PROMPT, config.promptText)
+    argv.push('-NoExit', '-EncodedCommand', Buffer.from(setup, 'utf16le').toString('base64'))
+  }
   if (policy.mode === 'danger-full-access') return argv
   const sandbox = ctx.get('sandbox')
   if (sandbox === undefined) {
@@ -116,7 +119,6 @@ async function startupSession(
   dialect: ShellDialect,
   timeoutMs: number,
   signal?: AbortSignal,
-  promptText = CONTROLLED_PROMPT,
 ): Promise<void> {
   let startupOperation: TerminalSendOperation | undefined
   const start = async (): Promise<void> => {
@@ -124,20 +126,15 @@ async function startupSession(
       await session.initialize(signal)
       return
     }
-    // pwsh cannot install its prompt from the environment. Write the prompt
-    // function through the session, pin UTF-8 output before user input, and
-    // accept only backend stdin_read evidence; echoed setup source containing
-    // the printable prompt is not readiness. Follow-up sends bridge silence
-    // settlements during startup, while one absolute deadline bounds them.
+    // The launch argv installs the prompt before interactive input begins.
+    // Only backend stdin_read evidence publishes startup; silence is insufficient.
     let viewport = ''
-    let first = true
     for (;;) {
       startupOperation = session.startSend({
-        text: first ? ENCODING_PREAMBLE + PWSH_PROMPT_SETUP.replace(CONTROLLED_PROMPT, promptText) : '',
-        submit: first,
+        text: '',
+        submit: false,
         ...signal !== undefined ? { signal } : {},
       })
-      first = false
       const result = await startupOperation.done
       if (result.waitReason === 'session_exit') throw new Error('PTY shell exited during startup')
       if (result.waitReason === 'timeout') throw new Error('PTY shell did not reach readiness before startup timeout')
@@ -224,7 +221,7 @@ export class BashTerminalBackend implements TerminalBackend {
       return rejectAfterStartupCleanup(error, () => terminal.terminate())
     }
     try {
-      await startupSession(session, this.config.shellDialect, this.config.timeoutMs, spec.signal, this.config.promptText)
+      await startupSession(session, this.config.shellDialect, this.config.timeoutMs, spec.signal)
       return session
     } catch (error) {
       return rejectAfterStartupCleanup(error, () => session.close('PTY startup failed'))
