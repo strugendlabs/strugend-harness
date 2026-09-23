@@ -231,6 +231,29 @@ public static class InstallerCapture {
         return width + "x" + height;
     }
 
+    public static void AssertCaptionVisible(IntPtr window, IntPtr control, string path, bool dark) {
+        Rect parent, caption;
+        if (!GetWindowRect(window, out parent) || !GetWindowRect(control, out caption))
+            throw new InvalidOperationException("Could not read caption bounds");
+        // Exclude the checkbox and inspect both lines of the optional-download caption.
+        int height = caption.Bottom - caption.Top;
+        int left = caption.Left - parent.Left + height;
+        int top = caption.Top - parent.Top;
+        int right = caption.Right - parent.Left - 2;
+        using (var bitmap = new Bitmap(path)) {
+            for (int line = 0; line < 2; line++) {
+                int ink = 0;
+                for (int y = top + line * height / 2; y < top + (line + 1) * height / 2; y++) {
+                    for (int x = left; x < right; x++) {
+                        float brightness = bitmap.GetPixel(x, y).GetBrightness();
+                        if (dark ? brightness > 0.8f : brightness < 0.2f) ink++;
+                    }
+                }
+                if (ink < 20) throw new InvalidOperationException("Optional-download caption is unreadable: line " + (line + 1));
+            }
+        }
+    }
+
     // Capture only the test window and its own white backdrop, including DWM's external shadow.
     public static string SaveWithShadow(IntPtr window, string path) {
         Reveal(window);

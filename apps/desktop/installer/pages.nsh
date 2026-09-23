@@ -165,6 +165,7 @@ Function InstallerCreate
     !insertmacro InstallerPlace $InstallerDecision 64 384 472 44
     SendMessage $InstallerDecision ${WM_SETFONT} $InstallerSmallFont 1
     !insertmacro InstallerControlColors $InstallerDecision
+    ${NSD_OnNotify} $InstallerDecision InstallerPaintCheckbox
     ${NSD_Uncheck} $InstallerDecision
 
     ${NSD_CreateButton} 0 0 0 0 "$(INSTALLER_INSTALL)"

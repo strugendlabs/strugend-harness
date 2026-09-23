@@ -109,7 +109,14 @@ Function InstallerPaintCheckbox
     System::Call 'gdi32::SetBkMode(p R4, i 1)'
     System::Call 'gdi32::SetTextColor(p R4, i $InstallerTextColorref)'
     System::Call 'gdi32::SelectObject(p R4, p $InstallerSmallFont)'
-    System::Call 'user32::DrawTextW(p R4, w "$(INSTALLER_LAUNCH)", i -1, p R2, i 0x24)'
+    ${NSD_GetText} $R0 $R3
+    ${If} $R0 == $InstallerDecision
+        System::Call 'kernel32::MulDiv(i 4, i $InstallerDpi, i 96) i.R1'
+        System::Call '*$R2(i, i R1)'
+        System::Call 'user32::DrawTextW(p R4, w R3, i -1, p R2, i 0x810)'
+    ${Else}
+        System::Call 'user32::DrawTextW(p R4, w R3, i -1, p R2, i 0x24)'
+    ${EndIf}
     IntOp $R9 $R9 & 16
     ${If} $R9 != 0
         System::Call 'user32::DrawFocusRect(p R4, p R2)'

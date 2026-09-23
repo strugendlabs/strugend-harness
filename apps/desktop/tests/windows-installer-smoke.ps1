@@ -143,6 +143,8 @@ try {
     $results.Add('welcome-presented-on-first-show')
     $window = [InstallerCapture]::Find($process.Id)
     [void][InstallerCapture]::Save($window, (Join-Path $OutputDirectory 'light-welcome.png'))
+    [InstallerCapture]::AssertCaptionVisible($window, $decisionChoice, (Join-Path $OutputDirectory 'light-welcome.png'), $false)
+    $results.Add('optional-download-caption-readable-in-light-theme')
     Click-Control $process $copy.INSTALLER_CHOOSE_PATH
     $edit = Wait-Control $process $installPath
     [void][InstallerCapture]::Save($window, (Join-Path $OutputDirectory 'light-path.png'))
@@ -175,6 +177,8 @@ try {
     $edit = Wait-Control $process $installPath
     $edit = Set-InstallPath $process ($installPath + '\\')
     [void][InstallerCapture]::Save([InstallerCapture]::Find($process.Id), (Join-Path $OutputDirectory 'dark-welcome.png'))
+    [InstallerCapture]::AssertCaptionVisible([InstallerCapture]::Find($process.Id), (Wait-Control $process $copy.INSTALLER_DECISION), (Join-Path $OutputDirectory 'dark-welcome.png'), $true)
+    $results.Add('optional-download-caption-readable-in-dark-theme')
     $bounds = [InstallerCapture]::Bounds([InstallerCapture]::Find($process.Id))
     Click-Control $process $copy.INSTALLER_INSTALL
     Finish-Setup $process $true dark $bounds
