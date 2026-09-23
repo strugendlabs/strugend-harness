@@ -101,7 +101,10 @@ SectionEnd
     })
     const result = await execute('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File',
       join(appRoot, 'tests', 'windows-installer-smoke.ps1'), '-Installer', join(languageOutput, 'installer-test.exe'),
-      '-ProductName', productName, '-RegistryKey', guid, '-OutputDirectory', languageOutput], childOptions)
+      '-ProductName', productName, '-RegistryKey', guid, '-OutputDirectory', languageOutput], childOptions).catch((error) => {
+      process.stdout.write(`${language}\n${error.stdout ?? ''}`)
+      throw error
+    })
     process.stdout.write(`${language}\n${result.stdout}`)
   }
   succeeded = true
