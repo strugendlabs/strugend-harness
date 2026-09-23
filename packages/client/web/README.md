@@ -31,7 +31,7 @@ Static application pages install `__DSH_BOOT_READY__` before the entry runs. The
 
 The shell base styles apply automatic CJK/Latin spacing to ordinary content in supporting browsers. Semantic code and terminal, diff, read, and search output containers retain literal source spacing and column alignment; browsers without `text-autospace` support ignore both declarations.
 
-Strugend builds load the local S icon and product name during startup. Loading respects reduced motion and theme preference. Failed plugin IDs omit the framework prefix in the displayed report; the underlying diagnostics remain available to the Host.
+Strugend builds load the bundled amber ribbon mark and product name during startup. The mark gently moves while loading and stays still when reduced motion is preferred. Loading respects theme preference. Failed plugin IDs omit the framework prefix in the displayed report; the underlying diagnostics remain available to the Host.
 
 ### What boot looks like
 

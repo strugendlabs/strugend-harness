@@ -16,7 +16,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import {
-  IconAgentPresetOutline16, IconChevronDownOutline14, IconWarningOutline16, Menu, Toast,
+  type MenuItem, IconAgentPresetOutline16, IconChevronDownOutline14, IconWarningOutline16, Menu, Toast,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 // Type-only: pulls the ui-conversation SlotMap merge (the hero seat).
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
@@ -158,25 +158,33 @@ export function AgentPresetSeat({
     )
     : label
 
+  const items: MenuItem[] = state.options.map((option) => {
+    const text = presetDisplayText(option, t)
+    return {
+      id: option.id,
+      // Name and description together: the id alone never says what a
+      // preset does, which is why the roster carries display copy.
+      label: (
+        <span className={css.item}>
+          <span className={css.itemName}>{text.name}</span>
+          <span className={css.itemDesc}>{text.description ?? t('noDescription')}</span>
+        </span>
+      ),
+    }
+  })
+  const strugend = process.env.DSH_CLIENT_TITLE === 'Strugend Harness'
+  const advancedIds = new Set(['standard', 'minimal', 'cordis'])
+  const advanced = items.filter(item => advancedIds.has(item.id))
+  const menuItems: MenuItem[] = strugend && advanced.length > 0
+    ? [...items.filter(item => !advancedIds.has(item.id)), { id: '$advanced-modes', label: t('advancedModes'), submenu: advanced }]
+    : items
+
   return (
     <>
       <Menu
         open={open}
         onClose={() => { setOpen(false) }}
-        items={state.options.map((option) => {
-          const text = presetDisplayText(option, t)
-          return {
-            id: option.id,
-            // Name and description together: the id alone never says what a
-            // preset does, which is why the roster carries display copy.
-            label: (
-              <span className={css.item}>
-                <span className={css.itemName}>{text.name}</span>
-                <span className={css.itemDesc}>{text.description ?? t('noDescription')}</span>
-              </span>
-            ),
-          }
-        })}
+        items={menuItems}
         selectedId={state.current}
         onSelect={(id) => {
           setOpen(false)

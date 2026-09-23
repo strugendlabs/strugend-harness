@@ -18,6 +18,12 @@
     "disabled": true
   },
   {
+    "id": "agent-presets",
+    "config": {
+      "default": "ptc"
+    }
+  },
+  {
     "id": "system-prompt",
     "config": {
       "includeHarnessIdentity": false,

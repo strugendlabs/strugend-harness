@@ -20,7 +20,7 @@ import type { AgentPresetSettingsState } from '../src/client/settings-store.ts'
 import type { AgentPresetSeatState } from '../src/client/seat-store.ts'
 import { en } from '../src/client/locales.ts'
 
-afterEach(cleanup)
+afterEach(() => { cleanup(); vi.unstubAllEnvs() })
 
 const ROSTER_READY: AgentPresetSettingsState = {
   status: 'ready',
@@ -90,6 +90,19 @@ function renderLabel(
 }
 
 describe('the new-session chip', () => {
+  it('shows the four Strugend modes and keeps legacy presets in Advanced', async () => {
+    vi.stubEnv('DSH_CLIENT_TITLE', 'Strugend Harness')
+    const actions = renderSeat({ current: 'ptc', options: ['ptc', 'job', 'normal', 'repair', 'standard', 'minimal', 'cordis'].map(id => ({ id, trust: 'system' })) })
+    fireEvent.click(screen.getByRole('button', { name: en.presetPtcName }))
+    for (const name of [en.presetPtcName, en.presetJobName, en.presetNormalName, en.presetRepairName]) {
+      expect(screen.getByRole('menuitem', { name: new RegExp(`^${name}`) })).toBeTruthy()
+    }
+    expect(screen.queryByRole('menuitem', { name: new RegExp(`^${en.presetStandardName}`) })).toBeNull()
+    expect(screen.getByRole('menuitem', { name: en.advancedModes })).toBeTruthy()
+    fireEvent.click(screen.getByRole('menuitem', { name: new RegExp(`^${en.presetJobName}`) }))
+    await waitFor(() => { expect(actions.select).toHaveBeenCalledWith('job') })
+  })
+
   it('renders nothing while the picker is disabled', () => {
     renderSeat({ showPicker: false })
 

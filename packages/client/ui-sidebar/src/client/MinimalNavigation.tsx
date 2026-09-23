@@ -40,7 +40,9 @@ export function MinimalNavigation({
     <>
       <header className={css.topbar} data-strugend-topbar>
         <button type="button" className={css.brand} onClick={newChat} aria-label={t('session.new.label')}>
-          <span className={css.mark} aria-hidden="true">{t('brand.mark')}</span>
+          <span className={css.mark} aria-hidden="true">{renderSlot('sidebar.brand.mark', { size: 36 }, {
+            fallback: <img src="/assets/strugend/mark-512.png" width={36} height={36} alt="" draggable={false} />,
+          })}</span>
           <span>{t('brand.name')}</span>
         </button>
         <button ref={historyButton} type="button" className={css.historyButton} aria-expanded={!collapsed}

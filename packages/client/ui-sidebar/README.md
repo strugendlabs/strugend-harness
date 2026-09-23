@@ -27,6 +27,8 @@ Strugend builds use a persistent top bar with History, New chat, and Settings. H
 <a id="use-this-package"></a>
 ## Use this package
 
+The Strugend top bar renders the shared amber ribbon mark through the brand slot, with a bundled image fallback. The history drawer retains the existing workspace operations.
+
 The sidebar is the navigation shell: users see the brand, start new sessions, collapse the rail, and reach Settings. Feature plugins fill its seats — ui-workspace fills `sidebar.workspaces`, ui-settings registers the trigger row and settings panel at `sidebar.settings`.
 
 ### Brand and New Session

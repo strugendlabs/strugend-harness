@@ -1,5 +1,7 @@
 # Strugend Harness test preview
 
+This preview introduces the amber Strugend ribbon identity and four task modes. Coding is the default and retains TypeScript tool execution. Job mode finds roles, prepares fact-based resumes and cover letters, and applies within your instructions. Normal mode handles everyday tasks. Repair mode reproduces bugs, fixes their causes, and verifies the results. Existing tasks and saved default-mode choices stay unchanged.
+
 This preview uses your own API keys. Billing and Strugend-managed subscriptions are not enabled. Provider usage is charged by the provider associated with each key; no provider keys are included in these downloads.
 
 Choose the Windows x64 installer, the macOS arm64 download for Apple Silicon, or the macOS x64 download for Intel. These test builds have no developer certificate signature; macOS uses an ad hoc signature and is not notarized. Windows SmartScreen or macOS Gatekeeper may require an explicit user decision before opening them. Check the accompanying SHA256 file against the downloaded artifact.

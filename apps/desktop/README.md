@@ -12,6 +12,8 @@ Creator and the Web Plugin Manager use Desktop’s bundled pnpm under Electron N
 
 ## Strugend local application
 
+Desktop defaults new tasks to Coding mode (`ptc`), preserving its TypeScript tool execution. Job, Normal, and Repair supply dedicated workflows; saved user defaults and existing task histories stay unchanged. The [preset package](../../packages/preset/agent-presets/README.md) describes their behavior and limitations.
+
 The [Strugend development guide](../../AGENT_OS_README.md) owns the local fork’s launch and service configuration. Product branding uses Strugend Harness; native credential identity and existing data paths remain stable. Provider-neutral setup selects the primary model. Optional Laya reviews run concurrently in a supervised helper process; only revision-qualified recipes can enter Core context. Model weights and document runtimes are separate optional downloads. See the [resource policy and qualification limits](../../STRUGEND_PLAN.md). Graph memory and Video studio are disabled and marked Coming soon. Task-owned delivery jobs retain build and publishing receipts; Finder/Explorer actions use Electron’s native shell and report failures.
 
 Local inference uses ONNX Runtime 1.30.0 on Windows and Apple Silicon. Intel Macs select a separate 1.22.0 compatibility dependency because [later npm archives omit Intel Mac bindings](https://github.com/microsoft/onnxruntime/issues/27961). Only the selected runtime loads. Native qualification loads the packaged worker and weights before release.
@@ -20,7 +22,7 @@ Browser element actions focus and scroll before measuring the target, wait for t
 
 ## Key technical decisions
 
-Desktop uses `resources/strugend/icon.png` and `resources/strugend/icon.icns`. electron-builder derives Windows application and installer icons from the PNG. Installer preparation renders the Strugend mark and wordmark into light and dark BMP resources, including the 164×314 uninstall sidebar.
+The original amber ribbon master is `resources/strugend/icon-source.png`; Desktop uses its `icon.png` and `icon.icns` exports. The Web favicon, navigation, welcome view, and loading screen use matching resized assets. electron-builder derives Windows application and installer icons from the PNG. Installer preparation renders the Strugend mark and wordmark into light and dark BMP resources, including the 164×314 uninstall sidebar.
 
 The macOS PNG uses an inset rounded background for legacy ICNS packaging, with representations up to 1024 pixels. It is a flattened icon, not an Icon Composer document. Apple's [app icon guidance](https://developer.apple.com/design/human-interface-guidelines/app-icons) describes unmasked layers for Icon Composer; those inputs require a separate macOS export and must not reuse the rounded ICNS artwork. Verify Finder and Dock appearance on supported macOS versions before release.
 

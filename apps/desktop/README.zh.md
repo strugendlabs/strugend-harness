@@ -10,6 +10,8 @@ Desktop 的本地原生目录流程打开绑定应用窗口的 Electron 文件�
 
 Creator 和 Web Plugin Manager 在 Electron Node 模式下使用 Desktop 内置 pnpm，无需 PATH 中存在 pnpm。私有 Node 启动器环境仅应用于包操作。
 
+桌面端的新任务默认使用编码模式（`ptc`），保留其 TypeScript 工具执行方式。求职、日常和修复模式提供各自的工作流程；已保存的用户默认设置和已有任务历史保持不变。[预设包](../../packages/preset/agent-presets/README.zh.md)说明各模式的行为和限制。
+
 ## Strugend 本地应用
 
 [Strugend 开发指南](../../AGENT_OS_README.md) 定义本地分支的启动及服务配置。产品品牌使用 Strugend Harness；原生凭据标识和已有数据路径保持稳定。服务商中立的设置流程选择主模型。可选 Laya 检查在受监督的辅助进程中并行运行；只有经版本验证的配方可以进入 Core 上下文。模型权重和文档运行时是独立的可选下载。参见[资源策略与验证限制](../../STRUGEND_PLAN.md)。图谱记忆和视频工作室已禁用并标记即将推出。任务拥有的交付作业保留构建与发布回执；Finder/Explorer 操作使用 Electron 原生 shell 并报告失败。
@@ -20,7 +22,7 @@ Creator 和 Web Plugin Manager 在 Electron Node 模式下使用 Desktop 内置 
 
 ## 关键技术决策
 
-桌面端使用 `resources/strugend/icon.png` 和 `resources/strugend/icon.icns`。electron-builder 从 PNG 生成 Windows 应用和安装程序图标。安装程序准备阶段将 Strugend 图标和字标绘制到浅色及深色 BMP 资源中，包括 164×314 卸载侧边栏。
+琥珀色折带标志的原始文件为 `resources/strugend/icon-source.png`；桌面端使用其 `icon.png` 和 `icon.icns` 导出文件。Web 网站图标、导航、欢迎页和加载页使用相同标志的缩放资源。electron-builder 从 PNG 生成 Windows 应用和安装程序图标。安装程序准备阶段将 Strugend 图标和字标绘制到浅色及深色 BMP 资源中，包括 164×314 卸载侧边栏。
 
 macOS PNG 使用带留白的圆角底板，供传统 ICNS 打包使用，包含最高 1024 像素的表示。它是扁平图标，并非 Icon Composer 文档。Apple 的[应用图标指南](https://developer.apple.com/design/human-interface-guidelines/app-icons)要求向 Icon Composer 提供未遮罩的图层；这些输入需要在 macOS 上单独导出，不能复用已做圆角的 ICNS 图案。发布前须在支持的 macOS 版本中验收 Finder 和 Dock 的显示效果。
 

@@ -25,6 +25,8 @@ Use this package to choose the agent preset for a new Web GUI session, see the a
 <a id="use-this-package"></a>
 ## Use this package
 
+Strugend presents Coding, Job, Normal, and Repair in the new-task picker; Standard, Minimal, and Creator remain under Advanced modes. Coding retains the stored `ptc` identifier and TypeScript execution. Desktop defaults to Coding; an explicitly saved user default and started sessions retain their choices. The settings page exposes the complete roster.
+
 Mount this plugin alongside the settings and conversation packages; the management section then shows a visibility switch that is on by default. While it is off, the new-session chip is absent and the Host composes an unnamed session from the deployment default (`standard` in the shipped Web bundle). Turning it on restores the saved user default, or uses the deployment default when none has been saved, and carries that default to the current blank task; a chip pick itself is staged only once for the next blank session. Turning the picker off again returns the current blank task to the deployment default the same way and discards an unconsumed stage; started and historical sessions keep their labels, compositions, and recorded history.
 
 ### Managing the roster

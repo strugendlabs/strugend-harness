@@ -132,7 +132,12 @@ function HeroFish({ hovering }: { hovering: boolean }) {
 export function HeroShell({ t, renderSlot, children }: HeroShellProps) {
   const [hovering, setHovering] = useState(false)
   const strugend = process.env.DSH_CLIENT_TITLE === 'Strugend Harness'
-  if (strugend) return <div className={css.strugendHero}><h1>{t('hero.agentosHeadline')}</h1><p>{t('hero.strugendSubtitle')}</p>{children}</div>
+  if (strugend) return <div className={css.strugendHero}>
+    <div className={css.strugendMark}>{renderSlot('conversation.hero.brand.mark', { size: 76 }, {
+      fallback: <img src="/assets/strugend/mark-512.png" width={76} height={76} alt="" draggable={false} />,
+    })}</div>
+    <h1>{t('hero.agentosHeadline')}</h1><p>{t('hero.strugendSubtitle')}</p>{children}
+  </div>
   return (
     <div className={css.root}>
       <div className={css.stack}>

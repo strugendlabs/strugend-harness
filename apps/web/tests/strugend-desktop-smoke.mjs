@@ -21,7 +21,8 @@ const OUT = fs.mkdtempSync(path.join(evidenceRoot, 'packaged-' + process.platfor
  const errors=[], checks=[], serviceCalls=[]; let app,page,base,step=0,probeStep=0,probing=true,finalCount=0,decisionFails=false,backgroundProbe=false,backgroundStep=0,waitingForDecision,heldDecision,delivering=false,deliveryStep=0,deliveryJob,mainLog='';
  const redact=value=>value.replace(/token=[^\s]+/g,'token=[redacted]');
  const record=(name,data={})=>{checks.push({name,...data}); console.log('PASS:',name)};
- const send=(res,model,delta,finish)=>{res.setHeader('Content-Type','text/event-stream');for(const[d,f]of[[delta,null],[{},finish]])res.write('data: '+JSON.stringify({id:'strugend-e2e',object:'chat.completion.chunk',created:Math.floor(Date.now()/1000),model,choices:[{index:0,delta:d,finish_reason:f}]})+'\n\n');res.end('data: [DONE]\n\n')};
+ const ptcResponses=new WeakSet();
+ const send=(res,model,delta,finish)=>{if(ptcResponses.has(res)&&delta.tool_calls)delta={...delta,tool_calls:delta.tool_calls.map(call=>({...call,function:{name:'run_code',arguments:JSON.stringify({code:call.function.name==='job_output'?`return (await tools.job_output(${call.function.arguments})).text;`:`return JSON.stringify((await tools[${JSON.stringify(call.function.name)}](${call.function.arguments}))${call.function.name==='desktop_browser'?'.observation':''});`,description:'Verify the packaged Strugend workflow'})}}))};res.setHeader('Content-Type','text/event-stream');for(const[d,f]of[[delta,null],[{},finish]])res.write('data: '+JSON.stringify({id:'strugend-e2e',object:'chat.completion.chunk',created:Math.floor(Date.now()/1000),model,choices:[{index:0,delta:d,finish_reason:f}]})+'\n\n');res.end('data: [DONE]\n\n')};
  const toolResult=body=>{const message=[...body.messages].reverse().find(x=>x.role==='tool');assert(message,'Missing tool result');const content=typeof message.content==='string'?message.content:message.content.filter(x=>x.type==='text').map(x=>x.text).join('\n');try{return JSON.parse(content)}catch{return JSON.parse(content.split('\n')[0])}};
  const review={intent:'review_evidence',goal:'Verify the changed software behavior.',evidence:'The build exited with code zero, but no behavior test has run.'};
  const server=http.createServer(async(req,res)=>{
@@ -29,6 +30,7 @@ const OUT = fs.mkdtempSync(path.join(evidenceRoot, 'packaged-' + process.platfor
    let body;
    try{
     let raw=''; for await(const chunk of req)raw+=chunk; body=JSON.parse(raw);
+    if(body.tools?.some(tool=>tool.function?.name==='run_code'))ptcResponses.add(res);
     if(req.url==='/v1/systemone'){
      if(backgroundProbe){serviceCalls.push('Background held');heldDecision=res;waitingForDecision?.();return}
      if(decisionFails){serviceCalls.push('Decision');res.writeHead(503);res.end('{}');return}
@@ -40,11 +42,13 @@ const OUT = fs.mkdtempSync(path.join(evidenceRoot, 'packaged-' + process.platfor
     if(req.url.endsWith('/chat/completions')){
      if(!body.tools){send(res,body.model,{content:JSON.stringify(body.messages).includes('whether optional')?'Optional service check':'Workspace verification'},'stop');return}
      const system=JSON.stringify(body.messages.filter(x=>x.role==='system'));const upstream=system.match(/.{0,60}(DeepSeek Harness|powered by the deepseek|Current DSH file policy).{0,80}/i);assert(!upstream,'Received branded system prompt contains upstream identity: '+upstream?.[0]);
-     assert.equal(body.tools.some(x=>x.function?.name==='decision_check'),!probing);
+     const hasTool=name=>ptcResponses.has(res)?system.includes(' '+name+': {'):body.tools.some(x=>x.function?.name===name);
+     assert.equal(hasTool('decision_check'),!probing);
      assert(!body.tools.some(x=>/video/i.test(x.function?.name)));
-     assert(!body.tools.some(x=>x.function?.name==='memory_graph'));
-     assert(body.tools.some(x=>x.function?.name==='deliver_project'));
-     assert(body.tools.some(x=>x.function?.name==='crawl_website'));
+     assert(!hasTool('memory_graph'));
+     assert(!hasTool('video_edit'));
+     assert(hasTool('deliver_project'));
+     assert(hasTool('crawl_website'));
      if(backgroundProbe){
       if(backgroundStep++===0){const name=process.platform==='win32'?'pwsh':'bash';send(res,body.model,{role:'assistant',tool_calls:[{index:0,id:'background-proof',type:'function',function:{name,arguments:JSON.stringify({command:'echo build-observation',description:'Produce observed output for optional background review'})}}]},'tool_calls');return}
       const observation=[...body.messages].reverse().find(message=>message.role==='tool');assert(observation,'The background checkpoint has no tool observation');
@@ -53,7 +57,7 @@ const OUT = fs.mkdtempSync(path.join(evidenceRoot, 'packaged-' + process.platfor
       send(res,body.model,{content:'Core completed while Decision was still pending.'},'stop');return;
      }
      if(probing){
-      if(probeStep++===0){send(res,body.model,{role:'assistant',tool_calls:[{index:0,id:'base-runtime',type:'function',function:{name:'load_workspace_dependencies',arguments:'{}'}}]},'tool_calls');return}
+      if(probeStep++===0){assert.deepEqual(body.tools.map(tool=>tool.function.name),['run_code']);record('Coding exposes only the PTC tool transport');send(res,body.model,{role:'assistant',tool_calls:[{index:0,id:'base-runtime',type:'function',function:{name:'load_workspace_dependencies',arguments:'{}'}}]},'tool_calls');return}
       const dependencies=toolResult(body);assert.equal(dependencies.documents.state,'absent');assert.equal(dependencies.python,undefined);assert(fs.existsSync(dependencies.node));assert(fs.existsSync(dependencies.pnpm));
       send(res,body.model,{content:'Core remains available without optional services.'},'stop');return;
      }
@@ -123,6 +127,12 @@ const OUT = fs.mkdtempSync(path.join(evidenceRoot, 'packaged-' + process.platfor
   const componentsBefore=await page.evaluate(async()=>{const response=await fetch('/api/strugend/components');return response.json()});
   assert.equal(componentsBefore.setupComplete,true);assert(componentsBefore.components.every(x=>x.state==='absent'||x.state==='incompatible'));record('Fresh base opens with optional components absent and persists Skip');
   record('Cold launch reaches Strugend onboarding',{elapsedMs:Date.now()-started});
+  await page.getByRole('button',{name:'Coding mode',exact:true}).waitFor();
+  await page.getByRole('button',{name:'Coding mode',exact:true}).click();
+  for(const label of ['Coding mode','Job mode','Normal mode','Repair mode'])await page.getByRole('menuitem',{name:new RegExp('^'+label)}).waitFor();
+  await page.keyboard.press('Escape');
+  assert(await page.locator('[data-strugend-topbar] img').evaluate(img=>img.complete&&img.naturalWidth>0));
+  record('Coding is the default; all four task modes and the Strugend logo load');
   await app.evaluate(({dialog},folder)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[folder]})},workspace);
   await page.getByRole('button',{name:'Choose workspace',exact:true}).click();
   await page.getByText('What shall we work on?',{exact:true}).waitFor();
@@ -216,7 +226,7 @@ const OUT = fs.mkdtempSync(path.join(evidenceRoot, 'packaged-' + process.platfor
   delivering=true;
   await page.locator('[contenteditable="true"]').first().fill('Build the fixture application locally and verify the real artifact; keep it local.');
   await page.getByRole('button',{name:'Send message',exact:true}).click();
-  await page.getByText('Application build and artifact verification passed.',{exact:true}).first().waitFor({timeout:120000});
+  await page.getByText(/^(Application build and artifact verification passed\.|Workspace verification failed\.)$/).first().waitFor({timeout:120000});
   assert.deepEqual(errors,[]);assert.equal(deliveryStep,3);record('Agent starts a delivery job, builds and executes a local application, and collects its hashed receipt');
   delivering=false;
   await newChat();

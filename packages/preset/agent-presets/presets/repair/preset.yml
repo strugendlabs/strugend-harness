@@ -1,0 +1,3 @@
+name: Repair mode
+description: Reproduce bugs in existing apps, fix the cause, and verify the result.
+order: 4

@@ -24,12 +24,12 @@ function generatePassword(): string {
 }
 
 /**
- * Agent OS mark for the sidebar and blank conversation.
+ * Strugend mark for the sidebar and blank conversation.
  * @param props - Slot-owned size in CSS pixels and layout class.
- * @returns The decorative Strugend initial.
+ * @returns The decorative Strugend ribbon mark.
  */
-export function AgentOsMark({ size, className, t }: { size: number; className?: string | undefined } & PropsLocale<'workspace'>): ReactNode {
-  return <span className={className} style={{ fontSize: size, fontWeight: 750, lineHeight: 1, color: 'var(--dsw-alias-state-business-primary)' }} aria-hidden="true">{t('agentos.initial')}</span>
+export function AgentOsMark({ size, className }: { size: number; className?: string | undefined } & PropsLocale<'workspace'>): ReactNode {
+  return <img className={className} src="/assets/strugend/mark-512.png" width={size} height={size} alt="" draggable={false} />
 }
 
 /**

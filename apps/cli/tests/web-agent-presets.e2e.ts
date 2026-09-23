@@ -1,3 +1,4 @@
+import { agentOsProfilePatch } from '../../desktop-host/src/agentos-profile.ts'
 import { randomUUID } from 'node:crypto'
 import { mkdir, mkdtemp, readFile, stat, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -240,10 +241,10 @@ describe('the shipped Web composition', () => {
     }
   })
 
-  it('supplies both shipped presets, and only those, from the system root', async () => {
+  it('supplies all shipped presets, and only those, from the system root', async () => {
     const listed = await ctx.agentPresets.list()
 
-    expect(listed.map(preset => preset.id).sort()).toEqual(['cordis', 'minimal', 'ptc', 'standard'])
+    expect(listed.map(preset => preset.id).sort()).toEqual(['cordis', 'job', 'minimal', 'normal', 'ptc', 'repair', 'standard'])
     expect(listed.every(preset => preset.trust === 'system')).toBe(true)
     expect(ctx.agentPresets.defaultId).toBe('standard')
   })
@@ -266,6 +267,24 @@ describe('the shipped Web composition', () => {
         'workflow', 'write',
       ])
       expect(ctx.commands.find(handle.agent, 'goal')).toBeDefined()
+    } finally {
+      await handle.dispose()
+    }
+  })
+
+  it.each(['ptc', 'job', 'normal', 'repair'] as const)('mounts %s with its own workflow and executable tools', async (preset) => {
+    const handle = await ctx.agents.create({
+      sessionId: SessionId(`workflow-${preset}`),
+      setup: agentCtx => ctx.agentPresets.mount(agentCtx, preset).then(() => undefined),
+    })
+    try {
+      const assembly = await ctx.systemPrompt.assemble({ scope: handle.agent })
+      const persona = assembly.sections.find(section => section.name === 'deployment:persona-prefix')?.text
+      if (persona === undefined) throw new Error(`${preset} must publish its workflow`)
+      await expect(persona.trimEnd() + '\n').toMatchFileSnapshot(`./expected/modes/${preset}.txt`)
+      const names = toolNames(ctx, handle.agent)
+      expect(names).toEqual(expect.arrayContaining(['read', 'write', 'web_search', 'web_fetch', 'present', 'ask_user_question']))
+      expect(assembly.tools.some(tool => tool.name === 'run_code')).toBe(preset === 'repair' || preset === 'ptc')
     } finally {
       await handle.dispose()
     }
@@ -891,6 +910,28 @@ describe('authoring a preset on the shipped composition', () => {
  * the roster and the settings provider are actually wired to each other, and
  * that the id the setting names is the one a session composes from.
  */
+describe('the Strugend desktop default', () => {
+  it('starts in Coding with PTC while keeping an explicit saved preference', async () => {
+    const settingsFile = join(await mkdtemp(join(tmpdir(), 'strugend-mode-default-')), 'settings.yaml')
+    const presetPatch = agentOsProfilePatch('/unused/credentials.js', '/workspace').find(row => row.id === 'agent-presets')
+    if (presetPatch === undefined) throw new Error('Desktop must choose its default mode')
+    const desktop = await bootWeb(settingsFile, [presetPatch])
+    try {
+      expect(desktop.agentPresets.defaultId).toBe('ptc')
+      const handle = await desktop.agents.create({
+        sessionId: SessionId('desktop-default-coding'),
+        setup: agentCtx => desktop.agentPresets.mount(agentCtx).then(() => undefined),
+      })
+      try {
+        const assembly = await desktop.systemPrompt.assemble({ scope: handle.agent })
+        expect(assembly.tools.map(tool => tool.name)).toEqual(['run_code'])
+      } finally { await handle.dispose() }
+      await desktop.settings.update(SETTINGS_NAMESPACE, { default: 'normal' })
+      expect(desktop.agentPresets.defaultId).toBe('normal')
+    } finally { await desktop.fiber.dispose() }
+  })
+})
+
 describe('the default preset as a user setting', () => {
   it('composes an unnamed session from the stored default, not the composed one', async () => {
     expect((await ctx.agentPresets.remoteExportList()).modeSelectionEnabled).toBe(true)
@@ -980,7 +1021,7 @@ describe('a composition that configures its own preset roots', () => {
     ])
 
     const listed = await rootsCtx.agentPresets.list()
-    expect(listed.map(preset => preset.id).sort()).toEqual(['cordis', 'minimal', 'ptc', 'standard', 'team-spec'])
+    expect(listed.map(preset => preset.id).sort()).toEqual(['cordis', 'job', 'minimal', 'normal', 'ptc', 'repair', 'standard', 'team-spec'])
     expect(listed.every(preset => preset.broken === undefined)).toBe(true)
     // The shipped root comes first: a configured directory claiming a shipped
     // id is shadowed, never the other way around.

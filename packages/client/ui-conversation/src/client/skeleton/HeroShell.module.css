@@ -233,3 +233,5 @@
 .strugendHero { text-align:center; padding:0 20px 30px; }
 .strugendHero h1 { color:var(--dsw-alias-label-primary); font-size:clamp(24px,2.4vw,34px); font-weight:500; line-height:1.25; letter-spacing:-.8px; margin:0 0 14px; }
 .strugendHero p { color:var(--dsw-alias-label-secondary); font-size:15px; line-height:1.5; margin:0; }
+
+.strugendMark { display:flex; justify-content:center; margin:0 0 20px; }

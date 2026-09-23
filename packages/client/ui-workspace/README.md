@@ -27,6 +27,8 @@ The desktop composition opens Skills, Memory, and Vault on demand; Video studio 
 <a id="use-this-package"></a>
 ## Use this package
 
+Strugend brand slots share the bundled amber ribbon image with the navigation and loading screen; the image is decorative and does not add a screen-reader label.
+
 Use the sidebar to browse Workspaces and their Sessions, reorder them, and start new ones; use the picker in the Session Intent hero to choose a Workspace for a new session. An open Workspace shows five non-blank Sessions by default and keeps the selected blank **New Session** as one provisional extra row until its first prompt. **Show more** reveals the hidden remainder; closing and reopening the Workspace restores this folded projection.
 
 ### Reordering and view options

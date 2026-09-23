@@ -14,6 +14,7 @@ export function agentOsProfilePatch(credentialsPath: string, workspaceRoot: stri
     { id: 'credentials', name: credentialsPath, config: {} },
     { id: 'web-runtime', config: { openBrowser: false, printUrl: false, surfaceContext: false, trustedHosts: [] } },
     { id: 'skill-badge', disabled: true },
+    { id: 'agent-presets', config: { default: 'ptc' } },
     { id: 'system-prompt', config: { includeHarnessIdentity: false, personaPrefix: '', personaSuffix: 'You are Strugend, the user’s coding and everyday-task assistant.' } },
     { id: 'llm-deepseek', config: { models: [
       { id: 'deepseek-flash', name: 'Core', inputModalities: ['text', 'image'], systemPromptUpdate: 'in-history' },

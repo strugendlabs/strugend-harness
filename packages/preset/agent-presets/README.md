@@ -27,7 +27,11 @@ Use `dsh-agent-presets` to give each session the tools, prompt sections, and ski
 
 Mount this package in a composition that should give each agent session its own tools, prompt sections, and skills from a preset file. Every session names a preset — explicitly or through the configured default — and is composed from it; without the package, sessions fall back to whatever the host composition mounts.
 
-The shipped Web `standard`, `ptc`, and `cordis` presets include [explicit file delivery](../../client/ui-deliverables/README.md#explicit-deliveries). The `minimal` preset keeps its fixed two-tool training configuration.
+Coding (`ptc`) and Repair (`repair`) expose their tools through the TypeScript `run_code` runtime. Job (`job`) and Normal (`normal`) use native tool calls. Coding builds and verifies software; Repair reproduces bugs, makes focused fixes, verifies affected flows, and writes a repair report. Normal handles research, websites, files, and everyday tasks without assuming a software project. Standard, Minimal, and Creator remain available for existing sessions and advanced use.
+
+Job mode researches current vacancies, checks candidate facts, creates tailored resume and cover-letter files, and maintains an application ledger. It submits only within the user's requested scope and marks a submission complete only after confirmation. Missing candidate information, account access, MFA, CAPTCHA, or unsupported document export can require user input. These are model instructions using the installed file, web, browser, and document capabilities, not a separate recruitment service or a guarantee of successful applications.
+
+All presets except `minimal` include [explicit file delivery](../../client/ui-deliverables/README.md#explicit-deliveries). The `minimal` preset keeps its fixed two-tool training configuration.
 
 ### What a preset gives a session
 

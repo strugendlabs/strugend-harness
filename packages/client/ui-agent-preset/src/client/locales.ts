@@ -2,10 +2,13 @@
 
 /** Locale keys these surfaces render. */
 export type AgentPresetSettingsKey =
-  | 'error' | 'userTrust' | 'seatHint' | 'headerHint'
+  | 'advancedModes' | 'error' | 'userTrust' | 'seatHint' | 'headerHint'
   | 'nav' | 'sectionIntro' | 'builtIn' | 'setDefault' | 'view'
   | 'presetStandardName' | 'presetStandardDescription'
   | 'presetPtcName' | 'presetPtcDescription'
+  | 'presetJobName' | 'presetJobDescription'
+  | 'presetNormalName' | 'presetNormalDescription'
+  | 'presetRepairName' | 'presetRepairDescription'
   | 'presetMinimalName' | 'presetMinimalDescription'
   | 'presetCordisName' | 'presetCordisDescription'
   | 'duplicate' | 'duplicateUnavailable' | 'delete' | 'presetId' | 'presetIdPlaceholder' | 'copyOf'
@@ -22,23 +25,29 @@ export type AgentPresetSettingsKey =
 
 /** English copy. */
 export const en: Record<AgentPresetSettingsKey, string> = {
+  advancedModes: 'Advanced modes',
   error: 'Could not load agent presets.',
   userTrust: 'Custom',
   seatHint: 'Agent preset for the session you are about to start',
   headerHint: 'The agent preset this session runs, fixed when it started',
-  nav: 'Agent presets',
+  nav: 'Modes',
   sectionIntro:
-    'A preset is the plugin composition one session\'s agent runs — its tools, prompt, and capabilities. '
-    + 'Duplicate an existing one and make it yours, or let the agent draft one for you in Creator mode.',
+    'Choose how Strugend works on new tasks. Set a default, inspect a mode, or create your own.',
   builtIn: 'Built-in',
   setDefault: 'Set as default',
   view: 'View',
   presetStandardName: 'Standard mode',
   presetStandardDescription:
     'Full coding agent with file editing, shell, file and web search, skills, planning, goals, subagents, and workflows.',
-  presetPtcName: 'PTC mode',
+  presetPtcName: 'Coding mode',
   presetPtcDescription:
-    'Full coding agent without the workflow tool; other tools are exposed through the PTC mode SDK so the model can combine multi-step operations in one TypeScript program.',
+    'Build, edit, run, and verify software. Combine tool actions into efficient TypeScript programs.',
+  presetJobName: 'Job mode',
+  presetJobDescription: 'Find suitable jobs, prepare your resume and cover letters, and apply with a clear application record.',
+  presetNormalName: 'Normal mode',
+  presetNormalDescription: 'Research, organize files, use websites, and handle everyday tasks.',
+  presetRepairName: 'Repair mode',
+  presetRepairDescription: 'Reproduce bugs in existing apps, fix the cause, and verify the result.',
   presetMinimalName: 'Minimal mode',
   presetMinimalDescription:
     'Single-tool coding agent with a persistent shell.',
@@ -86,26 +95,33 @@ export const en: Record<AgentPresetSettingsKey, string> = {
   showPicker: 'Allow switching Agent modes',
   showPickerBeta: 'Beta',
   showPickerDescription:
-    'When enabled, new tasks can choose Standard, PTC, Creator, Minimal, and custom modes. When disabled, all new tasks use the default mode (Standard by default; configurable). Only affects new tasks.',
+    'Choose Coding, Job, Normal, Repair, or an advanced mode for new tasks. Turn this off to use the application default for every new task. Existing tasks keep their mode.',
   enablePickerToSetDefault: 'Turn on Agent mode selection to choose a default',
   enablePickerToCreate: 'Turn on Agent mode selection to start Creator mode',
 }
 
 /** Simplified Chinese copy. */
 export const zh: Record<AgentPresetSettingsKey, string> = {
+  advancedModes: '高级模式',
   error: '无法加载 Agent 预设。',
   userTrust: '自定义',
   seatHint: '即将开始的这个会话所用的 Agent 预设',
   headerHint: '本会话运行的 Agent 预设，开始时即固定',
-  nav: 'Agent 预设',
-  sectionIntro: '预设即一个会话的 Agent 所运行的插件组装 —— 它的工具、提示词与能力。复制一份既有预设改成自己的，或用「创造模式」让 Agent 帮你创建。',
+  nav: '模式',
+  sectionIntro: '选择新任务的工作方式。设置默认模式、查看模式或创建自己的模式。',
   builtIn: '内置',
   setDefault: '设为默认',
   view: '查看',
   presetStandardName: '标准模式',
   presetStandardDescription: '功能完整的编码 Agent，支持文件编辑、Shell、文件与网页检索、Skills、计划、目标、子代理和工作流。',
-  presetPtcName: 'PTC 模式',
-  presetPtcDescription: '功能完整的编码 Agent，但默认不提供 workflow 工具；其他工具通过 PTC 模式 SDK 呈现，让模型用一个 TypeScript 程序组合多步操作。',
+  presetPtcName: '编码模式',
+  presetPtcDescription: '构建、编辑、运行和验证软件，通过 TypeScript 程序高效组合工具操作。',
+  presetJobName: '求职模式',
+  presetJobDescription: '寻找合适职位、制作简历和求职信，提交申请并记录结果。',
+  presetNormalName: '日常模式',
+  presetNormalDescription: '搜索资料、整理文件、使用网站并完成日常事务。',
+  presetRepairName: '修复模式',
+  presetRepairDescription: '复现现有应用的问题、修复根因并验证结果。',
   presetMinimalName: '极简模式',
   presetMinimalDescription: '仅提供持久 shell 的单工具编码 Agent。',
   presetCordisName: '创造模式',
@@ -147,7 +163,7 @@ export const zh: Record<AgentPresetSettingsKey, string> = {
   deleting: '正在删除…',
   showPicker: '允许切换agent模式',
   showPickerBeta: 'beta',
-  showPickerDescription: '开启后，新任务可选择标准、PTC、创造、极简及自定义模式；关闭后统一使用默认模式（默认为标准模式，可自定义）。仅影响新任务。',
+  showPickerDescription: '为新任务选择编码、求职、日常、修复或高级模式。关闭后使用应用默认模式；已有任务保留其模式。',
   enablePickerToSetDefault: '请先开启 Agent 模式选择，再设置默认模式',
   enablePickerToCreate: '请先开启 Agent 模式选择，再启动创造模式',
 }
