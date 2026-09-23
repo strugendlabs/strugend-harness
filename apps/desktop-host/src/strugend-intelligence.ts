@@ -335,7 +335,7 @@ export async function apply(ctx: Context, config: Config): Promise<void> {
     if (!agent || !current().automatic || !available() || execution.name === 'decision_check') return downstream
     const state = evidence.get(agent.session)
     if (!state) return downstream
-    const definition = agent.ctx.tools.get(execution.name)
+    const definition = ctx.tools.get(execution.name, agent)
     let mutating = false
     try {
       const view = definition?.presentCall?.(execution.arguments)

@@ -73,6 +73,7 @@ jobs:
           apps/desktop/tests/strugend-location.spec.ts
           apps/desktop-host/tests/strugend-services.spec.ts
           apps/desktop-host/tests/strugend-intelligence.spec.ts
+          apps/desktop-host/tests/strugend-intelligence-loop.spec.ts
           apps/desktop-host/tests/strugend-decision.spec.ts
           apps/desktop-host/tests/strugend-delivery.spec.ts
           apps/desktop-host/tests/strugend-laya-local.spec.ts

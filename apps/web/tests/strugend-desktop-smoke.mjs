@@ -47,7 +47,8 @@ const OUT = fs.mkdtempSync(path.join(evidenceRoot, 'packaged-' + process.platfor
      assert(body.tools.some(x=>x.function?.name==='crawl_website'));
      if(backgroundProbe){
       if(backgroundStep++===0){const name=process.platform==='win32'?'pwsh':'bash';send(res,body.model,{role:'assistant',tool_calls:[{index:0,id:'background-proof',type:'function',function:{name,arguments:JSON.stringify({command:'echo build-observation',description:'Produce observed output for optional background review'})}}]},'tool_calls');return}
-      await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('Core waited for auxiliary inference')),5000);waitingForDecision=()=>{clearTimeout(timer);resolve()};if(serviceCalls.includes('Background held'))waitingForDecision()});
+      const observation=[...body.messages].reverse().find(message=>message.role==='tool');assert(observation,'The background checkpoint has no tool observation');
+      await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('Background review did not start for the tool observation: '+JSON.stringify(observation.content))),5000);waitingForDecision=()=>{clearTimeout(timer);resolve()};if(serviceCalls.includes('Background held'))waitingForDecision()});
       assert(heldDecision&&!heldDecision.destroyed&&!heldDecision.writableEnded,'Core waited until auxiliary inference stopped');
       send(res,body.model,{content:'Core completed while Decision was still pending.'},'stop');return;
      }

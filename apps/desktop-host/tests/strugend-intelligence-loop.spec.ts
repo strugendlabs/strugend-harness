@@ -67,14 +67,16 @@ async function fixture(responses: StreamChunk[][], connected = true, config: Par
   await ctx.plugin(intelligence, intelligence.Config({ decisionMode: 'remote', ...config } as intelligence.Config))
   const core = new ScriptedCore(responses)
   ctx.effect(() => ctx.llm.registerAdapter(['scripted-core'], core))
-  ctx.effect(() => ctx.tools.register(defineContentToolFixture({ name: 'write_fixture', description: 'Write the synthetic fixture.', parameters: {},
-    execute: async () => [{ type: 'text', text: 'File created. No behavior check has run.' }],
-    presentCall: () => ({ card: 'generic', title: 'Write fixture', kind: 'edit' }) })))
   ctx.effect(() => ctx.tools.register(defineContentToolFixture({ name: 'fail_fixture', description: 'Return a controlled failure.', parameters: {},
     execute: async () => { throw new Error('Missing required path argument.') },
     presentCall: () => ({ card: 'generic', title: 'Read fixture', kind: 'read' }) })))
   const harness = await mountAgentLoopTestHarness(ctx)
   const agent = await harness.create(SessionId('intelligence-loop-fixture'), { provider: 'scripted-core', model: 'synthetic-primary' })
+  agent.ctx.effect(() => agent.ctx.tools.register(defineContentToolFixture({ name: 'write_fixture', description: 'Write the synthetic fixture.', parameters: {},
+    execute: async () => [{ type: 'text', text: 'File created. No behavior check has run.' }],
+    presentCall: () => ({ card: 'generic', title: 'Write fixture', kind: 'edit' }) })))
+  expect(ctx.tools.get('write_fixture')).toBeUndefined()
+  expect(ctx.tools.get('write_fixture', agent)).toBeDefined()
   const run = async (): Promise<void> => {
     const idle = new Promise<void>((resolve) => {
       const dispose = ctx.on('agent/status', ({ agent: subject, status }) => {
