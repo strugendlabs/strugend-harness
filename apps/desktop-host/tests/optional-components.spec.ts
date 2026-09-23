@@ -11,7 +11,7 @@ import { ComponentManager, parseComponentCatalog, type ComponentArtifact } from 
 const cleanup: (() => Promise<void>)[] = []
 afterEach(async () => { for (const release of cleanup.splice(0).reverse()) await release() })
 
-async function fixture(options: { badHash?: boolean; interrupt?: boolean; lowMemory?: boolean; extraFile?: boolean; hang?: boolean; unsafe?: 'escape' | 'link' } = {}) {
+async function fixture(options: { badHash?: boolean; lowMemory?: boolean; extraFile?: boolean; hang?: boolean; idleTimeoutMs?: number; unsafe?: 'escape' | 'link' } = {}) {
   const root = await mkdtemp(join(tmpdir(), 'strugend-components-'))
   cleanup.push(() => rm(root, { recursive: true, force: true }))
   const payload = join(root, 'payload'); await mkdir(payload)
@@ -28,19 +28,23 @@ async function fixture(options: { badHash?: boolean; interrupt?: boolean; lowMem
   }
   const bytes = await readFile(archive)
   let requests = 0; const ranges: (string | undefined)[] = []
+  let disconnect: (() => void) | undefined
   const server: Server = createServer((request, response) => {
     requests++; ranges.push(request.headers.range)
     const start = Number(request.headers.range?.match(/^bytes=(\d+)-$/u)?.[1] ?? '0')
     const part = bytes.subarray(start)
     response.writeHead(start ? 206 : 200, { 'content-length': part.length,
       ...(start ? { 'content-range': `bytes ${start}-${bytes.length - 1}/${bytes.length}` } : {}) })
-    if (options.interrupt && requests === 1) { response.end(part.subarray(0, Math.floor(part.length / 2))); return }
-    if (options.hang && requests === 1) { response.write(part.subarray(0, Math.floor(part.length / 2))); return }
+    if (options.hang && requests === 1) {
+      disconnect = () => { response.destroy() }
+      response.write(part.subarray(0, Math.floor(part.length / 2)))
+      return
+    }
     response.end(part)
   })
-  await new Promise<void>((resolve) => { server.listen(0, '127.0.0.1', resolve) })
+  await new Promise<void>((resolve) => { server.listen(0, '127.0.0.1', () => { resolve() }) })
   cleanup.push(() => new Promise<void>((resolve, reject) => {
-    server.close(error => error ? reject(error) : resolve())
+    server.close((error) => { if (error) reject(error); else resolve() })
     server.closeAllConnections()
   }))
   const address = server.address()
@@ -50,11 +54,16 @@ async function fixture(options: { badHash?: boolean; interrupt?: boolean; lowMem
     files: options.extraFile ? 2 : 1, sha256: options.badHash ? '0'.repeat(64) : createHash('sha256').update(bytes).digest('hex') }
   const catalog = join(root, 'component-catalog.json')
   await writeFile(catalog, JSON.stringify({ schemaVersion: 1, components: [artifact] }))
-  const settings = { root: join(root, 'installed'), catalog, idleTimeoutMs: 1000, minimumDecisionMemoryMiB: 8192,
+  // Functional installation cases use the shipping idle allowance; deadline behavior owns a shorter explicit value.
+  const settings = { root: join(root, 'installed'), catalog, idleTimeoutMs: options.idleTimeoutMs ?? 30_000, minimumDecisionMemoryMiB: 8192,
     totalMemoryMiB: options.lowMemory ? 4096 : 16_384, platform: process.platform, arch: process.arch }
   const manager = new ComponentManager(settings); await manager.initialize()
   cleanup.push(() => manager.dispose())
-  return { manager, root, contents, settings, requests: () => requests, ranges }
+  return { manager, root, contents, settings, requests: () => requests, ranges,
+    disconnect: () => {
+      if (!disconnect) throw new Error('The partial response has not started.')
+      disconnect()
+    } }
 }
 
 async function terminal(manager: ComponentManager): Promise<void> {
@@ -85,13 +94,24 @@ it('opens without a download, persists Skip, and installs a verified component o
 })
 
 it('resumes a partial transfer with Range and verifies the entire archive', async () => {
-  const { manager, ranges, contents } = await fixture({ interrupt: true })
-  manager.install('decision'); await terminal(manager)
+  const { manager, ranges, contents, disconnect } = await fixture({ hang: true })
+  manager.install('decision')
+  await vi.waitFor(() => { expect(manager.list()[0]!.progressBytes).toBeGreaterThan(0) })
+  disconnect()
+  await terminal(manager)
   expect(manager.list()[0]?.state).toBe('failed')
   manager.install('decision'); await terminal(manager)
   expect(manager.list()[0]?.state).toBe('installed')
   expect(ranges[0]).toBeUndefined(); expect(ranges[1]).toMatch(/^bytes=\d+-$/u)
   expect(await readFile(join(manager.installedPath('decision')!, 'model.bin'))).toEqual(contents)
+})
+
+it('fails an idle transfer without publishing an installation', async () => {
+  const { manager } = await fixture({ hang: true, idleTimeoutMs: 25 })
+  manager.install('decision'); await terminal(manager)
+  expect(manager.list()[0]?.state).toBe('failed')
+  expect(manager.list()[0]?.error).toBeTruthy()
+  expect(manager.installedPath('decision')).toBeUndefined()
 })
 
 it.each([{ badHash: true }, { extraFile: true }])('never publishes corrupt or incomplete archives: %j', async (options) => {
@@ -149,6 +169,7 @@ it.each([
 it('serializes removal against reinstall and recovers interrupted directory publication', async () => {
   const { manager, settings } = await fixture()
   manager.install('decision'); await terminal(manager)
+  expect(manager.list()[0]).toMatchObject({ state: 'installed', error: undefined })
   const path = manager.installedPath('decision')!
   await manager.dispose()
   await rename(path, `${path}.previous`)
