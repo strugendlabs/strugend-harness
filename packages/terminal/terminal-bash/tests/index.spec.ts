@@ -454,40 +454,41 @@ describe('BashTerminalBackend startup rollback', () => {
     expect(spawned?.env?.PROMPT_COMMAND).toBeUndefined()
   })
 
-  it('keeps waiting for stdin_read when the first settled output only echoes the prompt literal', async () => {
-    const ctx = new Context()
-    await ctx.plugin(EmptySandbox)
-    await ctx.plugin(SessionProjectionRegistry)
-    await ctx.plugin(SandboxPolicyService, { mode: 'danger-full-access', workspaceRoot: '/workspace' })
-    const sends: TerminalSendRequest[] = []
-    const session = {
-      motd: '',
-      startSend: (request: TerminalSendRequest) => {
-        sends.push(request)
-        const second = sends.length > 1
-        return {
-          done: Promise.resolve({
-            viewport: second ? 'strugend> ' : "function prompt { 'strugend> ' }\n",
-            waitReason: second ? 'stdin_read' as const : 'inferred_idle' as const,
-            sessionStatus: { kind: 'running' as const }, truncated: false,
-          }),
-          readOutput: () => ({ delta: '', truncated: false }),
-          cancel: () => false,
-        }
-      },
-      read: () => ({ text: '', totalLines: 0, lineBegin: 0, lineEnd: 0, truncated: false }),
-    } as unknown as LocalPtySession
-    const backend = new BashTerminalBackend(
-      ctx,
-      { ...config(), shellDialect: 'pwsh', shellPath: 'pwsh' },
-      async () => terminalHandle(),
-      () => session,
-    )
-    await backend.spawn(spec(agent(ctx)))
-    expect(sends).toHaveLength(2)
-    expect(sends[1]).toMatchObject({ text: '', submit: false })
-    expect(session.motd).toBe('strugend> ')
-  })
+  it.each(['', "function prompt { 'strugend> ' }\n"])(
+    'submits pwsh setup once and waits for readiness after an idle result: %j', async (initialViewport) => {
+      const ctx = new Context()
+      await ctx.plugin(EmptySandbox)
+      await ctx.plugin(SessionProjectionRegistry)
+      await ctx.plugin(SandboxPolicyService, { mode: 'danger-full-access', workspaceRoot: '/workspace' })
+      const sends: TerminalSendRequest[] = []
+      const session = {
+        motd: '',
+        startSend: (request: TerminalSendRequest) => {
+          sends.push(request)
+          const second = sends.length > 1
+          return {
+            done: Promise.resolve({
+              viewport: second ? 'strugend> ' : initialViewport,
+              waitReason: second ? 'stdin_read' as const : 'inferred_idle' as const,
+              sessionStatus: { kind: 'running' as const }, truncated: false,
+            }),
+            readOutput: () => ({ delta: '', truncated: false }),
+            cancel: () => false,
+          }
+        },
+        read: () => ({ text: '', totalLines: 0, lineBegin: 0, lineEnd: 0, truncated: false }),
+      } as unknown as LocalPtySession
+      const backend = new BashTerminalBackend(
+        ctx,
+        { ...config(), shellDialect: 'pwsh', shellPath: 'pwsh' },
+        async () => terminalHandle(),
+        () => session,
+      )
+      await backend.spawn(spec(agent(ctx)))
+      expect(sends).toHaveLength(2)
+      expect(sends[1]).toMatchObject({ text: '', submit: false })
+      expect(session.motd).toBe('strugend> ')
+    })
 
   it('rejects a pwsh bootstrap whose shell exits or times out', async () => {
     const ctx = new Context()

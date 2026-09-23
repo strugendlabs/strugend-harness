@@ -100,7 +100,7 @@ Scrollback and unread send output retain independently owned strings with increm
 
 ### Readiness model
 
-Three bounded tiers settle a send: exact stdin-wait evidence from the subprocess provider (Linux only), the verified private prompt marker with an exact printable tail, and output silence (`inferred_idle`); an absolute timeout always bounds the wait. Pwsh startup uses one deadline across its complete setup loop, so an `inferred_idle` follow-up does not restart the bound. A poll with no input preserves prompt evidence received between sends; an input-bearing send discards earlier evidence at the write boundary, a stdin wait that predates the write is not post-write readiness, and unknown foreground state is never a positive exact-idle signal.
+Three bounded tiers settle a send: exact stdin-wait evidence from the subprocess provider (Linux only), the verified private prompt marker with an exact printable tail, and output silence (`inferred_idle`); an absolute timeout always bounds the wait. Pwsh submits its setup command once, even when an early wait receives no output, and uses one deadline across the complete startup loop, so an `inferred_idle` follow-up does not restart the bound. A poll with no input preserves prompt evidence received between sends; an input-bearing send discards earlier evidence at the write boundary, a stdin wait that predates the write is not post-write readiness, and unknown foreground state is never a positive exact-idle signal.
 
 ### Send cancellation and teardown
 

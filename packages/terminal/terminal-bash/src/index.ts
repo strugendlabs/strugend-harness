@@ -130,13 +130,14 @@ async function startupSession(
     // the printable prompt is not readiness. Follow-up sends bridge silence
     // settlements during startup, while one absolute deadline bounds them.
     let viewport = ''
+    let first = true
     for (;;) {
-      const first = viewport.length === 0
       startupOperation = session.startSend({
         text: first ? ENCODING_PREAMBLE + PWSH_PROMPT_SETUP.replace(CONTROLLED_PROMPT, promptText) : '',
         submit: first,
         ...signal !== undefined ? { signal } : {},
       })
+      first = false
       const result = await startupOperation.done
       if (result.waitReason === 'session_exit') throw new Error('PTY shell exited during startup')
       if (result.waitReason === 'timeout') throw new Error('PTY shell did not reach readiness before startup timeout')
