@@ -447,7 +447,9 @@ describe('BashTerminalBackend startup rollback', () => {
     expect(await backend.spawn(spec(agent(ctx)))).toBe(session)
     expect(sent).toMatchObject({ text: '', submit: false })
     expect(spawned?.argv.slice(0, -1)).toEqual(['pwsh', '-NoExit', '-EncodedCommand'])
-    expect(Buffer.from(spawned!.argv.at(-1)!, 'base64').toString('utf16le')).toBe(ENCODING_PREAMBLE + PWSH_PROMPT_SETUP)
+    expect(Buffer.from(spawned!.argv.at(-1)!, 'base64').toString('utf16le')).toBe(
+      ENCODING_PREAMBLE + 'Remove-Module PSReadLine -ErrorAction SilentlyContinue; ' + PWSH_PROMPT_SETUP,
+    )
     expect(session.motd).toBe('setup-echo strugend> ')
     expect(spawned?.env).toMatchObject({
       TERM: 'dumb', NO_COLOR: '1', DSH_SHELL: '1', DSH_SESSION_ID: 'agent', DSH_PTY_SESSION_ID: 'pty-1',

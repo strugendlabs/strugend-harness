@@ -1,4 +1,4 @@
-name: Strugend Windows terminal diagnostics
+name: Strugend native terminal diagnostics
 
 on:
   workflow_dispatch:
@@ -8,7 +8,11 @@ permissions:
 
 jobs:
   terminal:
-    runs-on: windows-2022
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [windows-2022, macos-15, macos-15-intel]
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
@@ -21,6 +25,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Exercise installer before terminal startup
+        if: runner.os == 'Windows'
         run: pnpm --dir apps/desktop run test:installer
       - name: Sample native startup without retrying failures
         shell: pwsh

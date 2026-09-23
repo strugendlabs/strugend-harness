@@ -99,7 +99,8 @@ export const PWSH_PROMPT_SETUP =
 async function spawnArgv(ctx: Context, config: ResolvedConfig, policy: SandboxExecutionPolicy, signal?: AbortSignal): Promise<string[]> {
   const argv = [config.shellPath, ...config.shellArgs]
   if (config.shellDialect === 'pwsh') {
-    const setup = ENCODING_PREAMBLE + PWSH_PROMPT_SETUP.replace(CONTROLLED_PROMPT, config.promptText)
+    const setup = ENCODING_PREAMBLE + 'Remove-Module PSReadLine -ErrorAction SilentlyContinue; '
+      + PWSH_PROMPT_SETUP.replace(CONTROLLED_PROMPT, config.promptText)
     argv.push('-NoExit', '-EncodedCommand', Buffer.from(setup, 'utf16le').toString('base64'))
   }
   if (policy.mode === 'danger-full-access') return argv
