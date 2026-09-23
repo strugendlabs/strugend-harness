@@ -79,12 +79,14 @@ public static class InstallerCapture {
         return incomplete;
     }
 
-    public static IntPtr FindClass(IntPtr parent, string name) {
+    public static IntPtr FindClass(IntPtr parent, string name) { return FindClassCore(parent, name, false); }
+    public static IntPtr FindVisibleClass(IntPtr parent, string name) { return FindClassCore(parent, name, true); }
+    static IntPtr FindClassCore(IntPtr parent, string name, bool visibleOnly) {
         IntPtr result = IntPtr.Zero;
         EnumChildWindows(parent, delegate(IntPtr child, IntPtr unused) {
             var kind = new StringBuilder(128);
             GetClassName(child, kind, kind.Capacity);
-            if (kind.ToString() == name) result = child;
+            if (kind.ToString() == name && (!visibleOnly || IsWindowVisible(child))) result = child;
             return result == IntPtr.Zero;
         }, IntPtr.Zero);
         return result;
