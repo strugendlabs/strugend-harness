@@ -22,7 +22,7 @@ Browser element actions focus and scroll before measuring the target, wait for t
 
 ## Key technical decisions
 
-The original amber ribbon master is `resources/strugend/icon-source.png`; Desktop uses its `icon.png` and `icon.icns` exports. The Web favicon, navigation, welcome view, and loading screen use matching resized assets. electron-builder derives Windows application and installer icons from the PNG. Installer preparation renders the Strugend mark and wordmark into light and dark BMP resources, including the 164×314 uninstall sidebar.
+The original amber ribbon master is `resources/strugend/icon-source.png`; Desktop uses its `icon.png`, `icon.icns`, and `icon.ico` exports. The Web favicon, navigation, welcome view, and loading screen use matching resized assets. Windows packaging consumes the committed ICO directly; its 16–256 pixel representations avoid runtime PNG-to-ICO conversion. Installer preparation renders the Strugend mark and wordmark into light and dark BMP resources, including the 164×314 uninstall sidebar.
 
 The macOS ICNS preserves the transparent ribbon silhouette, with representations up to 1024 pixels. It is a legacy ICNS export, not an Icon Composer document. Apple's [app icon guidance](https://developer.apple.com/design/human-interface-guidelines/app-icons) describes layered inputs for Icon Composer; those require a separate export. Verify Finder and Dock appearance on supported macOS versions before release.
 

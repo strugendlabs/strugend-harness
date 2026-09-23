@@ -188,7 +188,7 @@ export function createElectronBuilderConfig(
       )
     },
     win: {
-      icon: fileURLToPath(new URL('../resources/strugend/icon.png', import.meta.url)),
+      icon: fileURLToPath(new URL('../resources/strugend/icon.ico', import.meta.url)),
       forceCodeSigning: !unsigned,
       signtoolOptions: {
         sign: windowsSigner,

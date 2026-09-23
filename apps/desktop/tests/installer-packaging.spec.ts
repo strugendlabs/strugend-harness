@@ -39,6 +39,22 @@ describe('installer preparation preserves application dependencies', () => {
       const aboutIcon = config.extraResources.find(resource => resource.to === 'icon.png')
       expect(aboutIcon).toBeDefined()
       expect(readFileSync(aboutIcon!.from)).toEqual(readFileSync(new URL('../resources/strugend/icon.png', import.meta.url)))
+      if (platform === 'win32') {
+        expect(config.win.icon).toMatch(/\.ico$/u)
+        const icon = readFileSync(config.win.icon)
+        expect(icon.readUInt16LE(0)).toBe(0)
+        expect(icon.readUInt16LE(2)).toBe(1)
+        const sizes: number[] = []
+        for (let index = 0; index < icon.readUInt16LE(4); index++) {
+          const entry = 6 + index * 16
+          sizes.push(icon[entry] || 256)
+          const offset = icon.readUInt32LE(entry + 12)
+          const length = icon.readUInt32LE(entry + 8)
+          expect(offset + length).toBeLessThanOrEqual(icon.length)
+          expect(icon.subarray(offset, offset + 8)).toEqual(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
+        }
+        expect(sizes).toEqual(expect.arrayContaining([16, 32, 48, 256]))
+      }
       const packager = new Packager({ projectDir: tmpdir() })
       // A foreign source-build target avoids rebuilding modules; the real dependency ownership decision still runs.
       Object.defineProperties(packager, {

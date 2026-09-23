@@ -60,6 +60,7 @@ jobs:
       - name: Run packaging and platform regression tests
         run: >-
           pnpm exec vitest run apps/desktop/tests/strugend-preview.spec.ts
+          apps/desktop/tests/installer-packaging.spec.ts
           apps/desktop/tests/agentos-media-executable.spec.ts
           apps/desktop/tests/package-target.spec.ts
           apps/desktop/tests/package-target-stages.spec.ts

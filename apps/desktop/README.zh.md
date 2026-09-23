@@ -22,7 +22,7 @@ Creator 和 Web Plugin Manager 在 Electron Node 模式下使用 Desktop 内置 
 
 ## 关键技术决策
 
-琥珀色折带标志的原始文件为 `resources/strugend/icon-source.png`；桌面端使用其 `icon.png` 和 `icon.icns` 导出文件。Web 网站图标、导航、欢迎页和加载页使用相同标志的缩放资源。electron-builder 从 PNG 生成 Windows 应用和安装程序图标。安装程序准备阶段将 Strugend 图标和字标绘制到浅色及深色 BMP 资源中，包括 164×314 卸载侧边栏。
+琥珀色折带标志的原始文件为 `resources/strugend/icon-source.png`；桌面端使用其 `icon.png`、`icon.icns` 和 `icon.ico` 导出文件。Web 网站图标、导航、欢迎页和加载页使用相同标志的缩放资源。Windows 打包直接使用已提交的 ICO；其中 16–256 像素的表示避免在运行时将 PNG 转为 ICO。安装程序准备阶段将 Strugend 图标和字标绘制到浅色及深色 BMP 资源中，包括 164×314 卸载侧边栏。
 
 macOS ICNS 保留透明的丝带轮廓，包含最高 1024 像素的尺寸。它是传统 ICNS 导出，不是 Icon Composer 文档。Apple 的[应用图标指南](https://developer.apple.com/design/human-interface-guidelines/app-icons)说明了 Icon Composer 的分层输入；这些需要单独导出。发布前应在支持的 macOS 版本中检查 Finder 和 Dock 的显示效果。
 
