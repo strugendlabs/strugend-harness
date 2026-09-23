@@ -1,0 +1,32 @@
+name: Strugend native installer check
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  installer:
+    runs-on: windows-2022
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --dir apps/desktop run test:installer
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: strugend-installer-evidence
+          path: |
+            apps/desktop/.desktop-build/installer-tests/run-*/*/results.json
+            apps/desktop/.desktop-build/installer-tests/run-*/*/*.png
+          if-no-files-found: ignore
+          retention-days: 14
