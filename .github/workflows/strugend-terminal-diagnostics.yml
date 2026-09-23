@@ -20,13 +20,15 @@ jobs:
           node-version: '24'
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Exercise installer before terminal startup
+        run: pnpm --dir apps/desktop run test:installer
       - name: Sample native startup without retrying failures
         shell: pwsh
         run: |
           $failed = $false
           foreach ($sample in 1..5) {
             Write-Output "Native terminal sample $sample"
-            pnpm exec vitest run packages/terminal/terminal-bash/tests/local.spec.ts --maxWorkers=1 --testTimeout=90000 --hookTimeout=90000
+            pnpm exec vitest run packages/terminal/terminal-bash/tests --maxWorkers=2 --testTimeout=90000 --hookTimeout=90000
             if ($LASTEXITCODE -ne 0) { $failed = $true }
           }
           if ($failed) { exit 1 }

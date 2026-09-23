@@ -344,7 +344,8 @@ export class LocalPtySession implements TerminalBackendSession {
       () => { this.interrupt(operation) },
     )
     this.active = operation
-    this.resetReadinessEvidence()
+    // A no-input poll must retain a prompt that arrived after the preceding send settled.
+    if (request.text.length > 0 || request.submit) this.resetReadinessEvidence()
 
     if (request.signal !== undefined) {
       const onAbort = (): void => { operation.cancel() }

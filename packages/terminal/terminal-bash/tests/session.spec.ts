@@ -157,6 +157,26 @@ async function initialize(session: LocalPtySession, terminal: FakeTerminal): Pro
 }
 
 describe('LocalPtySession readiness and output', () => {
+  it('preserves a prompt received between an idle settlement and a no-input poll', async () => {
+    vi.useFakeTimers()
+    const terminal = new FakeTerminal()
+    const session = new LocalPtySession(terminal, config())
+    try {
+      const setup = session.startSend({ text: 'setup', submit: true })
+      await vi.advanceTimersByTimeAsync(0)
+      terminal.emitData('setup echo\r\n')
+      await vi.advanceTimersByTimeAsync(60)
+      expect((await setup.done).waitReason).toBe('inferred_idle')
+      terminal.emitData('\x1b]133;D;0\x07strugend> ')
+      const poll = session.startSend({ text: '', submit: false })
+      await vi.advanceTimersByTimeAsync(60)
+      expect((await poll.done).waitReason).toBe('stdin_read')
+      expect(terminal.writes).toEqual(['setup\r'])
+    } finally {
+      await session.close('prompt handoff cleanup')
+    }
+  })
+
   it('polls startup and settles sends without assembling scrollback for status checks', async () => {
     vi.useFakeTimers()
     const terminal = new FakeTerminal()
@@ -279,9 +299,8 @@ describe('LocalPtySession readiness and output', () => {
     const inspector = new FakeInspector()
     const session = makeSession(terminal, inspector, config())
     await initialize(session, terminal)
-    const operation = session.startSend({ text: '', submit: false })
-    await Promise.resolve()
-    await Promise.resolve()
+    const operation = session.startSend({ text: 'work', submit: true })
+    await vi.advanceTimersByTimeAsync(0)
     const internal = session as unknown as {
       stopReadinessPolling(): void
       pollReadiness(operation: TerminalSendOperation): Promise<void>
