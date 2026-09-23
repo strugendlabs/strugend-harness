@@ -150,6 +150,7 @@ it('serializes removal against reinstall and recovers interrupted directory publ
   const { manager, settings } = await fixture()
   manager.install('decision'); await terminal(manager)
   const path = manager.installedPath('decision')!
+  await manager.dispose()
   await rename(path, `${path}.previous`)
   const recovered = new ComponentManager(settings); await recovered.initialize()
   cleanup.push(() => recovered.dispose())
