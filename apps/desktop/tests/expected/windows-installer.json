@@ -16,6 +16,8 @@
     "invalid-destination-rejection",
     "uninstall",
     "optional-decision-download-is-unchecked-and-skip-is-durable",
-    "optional-decision-download-selection-is-durable"
+    "optional-decision-download-selection-is-durable",
+    "optional-download-caption-readable-in-light-theme",
+    "optional-download-caption-readable-in-dark-theme"
   ]
 }
