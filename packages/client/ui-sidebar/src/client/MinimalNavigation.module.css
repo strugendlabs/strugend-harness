@@ -34,16 +34,15 @@
 .iconButton { width: 30px; height: 30px; padding: 0; border-radius: 6px; font-size: 24px; color: var(--dsw-alias-label-secondary); }
 .iconButton:hover, .panels button:hover { background: var(--dsw-alias-interactive-bg-hover); color: var(--dsw-alias-label-primary); }
 .settings { display: flex; width: 32px; align-items: center; }
-.drawerLayer { position: absolute; inset: var(--strugend-topbar-height, 56px) 0 0; z-index: 25; }
-.backdrop { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: var(--strugend-drawer-scrim); cursor: default; }
-.drawer { position: absolute; inset: 0 auto 0 0; width: min(340px, 90vw); box-sizing: border-box; display: flex; flex-direction: column; padding: 16px 12px; border-right: 1px solid var(--dsw-alias-border-l3); background: var(--dsw-alias-bg-layer-1); outline: none; animation: drawer-in 140ms ease-out; }
-.drawerHeader { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; padding: 0 8px; font-size: 15px; }
-.newChat { border: 1px solid var(--dsw-alias-border-l3); border-radius: 9px; min-height: 40px; margin-bottom: 16px; justify-content: flex-start; padding: 0 12px; font-size: 14px; }
+.drawerLayer { height: 100%; min-width: 0; }
+.drawer { --dsh-sidebar-inline-padding: 12px; --dsh-workspace-min-height: 180px; position: relative; width: 100%; height: 100%; box-sizing: border-box; display: flex; flex-direction: column; padding: 10px 12px; font-size: 14px; line-height: 18px; overflow-y: auto; border-right: 1px solid var(--dsw-alias-border-l3); background: var(--dsw-alias-bg-layer-1); outline: none; animation: drawer-in 140ms ease-out; }
+.drawerHeader { flex: none; display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; padding: 0 8px; font-size: 15px; }
+.newChat { border: 1px solid var(--dsw-alias-border-l3); border-radius: 9px; min-height: 32px; margin-bottom: 6px; justify-content: flex-start; padding: 0 12px; font-size: 14px; }
 .newChat:hover { border-color: var(--strugend-accent-border); }
-.panels { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
-.panels button { justify-content: flex-start; padding: 10px 12px; border-radius: 7px; font-size: 14px; }
+.panels { flex: none; display: flex; flex-direction: column; gap: 2px; max-height: 96px; overflow-y: auto; margin-bottom: 6px; }
+.panels button { justify-content: flex-start; min-height: 30px; padding: 5px 8px; border-radius: 7px; font-size: 13px; line-height: 18px; }
 .panels button[aria-current] { color: var(--dsw-alias-state-business-primary); }
-.workspaces { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.workspaces { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; }
 .footer { flex: none; }
 :global([data-platform='darwin']) .topbar { padding-left: 90px; }
 :global([data-windows-titlebar]) .topbar { padding-right: 194px; }

@@ -291,7 +291,7 @@ function ClassicSidebarRoot({
 
 /** Render the product navigation without changing the shared workspace controls.
  * @param props - Sidebar slot data and actions.
- * @returns A history drawer for Strugend, or the configured classic sidebar.
+ * @returns A docked history sidebar for Strugend, or the configured classic sidebar.
  */
 export function SidebarRoot(props: SidebarRootComponentProps) {
   return process.env.DSH_CLIENT_TITLE === 'Strugend Harness'

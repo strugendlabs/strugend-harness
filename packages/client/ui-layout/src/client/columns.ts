@@ -15,6 +15,8 @@ export const SIDEBAR_MIN = 220
 export const SIDEBAR_MAX = 420
 /** Sidebar width before any user drag. */
 export const SIDEBAR_DEFAULT = 240
+/** Default width of the docked Strugend history sidebar. */
+export const STRUGEND_SIDEBAR_DEFAULT = 360
 /** Closed-sidebar rail: a 24px icon column between 16px horizontal paddings. */
 export const SIDEBAR_COLLAPSED = 56
 /** Viewport width below which the sidebar auto-collapses to the rail (deepsuite

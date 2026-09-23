@@ -142,14 +142,36 @@ const OUT = fs.mkdtempSync(path.join(evidenceRoot, 'packaged-' + process.platfor
   await page.waitForFunction(()=>innerWidth===1440);
   await noVendor();assert.equal(await page.locator('[data-agent-os-browser]').count(),0);
   await page.screenshot({path:path.join(OUT,'empty-chat.png')});
-  record('Minimal empty chat hides tools until needed and has no vendor labels');
-  await page.locator('[data-strugend-topbar]').getByRole('button',{name:'History',exact:true}).click();
+  assert.equal(await page.getByRole('button',{name:'History',exact:true}).getAttribute('aria-expanded'),'true');
+  const initialHistory=await page.locator('#strugend-history').boundingBox(),initialComposer=await page.locator('[contenteditable="true"]').first().boundingBox();
+  assert(initialHistory&&initialComposer&&initialComposer.x>=initialHistory.x+initialHistory.width,'Default history covers the composer');
+  record('History opens beside the usable chat by default without vendor labels');
   const history=page.locator('#strugend-history');
   await history.getByText(path.basename(workspace),{exact:true}).waitFor();
   await history.getByRole('button',{name:'Add workspace',exact:true}).waitFor();
   await page.screenshot({path:path.join(OUT,'history-drawer.png')});
+  await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].setContentSize(1024,600));
+  await page.waitForFunction(()=>innerWidth===1024&&innerHeight===600);
+  const historyLayout=await history.evaluate(drawer=>{
+   const list=drawer.querySelector('[role="tree"][aria-label="Sessions"]');
+   if(!list)throw new Error('History has no conversation tree');
+   const box=list.getBoundingClientRect();
+   const rows=[...list.querySelectorAll('[role="treeitem"]')];
+   return {height:list.clientHeight,width:drawer.clientWidth,
+    visibleRows:rows.filter(row=>{const rect=row.getBoundingClientRect();return rect.top>=box.top&&rect.bottom<=Math.min(box.bottom,innerHeight)}).length,
+    titleWidths:[...list.querySelectorAll('[class$="_title"]')].map(title=>title.clientWidth),
+    horizontalOverflow:drawer.scrollWidth>drawer.clientWidth};
+  });
+  assert(historyLayout.height>=130,'History conversations are squeezed by navigation controls');
+  assert(historyLayout.visibleRows>=2,'Workspace and conversation must both remain visible');
+  assert(historyLayout.titleWidths.length>=2&&historyLayout.titleWidths.every(width=>width>=220),'Conversation titles lack room');
+  assert.equal(historyLayout.horizontalOverflow,false);
+  await page.screenshot({path:path.join(OUT,'history-compact.png')});
+  record('Compact history keeps readable conversations in a short window',historyLayout);
+  await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].setContentSize(1440,900));
+  await page.waitForFunction(()=>innerWidth===1440);
   await history.getByRole('button',{name:'Close history',exact:true}).click();
-  await history.waitFor({state:'hidden'});record('History reveals workspace management and closes back to the task');
+  await history.waitFor({state:'hidden'});record('History exposes workspace management and closes only when requested');
   const disabledVideo=await page.evaluate(async()=>{try{await window.agentOS.request({type:'media.import'});return ''}catch(error){return String(error)}});assert.match(disabledVideo,/coming soon/i);record('Video studio is unavailable through the native bridge as well as agent tools');
   const native=await app.evaluate(({app,nativeImage})=>{const image=nativeImage.createFromPath(process.resourcesPath+'/icon.png');return {name:app.getName(),empty:image.isEmpty(),size:image.getSize()}});
   assert.equal(native.empty,false);assert.deepEqual(native.size,{width:1024,height:1024});

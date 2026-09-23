@@ -159,7 +159,7 @@ export function AppFrame({
 
   const minimal = process.env.DSH_CLIENT_TITLE === 'Strugend Harness'
   const narrow = viewport < SIDEBAR_AUTO_COLLAPSE
-  const sidebarCollapsed = narrow ? !layoutInfo.narrowExpanded : layoutInfo.sidebar === 0
+  const sidebarCollapsed = !minimal && narrow ? !layoutInfo.narrowExpanded : layoutInfo.sidebar === 0
   const sidebarPreference = sidebarCollapsed
     ? 0
     : layoutInfo.sidebar === 0 ? SIDEBAR_DEFAULT : layoutInfo.sidebar
@@ -170,9 +170,9 @@ export function AppFrame({
   // Opening on a narrow frame collapses the left sidebar. Eligibility must
   // include that space before the occupant's first shown report arrives.
   const normal = computeColumns(
-    viewport, minimal || (!layoutInfo.rightbarShown && narrow) ? 0 : sidebarPreference, rightbarPreference, collapsedWidth,
+    viewport, !minimal && !layoutInfo.rightbarShown && narrow ? 0 : sidebarPreference, rightbarPreference, collapsedWidth,
   )
-  const cols = computeColumns(viewport, minimal ? 0 : sidebarPreference, layoutInfo.rightbarTrack ? rightbarPreference : 0, collapsedWidth)
+  const cols = computeColumns(viewport, sidebarPreference, layoutInfo.rightbarTrack ? rightbarPreference : 0, collapsedWidth)
   const colsRef = useRef(cols)
   colsRef.current = cols
   const rightbarWidth = useRef(normal.rightbar)
@@ -198,8 +198,8 @@ export function AppFrame({
   const productTitle = process.env.DSH_CLIENT_TITLE ?? t('brand.localBuild')
   const sidebar = useMemo(() => renderSlot('sidebar', {
     collapsed: sidebarCollapsed,
-    width: minimal ? SIDEBAR_DEFAULT : cols.sidebar,
-  }), [renderSlot, sidebarCollapsed, cols.sidebar, minimal])
+    width: cols.sidebar,
+  }), [renderSlot, sidebarCollapsed, cols.sidebar])
   const main = useMemo(() => (
     <MainPanel usePanelInfo={usePanelInfo} renderSlot={renderSlot} />
   ), [usePanelInfo, renderSlot])
@@ -240,7 +240,7 @@ export function AppFrame({
         {overlays}
       </div>
       {/* The collapsed rail is fixed-width: no resize handle while closed. */}
-      {!minimal && !sidebarCollapsed && <DragHandle side="sidebar" left={cols.sidebar} onStart={onSidebarStart} onDrag={onSidebarDrag} onEnd={onDragEnd} />}
+      {!sidebarCollapsed && <DragHandle side="sidebar" left={cols.sidebar} onStart={onSidebarStart} onDrag={onSidebarDrag} onEnd={onDragEnd} />}
       {layoutInfo.rightbarShown && !layoutInfo.rightbarFullscreen && normal.rightbar > 0 && (
         <DragHandle side="rightbar" left={viewport - normal.rightbar} onStart={onRightbarStart} onDrag={onRightbarDrag} onEnd={onDragEnd} />
       )}

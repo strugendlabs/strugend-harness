@@ -6,7 +6,7 @@ import { defineStore, type EngineStoreHandle } from '@deepseek-ai/dsh-client-sto
 import type { MainPanelId } from './service.ts'
 import {
   clampWidth, RIGHTBAR_DEFAULT_RATIO, RIGHTBAR_MAX_RATIO, RIGHTBAR_MIN,
-  SIDEBAR_AUTO_COLLAPSE, SIDEBAR_DEFAULT, SIDEBAR_MAX, SIDEBAR_MIN,
+  SIDEBAR_AUTO_COLLAPSE, SIDEBAR_DEFAULT, SIDEBAR_MAX, SIDEBAR_MIN, STRUGEND_SIDEBAR_DEFAULT,
 } from './columns.ts'
 
 /**
@@ -72,15 +72,18 @@ type LayoutActions = {
  * default. The right panel initializes at 45% of the frame on first opening
  * and keeps that px preference across resizes and close. Drag writes clamp to
  * the current frame's range. Narrow sidebar toggles change only the expansion
- * override; opening the right panel clears that override.
+ * override; opening the right panel clears that override. Strugend keeps its
+ * sidebar open until the user closes it, including in narrow windows.
  * @returns the store handle (spec + type + identity + factory in one).
  */
 export function createLayoutStore(): EngineStoreHandle<LayoutState, LayoutActions>  {
+  const minimal = process.env.DSH_CLIENT_TITLE === 'Strugend Harness'
+  const sidebarDefault = minimal ? STRUGEND_SIDEBAR_DEFAULT : SIDEBAR_DEFAULT
   const handle = defineStore({
     init: (): LayoutState => ({
       panelInfo: { activePanelId: null },
       layoutInfo: {
-        sidebar: process.env.DSH_CLIENT_TITLE === 'Strugend Harness' ? 0 : SIDEBAR_DEFAULT,
+        sidebar: sidebarDefault,
         viewportWidth: window.innerWidth,
         narrowExpanded: false,
         rightbar: null,
@@ -107,8 +110,8 @@ export function createLayoutStore(): EngineStoreHandle<LayoutState, LayoutAction
       // untouched, so re-widening restores the pre-squeeze layout.
       toggleSidebar: (d) => {
         d.layoutInfo.rightbarInstant = false
-        if (d.layoutInfo.viewportWidth < SIDEBAR_AUTO_COLLAPSE) d.layoutInfo.narrowExpanded = !d.layoutInfo.narrowExpanded
-        else d.layoutInfo.sidebar = d.layoutInfo.sidebar === 0 ? SIDEBAR_DEFAULT : 0
+        if (!minimal && d.layoutInfo.viewportWidth < SIDEBAR_AUTO_COLLAPSE) d.layoutInfo.narrowExpanded = !d.layoutInfo.narrowExpanded
+        else d.layoutInfo.sidebar = d.layoutInfo.sidebar === 0 ? sidebarDefault : 0
       },
       // Crossing the breakpoint in either direction drops the override: the
       // narrow default is auto-collapsed, the wide state is the preference.

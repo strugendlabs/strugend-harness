@@ -178,18 +178,27 @@ afterEach(() => {
 })
 
 describe('AppFrame', () => {
-  it('keeps History off the column grid while preserving contextual tools', () => {
+  it('opens Strugend history beside the conversation until the user closes it', () => {
     vi.stubEnv('DSH_CLIENT_TITLE', 'Strugend Harness')
-    const { frame, instance, sidebarOwner } = mountFrame()
-    expect(tracks(frame)).toEqual([0, 0])
-    expect(sidebarOwner()).toMatchObject({ collapsed: true, width: 240 })
-    act(() => { instance.actions.toggleSidebar() })
+    const { frame, instance, sidebarOwner, rerenderFrame } = mountFrame()
+    expect(tracks(frame)).toEqual([360, 0])
+    expect(sidebarOwner()).toMatchObject({ collapsed: false, width: 360 })
+    expect(frame.querySelector('[data-side="sidebar"]')).not.toBeNull()
+    resize(900)
+    expect(tracks(frame)).toEqual([360, 0])
+    selectedSession = 'another-task' as SessionId
+    rerenderFrame()
     expect(sidebarOwner().collapsed).toBe(false)
-    expect(tracks(frame)).toEqual([0, 0])
-    expect(frame.querySelector('[data-side="sidebar"]')).toBeNull()
     act(() => { instance.actions.openRightbar(true, false) })
+    expect(tracks(frame)[0]).toBe(360)
+    act(() => { instance.actions.toggleSidebar() })
+    expect(sidebarOwner()).toMatchObject({ collapsed: true, width: 0 })
     expect(tracks(frame)[0]).toBe(0)
     expect(tracks(frame)[1]).toBeGreaterThan(0)
+    resize(1400)
+    expect(sidebarOwner().collapsed).toBe(true)
+    act(() => { instance.actions.toggleSidebar() })
+    expect(sidebarOwner()).toMatchObject({ collapsed: false, width: 360 })
   })
 
   it('localizes the product title without a configured build title', () => {

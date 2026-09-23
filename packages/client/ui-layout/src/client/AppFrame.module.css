@@ -157,7 +157,7 @@
 
 :global([data-strugend][data-platform='darwin']) .sidebarCol { background:var(--dsw-specific-sidebar-fill); }
 
-/* Navigation floats above the work area and never reserves a permanent column. */
+/* The top bar spans the frame; history occupies its own resizable column. */
 .frame[data-minimal-shell] {
   --strugend-topbar-height: 56px;
   box-sizing: border-box;

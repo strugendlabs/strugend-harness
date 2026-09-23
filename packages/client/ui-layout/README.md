@@ -20,7 +20,7 @@ This package provides the Web GUI's three-column AppFrame, edge-column widths, a
 - [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
 - [Dev Note](#dev-note)
 
-Strugend builds reserve a 56px top bar and no left navigation track. History overlays the work area without changing chat or right-panel widths. Existing right-panel sizing, fullscreen, and keyboard behavior remain available.
+Strugend builds reserve a 56px top bar and open a 360px history column by default. Users can resize, close, and reopen it. Selecting tasks, resizing the window, and opening the right panel preserve the user’s open or closed choice. Reload opens history again. The sidebar occupies its own column without covering the conversation; existing right-panel sizing, fullscreen, and keyboard behavior remain available.
 
 -----
 

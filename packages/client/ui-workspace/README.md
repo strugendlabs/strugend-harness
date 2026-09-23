@@ -20,7 +20,7 @@ This package lets users browse grouped or flat Session lists, choose a Workspace
 - [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
 - [Dev Note](#dev-note)
 
-The desktop composition opens Skills, Memory, and Vault on demand; Video studio is disabled and labeled Coming soon. Chat groups organize sessions without changing workspace ownership or persisted IDs. Optional tools has an ordered setup choice and a later Settings section: Decision support can be skipped, installed, retried, cancelled, or removed independently of the coding model. Download sizes come from the release catalog; status polling runs only during downloads and verification. Documents and data tools remain a separate optional download.
+The desktop composition opens Skills, Memory, and Vault on demand; Video studio is disabled and labeled Coming soon. Chat groups organize sessions without changing workspace ownership or persisted IDs. Compact tool links and bounded group scrolling preserve space for the conversation list. Optional tools has an ordered setup choice and a later Settings section: Decision support can be skipped, installed, retried, cancelled, or removed independently of the coding model. Download sizes come from the release catalog; status polling runs only during downloads and verification. Documents and data tools remain a separate optional download.
 
 -----
 

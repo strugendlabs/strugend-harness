@@ -3,7 +3,7 @@
   --dsh-session-list-scrollbar-width: 8px;
   --dsh-session-list-scrollbar-offset: 2px;
   flex: 1;
-  min-height: 0;
+  min-height: var(--dsh-workspace-min-height, 0px);
   display: flex;
   flex-direction: column;
   box-sizing: border-box;

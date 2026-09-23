@@ -387,3 +387,13 @@
     scroll-behavior: auto;
   }
 }
+
+:global([data-strugend]) .projectRow,
+:global([data-strugend]) .sessionRow {
+  height: 30px;
+}
+
+:global([data-strugend]) .title,
+:global([data-strugend]) .time {
+  line-height: 18px;
+}
