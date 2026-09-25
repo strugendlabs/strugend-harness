@@ -8,7 +8,7 @@ import { VideoStudio, type VideoStudioState } from './view/VideoStudio.tsx'
 import type { MediaAsset } from '@deepseek-ai/dsh-agentos-protocol'
 import { DesktopBrowserBody } from './view/DesktopBrowserBody.tsx'
 import { DesktopBrowserTitle } from './view/DesktopBrowserTitle.tsx'
-import { createDesktopBrowser } from './browser/DesktopBrowser.ts'
+import { createDesktopBrowser, desktopTabId } from './browser/DesktopBrowser.ts'
 import { BrowserBody } from './view/BrowserBody.tsx'
 import { BrowserTitle } from './view/BrowserTitle.tsx'
 import { createBrowserControllers } from './browser/BrowserController.ts'
@@ -70,7 +70,14 @@ export function apply(ctx: Context): void {
     ctx.effect(() => () =>{  controller.dispose() }, 'agent-os: browser source')
     ctx.effect(() => desktop.subscribe((event) => {
       if (event.type !== 'browser.open') return
-      ctx.sidebarRight.openTabIn(event.sessionId as Parameters<typeof ctx.sidebarRight.openTabIn>[0], 'browser', { params: { url: event.url, nativeTabId: event.tabId } })
+      const sessionId = event.sessionId as Parameters<typeof ctx.sidebarRight.openTabIn>[0]
+      const existing = ctx.sidebarRight.tabsIn(sessionId).find((tab) => {
+        const params = ctx.sidebarRight.tabDomain.occurrence(sessionId, tab).navigation.getSnapshot().params
+        return tab.kind === 'browser' && desktopTabId(sessionId, tab.id,
+          params !== undefined && 'nativeTabId' in params ? params.nativeTabId : undefined) === event.tabId
+      })
+      if (existing) ctx.sidebarRight.revealTabIn(sessionId, existing.id)
+      else ctx.sidebarRight.openTabIn(sessionId, 'browser', { params: { url: event.url, nativeTabId: event.tabId } })
     }), 'agent-os: reveal owned browser')
     ctx.effect(() => ctx.slots.inject('sidebar.right.pane.tab', () => ctx.slots.register({
       name: 'sidebar.right.pane.tab', key: BROWSER_ID, locale: namespace, store,

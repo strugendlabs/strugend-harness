@@ -5,6 +5,8 @@ English | [中文](README.zh.md)
 ## Summary
 
 The local Decision helper runs native inference outside the Desktop Host. Lifecycle fixtures verify process exit, queue limits, deadlines, credential exclusion, memory admission, and recovery without loading weights. Component removal rejects active and queued work and blocks new inference until all owned work and processes stop. The optional native test separately evaluates the actual component with production review prompts.
+`agentos-vision.spec.ts` checks bounded auxiliary requests, usable fallbacks and automatic images. `agentos-team.spec.ts` runs the real child-agent runtime against synthetic evidence and requires independent inspection before a QA result; it does not measure model judgment quality.
+
 
 ## Run qualification
 

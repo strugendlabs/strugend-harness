@@ -41,6 +41,7 @@ export const tabInfoFactory: SlotHookFactory<'sidebar.right.pane.tab', UseSideba
         tab: {
           ...tab,
           visible: pane.host === 'float' || (layout.expanded && (title || pane.activeTabId === tabId)),
+          selected: layout.activePaneId === pane.id && pane.activeTabId === tabId,
           navigation,
           signal,
           actions,

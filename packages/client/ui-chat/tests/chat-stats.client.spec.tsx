@@ -236,6 +236,23 @@ describe('StatsPills', () => {
     expect(dialog.textContent).not.toContain('Token usage')
   })
 
+  it('shows delegated totals, missing records and the provider-day distinction', () => {
+    const { source } = makeSource({ nodes: [timedStep()] })
+    const refresh = vi.fn()
+    const view = render(<StatsPills {...props(source)} onUsageOpen={refresh} delegated={{
+      usage: { uncachedInputTokens: 20, cacheReadTokens: 180, cacheWriteTokens: 0, outputTokens: 10 },
+      count: 3, missing: 1,
+    }} />)
+    fireEvent.click(view.getAllByRole('button')[1]!)
+    const dialog = view.getByRole('dialog')
+    expect(dialog.firstChild?.textContent).toBe('Token usage315 tok')
+    expect(dialog.textContent).toContain('Main agent105 tok')
+    expect(dialog.textContent).toContain('Delegated agents (3)210 tok')
+    expect(dialog.textContent).toContain('Partial total: 1 delegates')
+    expect(dialog.textContent).toContain('daily API-key total')
+    expect(refresh).toHaveBeenCalledTimes(1)
+  })
+
   it('click-opens the token-usage dialog carrying the headline total and exact buckets', () => {
     const { source } = makeSource({ nodes: [timedStep()] })
     const view = render(<StatsPills {...props(source)} />)

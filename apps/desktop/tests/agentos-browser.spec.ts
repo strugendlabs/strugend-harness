@@ -9,6 +9,7 @@ import { AgentOsStore } from '../src/agentos-store.ts'
 
 const navigation = vi.hoisted(() => ({
   bounds: [] as unknown[], urls: [] as string[], inputs: [] as Record<string, unknown>[], release: () => {},
+  text: [] as string[],
   acknowledge: (_event: Record<string, unknown>): Promise<void> => Promise.resolve(),
 }))
 vi.mock('electron', async () => {
@@ -23,6 +24,7 @@ vi.mock('electron', async () => {
     isLoadingMainFrame(): boolean { return false }
     setWindowOpenHandler(): void {}
     send(): void {}
+    insertText(value: string): Promise<void> { navigation.text.push(value); return Promise.resolve() }
     private attached = false
     debugger = {
       isAttached: (): boolean => this.attached,
@@ -40,9 +42,9 @@ vi.mock('electron', async () => {
       return new Promise((resolve) => { navigation.release = () => { this.url = url; resolve() } })
     }
     executeJavaScriptInIsolatedWorld(_world: number, scripts: Array<{ code: string }>): Promise<unknown> {
-      return Promise.resolve(scripts[0]?.code === '({width:innerWidth,height:innerHeight})'
+      return Promise.resolve({ ok: true, value: scripts[0]?.code.includes('({width:innerWidth,height:innerHeight})')
         ? { width: 600, height: 500 }
-        : { text: 'Fixture ready', elements: [], viewport: { width: 600, height: 500 } })
+        : { text: 'Fixture ready', elements: [], viewport: { width: 600, height: 500 } } })
     }
   }
   return {
@@ -56,7 +58,13 @@ vi.mock('electron', async () => {
 })
 import { AgentOsBrowser } from '../src/agentos-browser.ts'
 
-beforeEach(() => { navigation.bounds = []; navigation.urls = []; navigation.inputs = []; navigation.acknowledge = () => Promise.resolve() })
+beforeEach(() => {
+  navigation.bounds = []
+  navigation.urls = []
+  navigation.inputs = []
+  navigation.text = []
+  navigation.acknowledge = () => Promise.resolve()
+})
 
 const dispose: Array<() => void> = []
 afterEach(() => { for (const cleanup of dispose.splice(0).reverse()) cleanup() })
@@ -371,3 +379,86 @@ it('keeps a usable viewport for background tasks without a mounted sidebar', asy
   await browser.mount('background-task', tab.tabId, { x: 0, y: 0, width: 0, height: 0 }, false)
   expect(navigation.bounds.at(-1)).toEqual({ x: 0, y: 0, width: 1024, height: 768 })
 })
+
+it('reveals the owned hidden tab and preserves useful renderer errors', async () => {
+  const { browser, views, events } = fixture()
+  await browser.mount('chat', 'hidden', bounds, false)
+  await browser.act('chat', { action: 'observe', tabId: 'hidden' })
+  expect(events).toContainEqual({ type: 'browser.open', sessionId: 'chat', tabId: 'hidden', url: '' })
+  const revision = browser.list('chat')[0]!.revision
+  vi.spyOn(views[0]!.webContents, 'executeJavaScriptInIsolatedWorld').mockResolvedValueOnce({ ok: false, error: 'Element is covered; observe again.' })
+  await expect(browser.act('chat', { action: 'click', tabId: 'hidden', revision, ref: 'e1' })).rejects.toThrow('Element is covered')
+  expect(navigation.inputs).toEqual([])
+})
+
+it('fills several fields from one revision and reports a partial stop without replaying successful input', async () => {
+  const f = fixture()
+  await f.browser.mount('chat', 'tab', bounds, true)
+  await navigate(f.browser, 'chat', 'tab')
+  const seen = await f.browser.act('chat', { action: 'observe', tabId: 'tab' })
+  if (!('state' in seen)) throw new Error('Expected observation')
+  const wc = f.views[0]!.webContents
+  const original = wc.executeJavaScriptInIsolatedWorld.bind(wc)
+  vi.spyOn(wc, 'executeJavaScriptInIsolatedWorld').mockImplementation(async (world, scripts, gesture) => {
+    if (scripts[0]?.code.includes('const sameTarget=') && scripts[0].code.includes('"e2"'))
+      return { ok: false, error: 'Editor frame is covered; observe again.' }
+    return original(world, scripts, gesture)
+  })
+  const result = await f.browser.act('chat', { action: 'fill_form', tabId: 'tab', revision: seen.state.revision,
+    fields: [{ ref: 'e1', value: 'subject' }, { ref: 'e2', value: 'Hello\n\nRegards' }, { ref: 'e3', value: 'last' }] })
+  expect(navigation.text).toEqual(['subject'])
+  expect(result).toMatchObject({ formFill: { applied: ['e1'], remaining: ['e2', 'e3'], error: 'Editor frame is covered; observe again.' } })
+  await expect(f.browser.act('chat', { action: 'fill_form', tabId: 'tab', revision: seen.state.revision, fields: [{ ref: 'e1', value: 'repeat' }] })).rejects.toThrow('page changed')
+  expect(navigation.text).toEqual(['subject'])
+})
+
+it('preflights every batch target before any text is inserted', async () => {
+  const f = fixture()
+  await f.browser.mount('chat', 'tab', bounds, true)
+  await navigate(f.browser, 'chat', 'tab')
+  const seen = await f.browser.act('chat', { action: 'observe', tabId: 'tab' })
+  if (!('state' in seen)) throw new Error('Expected observation')
+  const wc = f.views[0]!.webContents, original = wc.executeJavaScriptInIsolatedWorld.bind(wc)
+  vi.spyOn(wc, 'executeJavaScriptInIsolatedWorld').mockImplementation(async (world, scripts, gesture) => {
+    if (scripts[0]?.code.includes('if(!false)return') && scripts[0].code.includes('"e2"')) return { ok: false, error: 'Use the vault or human takeover for credentials.' }
+    return original(world, scripts, gesture)
+  })
+  await expect(f.browser.act('chat', { action: 'fill_form', tabId: 'tab', revision: seen.state.revision,
+    fields: [{ ref: 'e1', value: 'user' }, { ref: 'e2', value: 'secret' }] })).rejects.toThrow('vault')
+  expect(navigation.text).toEqual([])
+})
+
+
+it('keeps the selected tab through overlays and pane collapse without guessing among unrelated tabs', async () => {
+  const { browser } = fixture()
+  await browser.mount('chat', 'first', bounds, true, undefined, true)
+  await browser.mount('chat', 'second', bounds, true)
+  await expect(browser.act('chat', { action: 'observe' })).resolves.toMatchObject({ state: { tabId: 'first' } })
+  await browser.mount('chat', 'second', bounds, true, undefined, true)
+  browser.hide('first'); browser.hide('second')
+  await browser.mount('other', 'other-tab', bounds, true, undefined, true)
+  await expect(browser.act('chat', { action: 'observe' })).resolves.toMatchObject({ state: { tabId: 'second' } })
+  browser.close('second')
+  await browser.mount('chat', 'third', bounds, false)
+  await expect(browser.act('chat', { action: 'observe' })).rejects.toThrow('Several browser tabs')
+})
+
+
+it('captures hidden browser pages without showing the window', async () => {
+  const { browser, views } = fixture()
+  await browser.mount('chat', 'hidden-capture', bounds, false)
+  const capture = vi.fn().mockResolvedValue({ isEmpty: () => false, toDataURL: () => 'data:image/png;base64,fixture' })
+  views[0]!.webContents.capturePage = capture
+  const observed = await browser.act('chat', { action: 'observe', screenshot: true })
+  expect(capture).toHaveBeenCalledWith(undefined, { stayHidden: true, stayAwake: true })
+  expect(observed).toHaveProperty('screenshot', 'data:image/png;base64,fixture')
+})
+
+
+it('releases the browser queue when screenshot capture never responds', async () => {
+  const { browser, views } = fixture()
+  await browser.mount('chat', 'stalled-capture', bounds, false)
+  views[0]!.webContents.capturePage = vi.fn().mockImplementation(() => new Promise(() => {}))
+  await expect(browser.act('chat', { action: 'observe', screenshot: true })).rejects.toThrow('timeout')
+  await expect(browser.act('chat', { action: 'observe', screenshot: false })).resolves.toHaveProperty('text', 'Fixture ready')
+}, 10000)

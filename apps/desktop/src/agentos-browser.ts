@@ -17,26 +17,14 @@ import type { AgentOsStore } from './agentos-store.ts'
 import { browserUrl, navigationError, websiteUrl } from './agentos-address.ts'
 import { loadWebsite } from './agentos-navigation.ts'
 import { elementTargetScript } from './agentos-browser-target.ts'
+import { OBSERVE, MASK_INPUTS, selectEditableScript } from './agentos-browser-page.ts'
 
 const ISOLATED_WORLD = 999
 const KEY_CODES: Record<string, number> = {
   Enter: 13, Tab: 9, Escape: 27, Backspace: 8, Delete: 46,
   ArrowDown: 40, ArrowUp: 38, ArrowLeft: 37, ArrowRight: 39, Space: 32,
 }
-const OBSERVE = `(() => {
-  const sensitive = el => el.matches('input[type="password"], [autocomplete="one-time-code"], [autocomplete="current-password"], [autocomplete="new-password"]') || /password|passcode|secret|api.?key|token|credit.?card|cvv/i.test([el.name,el.id,el.getAttribute('aria-label')].join(' '));
-  const visible = el => { const r=el.getBoundingClientRect(); return r.width>0 && r.height>0 && getComputedStyle(el).visibility!=='hidden'; };
-  const candidates = [...document.querySelectorAll('a[href],button,input,textarea,select,canvas,[role="button"],[contenteditable="true"]')].filter(el=>visible(el)||el.matches('input[type="file"]')).slice(0,180);
-  globalThis.__agentOSNodes = new Map();
-  const elements = candidates.map((el,i) => {
-    const ref='e'+i; globalThis.__agentOSNodes.set(ref,el);
-    const name=el.getAttribute('aria-label') || el.labels?.[0]?.textContent || el.getAttribute('placeholder') || el.innerText || el.getAttribute('title') || el.name || el.tagName.toLowerCase();
-    return {ref,role:el.getAttribute('role') || el.tagName.toLowerCase(),name:String(name).trim().slice(0,200),...(!sensitive(el)&&'value' in el?{value:String(el.value).slice(0,400)}:{})};
-  });
-  const clone=document.body?.cloneNode(true);
-  clone?.querySelectorAll('script,style,input,textarea,[contenteditable="true"]').forEach(el=>el.remove());
-  return {text:(clone?.innerText || clone?.textContent || '').replace(/\\s+/g,' ').slice(0,14000),elements,viewport:{width:innerWidth,height:innerHeight}};
-})()`
+
 
 interface OwnedTab {
   view: WebContentsView
@@ -55,6 +43,7 @@ interface OwnedTab {
 /** Owns conversation targets, serializes input, and rejects work from crashed renderers until explicit navigation. */
 export class AgentOsBrowser {
   private readonly tabs = new Map<string, OwnedTab>()
+  private readonly selectedTabs = new Map<string, string>()
 
   /** @param window - Current owned application window. @param emit - Redacted UI event sink. @param store - Recording persistence. */
   constructor(
@@ -88,6 +77,8 @@ export class AgentOsBrowser {
   private current(sessionId: string): OwnedTab {
     const tabs = [...this.tabs.values()].filter(tab => !tab.closed && tab.state.sessionId === sessionId)
     const visible = tabs.filter(tab => tab.state.visible)
+    const selected = tabs.find(tab => tab.state.tabId === this.selectedTabs.get(sessionId))
+    if (selected && (selected.state.visible || visible.length === 0)) return selected
     const candidates = visible.length > 0 ? visible : tabs
     const [candidate] = candidates
     if (candidates.length === 1 && candidate !== undefined) return candidate
@@ -101,7 +92,7 @@ export class AgentOsBrowser {
     const existing = this.tabs.get(tabId)
     if (existing !== undefined) return this.owned(sessionId, tabId)
     const window = this.window()
-    if (window === undefined || window.isDestroyed()) throw new Error('Open the Agent OS window to use its browser.')
+    if (window === undefined || window.isDestroyed()) throw new Error('Open the Strugend window to use its browser.')
     const profile = session.fromPartition('persist:agent-os-browser')
     profile.setPermissionRequestHandler((_contents, _permission, callback) => {
       callback(false)
@@ -148,6 +139,9 @@ export class AgentOsBrowser {
         /* The originating page retains its current tab on popup refusal. */
       })
       return { action: 'deny' }
+    })
+    view.webContents.on('focus', () => {
+      if (!tab.closed) this.selectedTabs.set(sessionId, tabId)
     })
     view.webContents.on('will-navigate', (event, url) => {
       try {
@@ -238,9 +232,15 @@ export class AgentOsBrowser {
     })
   }
 
-  private script<T>(tab: OwnedTab, code: string, signal?: AbortSignal): Promise<T> {
-    return this.rendererResult(tab,
-      () => tab.view.webContents.executeJavaScriptInIsolatedWorld(ISOLATED_WORLD, [{ code }], true) as Promise<T>, signal)
+  private async script<T>(tab: OwnedTab, code: string, signal?: AbortSignal): Promise<T> {
+    // Electron drops exceptions crossing an isolated world; return their message as data.
+    const wrapped = `(async()=>{try{return {ok:true,value:await (${code})}}catch(error){return {ok:false,error:String(error?.message||error).slice(0,1000)}}})()`
+    const result = await this.rendererResult(tab,
+      () => tab.view.webContents.executeJavaScriptInIsolatedWorld(ISOLATED_WORLD, [{ code: wrapped }], true) as Promise<
+        { ok: true; value: T } | { ok: false; error: string }
+      >, signal)
+    if (!result.ok) throw new Error(result.error)
+    return result.value
   }
 
   private enqueue<T>(
@@ -314,6 +314,7 @@ export class AgentOsBrowser {
    * @param bounds - Viewport.
    * @param visible - Whether to show the native view.
    * @param url - Optional first navigation.
+   * @param selected - The active tab in the active sidebar pane, even when hidden by an overlay.
    * @returns Tab state.
    */
   async mount(
@@ -322,6 +323,7 @@ export class AgentOsBrowser {
     bounds: BrowserBounds,
     visible: boolean,
     url?: string,
+    selected?: boolean,
   ): Promise<DesktopBrowserState> {
     const tab = this.create(sessionId, tabId)
     if (
@@ -338,6 +340,7 @@ export class AgentOsBrowser {
       width: Math.round(bounds.width),
       height: Math.round(bounds.height),
     }
+    if (selected === true) this.selectedTabs.set(sessionId, tabId)
     if (tab.bounds) tab.view.setBounds(tab.bounds)
     tab.state.visible = visible && bounds.width > 0 && bounds.height > 0
     tab.view.setVisible(tab.state.visible)
@@ -365,6 +368,7 @@ export class AgentOsBrowser {
     if (tab.recording !== undefined) this.store.saveRecording(tab.recording)
     tab.closed = true
     this.tabs.delete(tabId)
+    if (this.selectedTabs.get(tab.state.sessionId) === tabId) this.selectedTabs.delete(tab.state.sessionId)
     const error = new Error('The browser tab was closed.')
     tab.input?.abort(error)
     tab.renderer.abort(error)
@@ -409,11 +413,12 @@ export class AgentOsBrowser {
         await this.navigate(tab, url, operation)
         return this.observe(tab, false, operation)
       }
+      this.selectedTabs.set(sessionId, tab.state.tabId)
       const result = this.enqueue(tab, run, signal, true, human)
       // The renderer may mount immediately in response to this event. Reserve
       // navigation first so the pane does not race a second loadURL against it.
       tab.initialNavigation = result.then(() => undefined, () => undefined)
-      if (command.tabId === undefined)
+      if (command.tabId === undefined || (!human && !tab.state.visible))
         this.emit({ type: 'browser.open', sessionId, tabId: tab.state.tabId, url })
       return result
     }
@@ -429,6 +434,8 @@ export class AgentOsBrowser {
       return { ...tab.state }
     }
     const recovering = command.action === 'reload' && tab.renderer.signal.aborted
+    if (!human && !tab.state.visible && !tab.state.takenOver)
+      this.emit({ type: 'browser.open', sessionId, tabId: tab.state.tabId, url: tab.state.url })
     const run = async (operation: AbortSignal): Promise<BrowserObservation> => {
       operation.throwIfAborted()
       if (tab.closed) throw new Error('The browser tab was closed.')
@@ -516,14 +523,41 @@ export class AgentOsBrowser {
           } else {
             if (typeof command.value !== 'string' || command.value.length > 20000)
               throw new Error('Input text is too long.')
-            await this.script(
-              tab,
-              `(() => { const el=globalThis.__agentOSNodes.get(${JSON.stringify(command.ref)}); if(el.select)el.select(); else {const s=getSelection();s.removeAllRanges();const r=document.createRange();r.selectNodeContents(el);s.addRange(r);} })()`,
-              operation,
-            )
-            await this.rendererResult(tab, () => wc.insertText(command.value), operation)
+            const input = await this.script(tab, selectEditableScript(command.ref, true, command.value), operation)
+            if (input !== 'native') await this.rendererResult(tab, () => wc.insertText(command.value), operation)
           }
           break
+        }
+        case 'fill_form': {
+          if (command.revision !== tab.state.revision) throw new Error('The page changed. Observe it again before acting.')
+          if (!Array.isArray(command.fields) || command.fields.length < 1 || command.fields.length > 30
+            // Model JSON may contain null array entries despite the declared command type.
+            || command.fields.some(field => !field || !/^e\d{1,3}$/u.test(field.ref) || typeof field.value !== 'string' || field.value.length > 20000)
+            || new Set(command.fields.map(field => field.ref)).size !== command.fields.length)
+            throw new Error('Provide 1–30 distinct observed editable refs with values of at most 20000 characters.')
+          for (const field of command.fields) await this.script(tab, selectEditableScript(field.ref, false, field.value), operation)
+          const applied: string[] = []
+          let error: string | undefined
+          for (const field of command.fields) {
+            try {
+              operation.throwIfAborted()
+              if (tab.state.revision !== command.revision) throw new Error('The page navigated during input. Observe before filling the remaining fields.')
+              if (!human && tab.state.takenOver) throw new Error('The user has taken control.')
+              await this.script(tab, elementTargetScript(field.ref), operation)
+              const input = await this.script(tab, selectEditableScript(field.ref, true, field.value), operation)
+              if (input !== 'native') await this.rendererResult(tab, () => wc.insertText(field.value), operation)
+              applied.push(field.ref)
+            } catch (failure) {
+              operation.throwIfAborted()
+              error = failure instanceof Error ? failure.message : String(failure)
+              break
+            }
+          }
+          tab.state.revision++
+          const observation = await this.observe(tab, false, operation)
+          return { ...observation, formFill: {
+            applied, remaining: command.fields.slice(applied.length).map(field => field.ref), ...(error === undefined ? {} : { error }),
+          } }
         }
         default:
           throw new Error('Unknown browser action.')
@@ -556,11 +590,15 @@ export class AgentOsBrowser {
     if (screenshot) {
       await this.script(
         tab,
-        "(() => { globalThis.__agentOSMasks=[];document.querySelectorAll('input,textarea,[contenteditable=\"true\"]').forEach(el=>{const r=el.getBoundingClientRect();if(!r.width||!r.height)return;const mask=document.createElement('div');Object.assign(mask.style,{position:'fixed',left:r.x+'px',top:r.y+'px',width:r.width+'px',height:r.height+'px',background:'#303030',zIndex:'2147483647',pointerEvents:'none'});document.documentElement.append(mask);globalThis.__agentOSMasks.push(mask);});})()",
+        MASK_INPUTS,
         signal,
       )
       try {
-        image = (await this.rendererResult(tab, () => tab.view.webContents.capturePage(), signal)).toDataURL()
+        const captureSignal = AbortSignal.any([lifetime, AbortSignal.timeout(5000)])
+        const captured = await this.rendererResult(tab,
+          () => tab.view.webContents.capturePage(undefined, { stayHidden: true, stayAwake: true }), captureSignal)
+        if (captured.isEmpty()) throw new Error('Browser screenshot is temporarily unavailable; use the current page observation.')
+        image = captured.toDataURL()
       } finally {
         await this.script(tab, 'globalThis.__agentOSMasks?.forEach(el=>el.remove())')
       }

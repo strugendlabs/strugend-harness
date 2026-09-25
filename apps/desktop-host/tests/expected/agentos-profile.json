@@ -18,6 +18,13 @@
     "disabled": true
   },
   {
+    "id": "subagent",
+    "config": {
+      "maxActiveSubagents": 2,
+      "maxDepth": 1
+    }
+  },
+  {
     "id": "agent-presets",
     "config": {
       "default": "ptc"

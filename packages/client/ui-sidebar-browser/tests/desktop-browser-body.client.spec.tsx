@@ -36,7 +36,7 @@ it('resumes the last committed native address after renderer recreation and igno
     const props = {
       useTabInfo: () => ({
         tab: {
-          id: TAB, kind: 'browser', title: 'Browser', visible: true, signal: lifetime.signal,
+          id: TAB, kind: 'browser', title: 'Browser', visible: true, selected: true, signal: lifetime.signal,
           navigation: { address: 'sidebar://browser/1', params: undefined, revision: 0 },
         },
       }),
@@ -108,7 +108,7 @@ function viewportFixture() {
   const { hooks, ...commands } = controller
   const props = {
     useTabInfo: () => ({ tab: {
-      id: TAB, kind: 'browser', title: 'Browser', visible: true, signal: lifetime.signal,
+      id: TAB, kind: 'browser', title: 'Browser', visible: true, selected: true, signal: lifetime.signal,
       navigation: { address: 'sidebar://browser/1', params: undefined, revision: 0 },
     } }),
     ...commands, desktopSessionId: 'native-chat',
@@ -166,13 +166,13 @@ it('updates changed bounds, yields to overlays, and hides zero-sized panes until
     }))
     document.body.append(overlay)
     await fixture.flush()
-    expect(fixture.request).toHaveBeenLastCalledWith(expect.objectContaining({ type: 'browser.mount', visible: false }))
+    expect(fixture.request).toHaveBeenLastCalledWith(expect.objectContaining({ type: 'browser.mount', visible: false, selected: true }))
     overlay.remove()
     await fixture.flush()
     expect(fixture.request).toHaveBeenLastCalledWith(expect.objectContaining({ type: 'browser.mount', visible: true }))
     fixture.resize({ x: 0, y: 0, width: 0, height: 0 })
     await fixture.flush()
-    expect(fixture.request).toHaveBeenLastCalledWith(expect.objectContaining({ type: 'browser.hide' }))
+    expect(fixture.request).toHaveBeenLastCalledWith(expect.objectContaining({ type: 'browser.mount', visible: false, selected: true, bounds: { x: 0, y: 0, width: 0, height: 0 } }))
     const hiddenCalls = fixture.request.mock.calls.length
     fixture.resize({ x: 0, y: 0, width: 0, height: 0 })
     await fixture.flush()

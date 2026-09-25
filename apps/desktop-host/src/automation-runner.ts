@@ -64,7 +64,7 @@ export async function executeAutomation(
           outcome = { status: 'needs_attention', summary: 'This task needs your input. Open its conversation to continue.' }
           return { kind: 'deny', reason: 'The user is away. Call automation_finish with needs_attention and the missing information; do not wait here.' }
         }
-        if (exec.name.startsWith('subagent') || exec.name.startsWith('automation_') && !['automation_finish', 'automation_submission'].includes(exec.name))
+        if (exec.name === 'qa_agent' || exec.name.startsWith('subagent') || exec.name.startsWith('automation_') && !['automation_finish', 'automation_submission'].includes(exec.name))
           return { kind: 'deny', reason: 'A scheduled run cannot delegate or modify schedules. Complete this run within its saved scope.' }
         if (spec.submission === 'review' && !draftToolAllowed(exec.name, exec.arguments))
           return { kind: 'deny', reason: 'This schedule prepares drafts only. Save documents and answers locally, then finish with needs_attention for review. Shell execution, delegated agents, and browser interactions require an explicitly authorized run.' }

@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { createMessage, createUserMessage } from '@deepseek-ai/dsh-llm'
 import type { TokenUsage } from '@deepseek-ai/dsh-llm'
-import SessionStore from '@deepseek-ai/dsh-session'
-import type { Session, SessionSeq } from '@deepseek-ai/dsh-session'
+import SessionStore, { SessionId, SessionLogOffset, SessionSeq } from '@deepseek-ai/dsh-session'
+import type { Session, SessionEvent } from '@deepseek-ai/dsh-session'
 import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import TokenMeter from '@deepseek-ai/dsh-token-meter'
 import type { ContextPressureProjection, TokenUsageProjection } from '@deepseek-ai/dsh-token-meter/client'
@@ -94,6 +94,32 @@ function appendSummaryMeter(ctx: Context, session: Session, start: SessionSeq, e
 }
 
 describe('tokenUsage session projection', () => {
+  it('excludes inherited request usage from live and restored child totals', async () => {
+    const { ctx, session } = await harness()
+    const inherited: SessionEvent[] = []
+    const own: SessionEvent[] = []
+    ctx.on('session/event', (owner, event) => {
+      if (owner.id === session.id) inherited.push(event)
+      else own.push(event)
+    })
+    startStep(session, 1, 1)
+    finalUsage(session, { inputTokens: 100, outputTokens: 10, cacheReadTokens: 900 }, 1, 1)
+    const child = ctx.sessions.create(SessionId('usage-child'), {
+      seed: inherited, inheritedEventCount: SessionLogOffset(inherited.length), meta: { isSeeded: true },
+    })
+    expect(projected(ctx, child)).toEqual(ZERO)
+    startStep(child, 2, 1)
+    finalUsage(child, { inputTokens: 20, outputTokens: 4, cacheReadTokens: 80 }, 2, 1)
+    const expected = { uncachedInputTokens: 20, outputTokens: 4, cacheReadTokens: 80, cacheWriteTokens: 0 }
+    expect(projected(ctx, child)).toEqual(expected)
+    const seedMarker = child.eventAt(SessionSeq(inherited.length))!
+    const restored = ctx.sessionProjections.restore(
+      {}, [...inherited, seedMarker, ...own], SessionLogOffset(0), child.header, SessionLogOffset(inherited.length),
+    )
+    expect(restored.snapshot.values.tokenUsage).toEqual(expected)
+    expect(ctx.sessionProjections.checkpoint(child).tokenUsage?.ver).toBe(3)
+  })
+
   it('serves zero buckets without usage samples', async () => {
     const { ctx, session } = await harness()
     expect(projected(ctx, session)).toEqual(ZERO)

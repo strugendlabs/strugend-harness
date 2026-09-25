@@ -68,10 +68,19 @@ export interface DesktopBrowserState {
 export interface BrowserObservation {
   state: DesktopBrowserState
   text: string
-  elements: Array<{ ref: string; role: string; name: string; value?: string }>
+  elements: Array<{
+    ref: string
+    role: string
+    name: string
+    value?: string
+    inputType?: string
+    options?: Array<{ value: string; label: string }>
+  }>
   /** Visible page dimensions in CSS pixels; screenshots may use a different device scale. */
   viewport: { width: number; height: number }
   screenshot?: string
+  /** Batch input receipt uses the original refs; use the new observation before continuing. */
+  formFill?: { applied: string[]; remaining: string[]; error?: string }
 }
 
 /** Discovery is scoped to the tool's actual conversation owner. */
@@ -91,6 +100,7 @@ export type BrowserAction =
   | { action: 'click'; tabId: string; ref: string; revision: number }
   | { action: 'click_point'; tabId: string; x: number; y: number; revision: number }
   | { action: 'fill'; tabId: string; ref: string; value: string; revision: number }
+  | { action: 'fill_form'; tabId: string; fields: Array<{ ref: string; value: string }>; revision: number }
   | { action: 'upload'; tabId: string; ref: string; revision: number; paths: string[] }
   | { action: 'scroll'; tabId: string; direction: 'up' | 'down' }
   | { action: 'key'; tabId: string; key: string; holdMs?: number }
@@ -169,7 +179,7 @@ export type AgentOsCommand =
   | { type: 'media.cancel'; jobId: string }
   | { type: 'organization.read' }
   | { type: 'organization.mutate'; revision: number; mutation: OrganizationMutation }
-  | { type: 'browser.mount'; sessionId: string; tabId: string; bounds: BrowserBounds; visible: boolean; url?: string }
+  | { type: 'browser.mount'; sessionId: string; tabId: string; bounds: BrowserBounds; visible: boolean; selected?: boolean; url?: string }
   | { type: 'browser.hide'; tabId: string }
   | { type: 'browser.close'; tabId: string }
   | { type: 'browser.action'; sessionId: string; command: BrowserAction }

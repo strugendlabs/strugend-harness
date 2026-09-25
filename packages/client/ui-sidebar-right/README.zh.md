@@ -11,6 +11,9 @@ kind: "package-reference"
 
 右侧 Sidebar：停靠套件与本产品相遇的地方。它为每个会话持有一个停靠面，以两种呈现形态之一把它画成贴靠框架右列边缘的一块面板，把展开按钮放进会话 header，并拥有导航控制器（`ctx.sidebarRight`）、tab 类型注册表（`ctx.sidebarRightTabs`），以及告诉每个已开 tab 它是如何被导航到、能活多久的 Tab 域。
 
+`revealTabIn(sessionId, tabId)` 在所属会话中聚焦并展开已接纳的已有标签，不创建新标签或切换会话。不存在的会话与标签保持不变。
+
+
 ## 目录
 
 - [什么住在这里，什么不住](#what-lives-here-and-what-does-not)
@@ -148,3 +151,5 @@ Tab 域按（Session，Tab id）保留导航、中止信号与绑定动作。私
 </details>
 
 **运行时不变量：** 不发布 companion。两个服务（`sidebarRight`、`sidebarRightTabs`）在同一个 effect 内经 `ctx.reflect.provide` 提供并随之拆除；席位绑定与 Tab 域 occurrence 的生命周期由本包的 spec 直接断言，不存在会与之分歧的独立观察。
+
+标签信息中的 `selected` 独立于可见性；侧栏折叠或被对话框遮挡时，仍保留活动面板和标签。

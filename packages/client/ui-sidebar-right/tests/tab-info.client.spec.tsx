@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /** Tab information refuses readers whose committed record and navigation binding disagree. */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, renderHook } from '@testing-library/react'
+import { act, cleanup, renderHook } from '@testing-library/react'
 import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-test-runtime'
 import { keyedObservableHook } from '@deepseek-ai/dsh-client-ui-renderer/src/client/bindings.tsx'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
@@ -118,4 +118,15 @@ describe('tabInfoFactory committed-record relation', () => {
     expect(h.layout()?.tabs[tabId]).toBeDefined()
     expectUncommitted(useTabInfo, tabId)
   })
+})
+
+
+it('keeps the selected tab identifiable when its sidebar is collapsed', () => {
+  const h = harness()
+  const tabId = h.open()
+  const view = renderHook(h.bind(tabId))
+  act(() => { h.instance.actions.setExpanded(SESSION, true) })
+  expect(view.result.current.tab).toMatchObject({ selected: true, visible: true })
+  act(() => { h.instance.actions.setExpanded(SESSION, false) })
+  expect(view.result.current.tab).toMatchObject({ selected: true, visible: false })
 })

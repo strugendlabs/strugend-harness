@@ -90,6 +90,14 @@ jobs:
           apps/desktop-host/tests/automations.spec.ts
           apps/desktop-host/tests/agentos-personal-context.spec.ts
           apps/desktop-host/tests/agentos-workflow.spec.ts
+          apps/desktop-host/tests/agentos-vision.spec.ts
+          apps/desktop-host/tests/agentos-team.spec.ts
+          packages/client/ui-sidebar-right/tests/service.client.spec.ts
+          packages/client/ui-sidebar-right/tests/tab-info.client.spec.tsx
+          packages/client/ui-sidebar-browser/tests/desktop-browser-body.client.spec.tsx
+          packages/client/ui-chat/tests/chat-stats.client.spec.tsx
+          packages/client/ui-chat/tests/usage-family.client.spec.ts
+          packages/llm/token-meter/tests/token-usage-projection.spec.ts
           apps/desktop/tests/agentos-personal.spec.ts
           apps/desktop/tests/agentos-store.spec.ts
           apps/desktop/tests/strugend-release-manifest.spec.ts
@@ -108,6 +116,7 @@ jobs:
           apps/desktop/tests/agentos-address.spec.ts
           apps/desktop/tests/agentos-navigation.spec.ts
           apps/desktop/tests/agentos-browser.spec.ts
+          apps/desktop/tests/agentos-browser-page.client.spec.ts
           apps/desktop/tests/agentos-browser-target.spec.ts
           apps/desktop/tests/main-startup.spec.ts
           apps/desktop/tests/smoke-desktop-bridge.spec.ts

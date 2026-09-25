@@ -263,6 +263,18 @@ export class SidebarRightController implements ISidebarRight {
   }
 
   /**
+   * Reveal an existing tab in its owning session without creating another tab or changing the active conversation.
+   * @param sessionId - Session owning an adopted sidebar store.
+   * @param tabId - Existing tab to focus and expand.
+   */
+  revealTabIn(sessionId: SessionId, tabId: TabId): void {
+    const actions = this.actionsFor(sessionId)
+    if (actions === undefined || !this.tabsIn(sessionId).some(tab => tab.id === tabId)) return
+    actions.focusTab(sessionId, tabId)
+    actions.setExpanded(sessionId, true)
+  }
+
+  /**
    * Adopt the mounted seat's binding, replacing any previous one.
    *
    * Called from the seat while it is mounted, and released when it leaves.

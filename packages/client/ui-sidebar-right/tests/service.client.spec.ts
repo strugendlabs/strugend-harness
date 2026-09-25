@@ -80,6 +80,22 @@ function harness() {
 }
 
 describe('SidebarRightController — opening', () => {
+  it('reveals an existing owned tab without opening another occurrence', () => {
+    const h = harness()
+    const release = h.publish(), releaseOwn = h.adopt(SESSION, h.instance)
+    try {
+      h.controller.openTab('guide')
+      const id = h.controller.tabsIn(SESSION)[0]!.id
+      h.instance.actions.setExpanded(SESSION, false)
+      const count = h.controller.tabsIn(SESSION).length
+      h.controller.revealTabIn(SESSION, id)
+      expect(h.layout().expanded).toBe(true)
+      expect(h.controller.tabsIn(SESSION)).toHaveLength(count)
+      h.instance.actions.setExpanded(SESSION, false)
+      h.controller.revealTabIn('another-session' as SessionId, id)
+      expect(h.layout().expanded).toBe(false)
+    } finally { releaseOwn(); release() }
+  })
   it('keeps independently opened instances distinct when they return to the same pane', () => {
     const h = harness()
     h.tabs.register({ id: 'test/terminal', kind: 'terminal', multiple: true, title: () => 'terminal' })

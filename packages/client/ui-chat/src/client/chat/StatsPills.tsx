@@ -19,6 +19,7 @@ import { formatTokensPerSecond } from './message-chrome.ts'
 import { assistantStepReading } from '../contract/turn-metrics.ts'
 import { formatCacheHitPercent, formatExactTokens, formatTokens } from './token-format.ts'
 import { MEASURE_STYLE, useStatDialog } from './stat-dialog.ts'
+import type { DelegatedUsage } from './usage-family.ts'
 import css from './StatsPills.module.css'
 import dialogCss from './stat-dialog.module.css'
 
@@ -124,6 +125,10 @@ export function billedInputTokens(usage: TokenUsageProjection): number {
 export interface StatsPillsProps {
   useChat: SnapshotSelectorHook<ChatSnapshot>
   useProjection: UseProjection
+  /** Available descendant usage; absent for a standalone session view. */
+  delegated?: DelegatedUsage
+  onUsageOpen?: () => void
+  usageStatus?: 'cached' | 'loading' | 'ready' | 'failed'
   /** The owning dock's locale seat. */
   t: ChatViewSlotProps['t']
 }
@@ -233,7 +238,11 @@ function TimePill({ stats, t, dialog }: {
   )
 }
 
-function UsagePill({ usage, t, dialog }: {
+function UsagePill({ usage, ownUsage, delegated, onUsageOpen, usageStatus, t, dialog }: {
+  ownUsage: TokenUsageProjection | undefined
+  delegated: DelegatedUsage | undefined
+  onUsageOpen: (() => void) | undefined
+  usageStatus: StatsPillsProps['usageStatus']
   usage: TokenUsageProjection
   t: ChatViewSlotProps['t']
   dialog: PillDialog
@@ -252,7 +261,7 @@ function UsagePill({ usage, t, dialog }: {
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-label={cacheHitText === null ? totalText : `${totalText} · ${cacheHitText}`}
-        onClick={() => { setOpen(!open) }}
+        onClick={() => { if (!open) onUsageOpen?.(); setOpen(!open) }}
       >
         <IconDatabaseOutline16 />
         <span className={css.label}>
@@ -307,6 +316,17 @@ function UsagePill({ usage, t, dialog }: {
             <dd>{exactCount(usage.outputTokens, t)}</dd>
           </dl>
           {/* jscpd:ignore-end */}
+          {delegated !== undefined && <dl className={dialogCss.details}>
+            <dt>{t('stats.dialog.mainAgent')}</dt>
+            <dd>{ownUsage === undefined ? t('stats.dialog.unavailable') : exactCount(billedInputTokens(ownUsage) + ownUsage.outputTokens, t)}</dd>
+            <dt>{t('stats.dialog.delegated', { count: delegated.count })}</dt>
+            <dd>{exactCount(billedInputTokens(delegated.usage) + delegated.usage.outputTokens, t)}</dd>
+          </dl>}
+          <p className={dialogCss.scopeNote}>{t('stats.dialog.usageScope')}</p>
+          {delegated !== undefined && delegated.missing > 0 &&
+            <p className={dialogCss.scopeNote} role="status">{t('stats.dialog.partialUsage', { count: delegated.missing })}</p>}
+          {usageStatus === 'loading' && <p className={dialogCss.scopeNote} role="status">{t('stats.dialog.refreshing')}</p>}
+          {usageStatus === 'failed' && <p className={dialogCss.scopeNote} role="status">{t('stats.dialog.refreshFailed')}</p>}
         </div>,
         document.body,
       )}
@@ -314,9 +334,15 @@ function UsagePill({ usage, t, dialog }: {
   )
 }
 
-export const StatsPills = memo(function StatsPills({ useChat, useProjection, t }: StatsPillsProps) {
+export const StatsPills = memo(function StatsPills({ useChat, useProjection, delegated, onUsageOpen, usageStatus, t }: StatsPillsProps) {
   const settledNodes = useChat(s => s.legacy.nodes)
-  const usage = useProjection('tokenUsage')
+  const ownUsage = useProjection('tokenUsage')
+  const usage = useMemo(() => delegated === undefined ? ownUsage : {
+    uncachedInputTokens: (ownUsage?.uncachedInputTokens ?? 0) + delegated.usage.uncachedInputTokens,
+    cacheReadTokens: (ownUsage?.cacheReadTokens ?? 0) + delegated.usage.cacheReadTokens,
+    cacheWriteTokens: (ownUsage?.cacheWriteTokens ?? 0) + delegated.usage.cacheWriteTokens,
+    outputTokens: (ownUsage?.outputTokens ?? 0) + delegated.usage.outputTokens,
+  }, [ownUsage, delegated])
   // One exclusive slot for both dialogs: opening either pill closes the other.
   const [openPill, setOpenPill] = useState<'time' | 'usage' | null>(null)
   // Every figure rides the durable sessionStats projection, so paging and
@@ -345,6 +371,10 @@ export const StatsPills = memo(function StatsPills({ useChat, useProjection, t }
       {hasTokens && (
         <UsagePill
           usage={usage}
+          ownUsage={ownUsage}
+          delegated={delegated}
+          onUsageOpen={onUsageOpen}
+          usageStatus={usageStatus}
           t={t}
           dialog={{
             open: openPill === 'usage',

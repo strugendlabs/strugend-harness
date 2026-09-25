@@ -92,3 +92,9 @@
   color: var(--dsw-alias-label-tertiary);
   white-space: nowrap;
 }
+
+.scopeNote {
+  max-width: 360px;
+  margin: 10px 0 0;
+  overflow-wrap: anywhere;
+}

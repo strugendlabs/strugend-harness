@@ -39,6 +39,7 @@ it.each([false, true])('includes current memory once per turn and logs successfu
   try {
     await mountAgentLoopTestDependencies(ctx)
     ctx.provide('attachments', {})
+    ctx.provide('agentDefaultModel', { currentSelection: () => ({ provider: 'fixture', model: 'synthetic' }) })
     await ctx.plugin(personal, personal.Config({ memoryChars: 4000, deadlineMs: 1500 }))
     await ctx.plugin(tools)
     const primary = new Primary(!unavailable)

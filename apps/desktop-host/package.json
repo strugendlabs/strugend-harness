@@ -41,7 +41,8 @@
     "@deepseek-ai/dsh-brand": "workspace:^",
     "@deepseek-ai/dsh-agent-presets": "workspace:^",
     "@deepseek-ai/dsh-workspace": "workspace:^",
-    "@deepseek-ai/dsh-session-title": "workspace:^"
+    "@deepseek-ai/dsh-session-title": "workspace:^",
+    "@deepseek-ai/dsh-tool-subagent": "workspace:^"
   },
   "devDependencies": {
     "@deepseek-ai/dsh-agent-loop-testkit": "workspace:^",
@@ -51,6 +52,8 @@
     "@huggingface/tokenizers": "0.2.0",
     "@receptron/laya": "0.1.2",
     "onnxruntime-node": "1.30.0",
-    "onnxruntime-node-intel-mac": "npm:onnxruntime-node@1.22.0"
+    "onnxruntime-node-intel-mac": "npm:onnxruntime-node@1.22.0",
+    "@deepseek-ai/dsh-subagent": "workspace:^",
+    "@deepseek-ai/dsh-subagent-spawn-in-process": "workspace:^"
   }
 }

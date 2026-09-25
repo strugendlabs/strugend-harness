@@ -29,6 +29,8 @@ Personal context carries bounded Memory text and inventory counts without creden
 
 Automation types describe saved recurrence, submission permission, model selection and durable run outcomes. The desktop Host validates API requests and stored values. Native commands expose background login preferences and update consent; neither renderer messages nor schedule data select an update URL.
 
+Browser `fill_form` accepts one observation revision and a bounded list of editable refs. Its receipt distinguishes applied and remaining original refs; subsequent actions use the newly returned observation. Rich-text editor values are bounded and credentials remain excluded. Observations expose native input types and up to 50 enabled dropdown options; native dates use ISO values.
+
 <a id="understand-the-implementation"></a>
 ## Understand the implementation
 
@@ -58,3 +60,5 @@ Automation types describe saved recurrence, submission permission, model selecti
 None.
 
 </details>
+
+`browser.mount.selected` identifies the active sidebar tab even while overlays or collapse hide its native view.

@@ -94,7 +94,7 @@ export class AgentOsDesktop {
           return state
         }
         case 'browser.mount':
-          return this.browser.mount(command.sessionId, command.tabId, command.bounds, command.visible, command.url)
+          return this.browser.mount(command.sessionId, command.tabId, command.bounds, command.visible, command.url, command.selected)
         case 'browser.hide': {
           this.browser.hide(command.tabId)
           return

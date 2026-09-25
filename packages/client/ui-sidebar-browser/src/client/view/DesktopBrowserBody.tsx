@@ -83,18 +83,19 @@ export function DesktopBrowserBody({
         const covered = document.querySelector('[role="dialog"], [role="menu"], [data-agent-os-overlay]') !== null
         const visible = tab.visible && !covered && !failed
         const measurable = bounds.width > 0 && bounds.height > 0
-        const next = measurable ? `${bounds.x}:${bounds.y}:${bounds.width}:${bounds.height}:${visible}` : 'hidden'
+        const next = measurable ? `${bounds.x}:${bounds.y}:${bounds.width}:${bounds.height}:${visible}:${tab.selected}` : `hidden:${tab.selected}`
         // Streaming chat mutates the DOM without moving the native viewport.
         if (placement === next) return
         placement = next
-        void desktopRequest(measurable ? {
+        void desktopRequest({
           type: 'browser.mount',
           sessionId,
           tabId,
           bounds,
-          visible,
+          visible: measurable && visible,
+          selected: tab.selected,
           ...(initialUrl ? { url: initialUrl } : {}),
-        } : { type: 'browser.hide', tabId }).catch((reason: unknown) => {
+        }).catch((reason: unknown) => {
           if (!disposed && placement === next) {
             placement = undefined
             setError(requestError(reason))
@@ -123,7 +124,7 @@ export function DesktopBrowserBody({
         /* Closing the app already destroys native views. */
       })
     }
-  }, [desktopRequest, ownDesktopTab, sessionId, tab.id, tab.signal, tab.visible, initialUrl, tabId, failed])
+  }, [desktopRequest, ownDesktopTab, sessionId, tab.id, tab.signal, tab.visible, tab.selected, initialUrl, tabId, failed])
 
   const record = (): void => {
     setError('')

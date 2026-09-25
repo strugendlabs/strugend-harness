@@ -91,6 +91,8 @@ A preset whose composition is missing, unparsable, not a list of named plugin ro
 
 -----
 
+Strugend Coding, Job, Normal and Repair presets configure at most two concurrent workflow children. The desktop additionally bounds continuable children and provides an independent QA tool; see the [desktop workflow](../../../apps/desktop/README.md).
+
 <a id="understand-the-implementation"></a>
 ## Understand the implementation
 

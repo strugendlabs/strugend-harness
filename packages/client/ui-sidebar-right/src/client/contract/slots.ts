@@ -150,6 +150,8 @@ export interface SidebarRightTabInfo {
   readonly tab: TabRecord & {
     /** Docked bodies need an expanded sidebar and an active tab; expanded titles include inactive tabs. Floats stay visible. */
     readonly visible: boolean
+    /** Active tab in the active pane, independent of sidebar collapse or overlays. */
+    readonly selected: boolean
     readonly navigation: SidebarRightTabNavigation
     /** Aborted only when the record disappears or this plugin unloads, not on hide or session switch. */
     readonly signal: AbortSignal

@@ -18,7 +18,9 @@ Creator 和 Web Plugin Manager 在 Electron Node 模式下使用 Desktop 内置 
 
 本地推理在 Windows 和 Apple Silicon 上使用 ONNX Runtime 1.30.0。Intel Mac 选择独立的 1.22.0 兼容依赖，因为[后续 npm 归档缺少 Intel Mac 绑定](https://github.com/microsoft/onnxruntime/issues/27961)。仅加载选中的运行时。发布前，原生验证会加载打包的 worker 和模型权重。
 
-浏览器元素操作先聚焦并滚动目标，再测量位置，等待两个布局稳定的帧，并在发送指针输入前拒绝已禁用、被遮挡、已移除或不可见的目标。页面无法产生稳定帧时，操作会在五秒内失败。浏览器视图隐藏时仍保持帧调度，以便后台任务完成检查。
+浏览器操作使用有时限的定时采样，包括隐藏视图，并在输入前拒绝标签已变、节点已移除、控件已禁用或被遮挡的目标。观察和可信文本输入支持同源框架编辑器；跨源框架保持不透明。`fill_form` 预检查最多 30 个字段，页面变化中断时返回已填写及剩余引用，且不会提交表单。 原生日期时间及数字输入先验证值再填写；单选下拉框接受观察中的精确可用值或标签。智能体观察会显示已有侧栏标签。支持图像的模型在导航和点击后收到截图；辅助视觉失败时返回页面证据，并在本轮抑制重复辅助请求。
+
+较大任务使用有并发限制的独立工作智能体及单独的 `qa_agent`。审核者继承选定模型，以新上下文检查实际产物，并附证据报告 PASS、FAIL 或 UNVERIFIED。其工具移除直接文件编辑，流程禁止 QA 进行外部提交。桌面默认最多两个驻留子智能体、深度一。这些指令指导模型行为，不保证任务成功。
 
 <a id="personal-tools"></a>
 ## 个人工具
@@ -361,3 +363,5 @@ node apps/desktop/node_modules/pnpm/bin/pnpm.mjs --dir apps/desktop run test:upd
 ## 开发备注
 
 上线前 CDN 与容量决策见[桌面更新提案](../../.agents/notes/proposed/feature/2026-09-08-desktop-update-policy-and-installation.zh.md#cdn-and-capacity-qualification)。
+
+浏览器截图保持窗口隐藏，在截图期间请求保持唤醒，并在五秒后停止等待。图片不可用时不会重复已完成的操作；宿主返回当前页面观察结果。

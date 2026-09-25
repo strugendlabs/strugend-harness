@@ -233,6 +233,7 @@
       disabled: true
       config:
         provider: spawn
+        maxConcurrentAgents: 2
 
     - id: tool-workflow
       name: '@deepseek-ai/dsh-tool-workflow'

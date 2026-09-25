@@ -11,6 +11,9 @@ English | [中文](README.zh.md)
 
 The right Sidebar: where the docking kit meets this product. It holds one docking surface per session, draws it as one edge-anchored panel in the frame's right column in either of two presentations, puts the expand button in the conversation header, and owns the navigation controller (`ctx.sidebarRight`), the tab-type registry (`ctx.sidebarRightTabs`), and the Tab domain that tells each open tab how it was navigated to and how long it lives.
 
+`revealTabIn(sessionId, tabId)` focuses and expands an existing adopted tab in its owning session without creating a new tab or switching conversations. Missing sessions and tabs are left unchanged.
+
+
 ## Table of Contents
 
 - [What lives here, and what does not](#what-lives-here-and-what-does-not)
@@ -148,3 +151,5 @@ None.
 </details>
 
 **Runtime invariant:** No companion is published. The two services (`sidebarRight`, `sidebarRightTabs`) are provided through `ctx.reflect.provide` inside one effect and torn down with it; the seat's binding and the Tab domain's occurrence lifetimes are asserted directly by this package's specs, and no independent observation exists to diverge from them.
+
+Tab information exposes `selected` independently of visibility, preserving the active pane and tab while collapsed or covered by a dialog.

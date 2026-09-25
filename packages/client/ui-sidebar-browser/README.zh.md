@@ -52,6 +52,8 @@ Web 工具栏提供后退、前进、刷新、前往、在系统浏览器中打�
 
 -----
 
+原生浏览器打开事件会显示具有相同原生标识的已有标签，而不创建重复载体。后台会话保留自身标签，不切换当前选中的会话。
+
 <a id="understand-the-implementation"></a>
 ## 了解实现
 
@@ -121,3 +123,5 @@ Controller 接口不依赖 iframe API。未来的 `ElectronWebViewImpl` 可以�
 </details>
 
 **运行时不变量：** 不发布 companion。`BrowserNavigation` 是唯一的 URL 状态写入方；store 接收它的 immutable snapshot，controller 与组件的聚焦测试直接覆盖发布与清理。
+
+原生挂载信息将选中的标签与可见性分别传递。不带标签 ID 的观察操作在弹层遮挡或面板折叠时仍使用该选择；关闭选中的标签会清除选择。

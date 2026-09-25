@@ -91,6 +91,8 @@ agent-presets:
 
 -----
 
+Strugend 编码、求职、日常和修复预设将工作流子智能体并发数配置为最多两个。桌面另行限制可续接子智能体并提供独立 QA 工具，参见[桌面流程](../../../apps/desktop/README.zh.md)。
+
 <a id="understand-the-implementation"></a>
 ## 理解实现
 

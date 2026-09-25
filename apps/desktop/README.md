@@ -18,7 +18,9 @@ The [Strugend development guide](../../AGENT_OS_README.md) owns the local forkâ€
 
 Local inference uses ONNX Runtime 1.30.0 on Windows and Apple Silicon. Intel Macs select a separate 1.22.0 compatibility dependency because [later npm archives omit Intel Mac bindings](https://github.com/microsoft/onnxruntime/issues/27961). Only the selected runtime loads. Native qualification loads the packaged worker and weights before release.
 
-Browser element actions focus and scroll before measuring the target, wait for two stable layout frames, and reject disabled, covered, detached, or invisible targets before pointer input. A page that cannot produce stable frames fails within five seconds. Browser views keep frame scheduling active while hidden so background tasks can finish their checks.
+Browser actions use bounded timer sampling, including hidden views, and reject changed labels, detached nodes, disabled controls and occlusion before input. Observations and trusted text insertion include same-origin frame editors; cross-origin frames remain opaque. `fill_form` preflights up to 30 fields and reports applied and remaining refs if interrupted by page changes. It never submits the form. Native date/time and numeric inputs validate their values before applying them; single-choice dropdowns accept exact enabled values or labels from the observation. Agent observations reveal the existing sidebar tab. Image-capable models receive screenshots after navigation and clicks; auxiliary vision failures return page evidence and suppress repeated auxiliary requests for that turn.
+
+Substantial tasks use bounded independent workers and a separate `qa_agent`. The reviewer inherits the selected model, starts with a fresh context, inspects actual artifacts, and reports PASS, FAIL or UNVERIFIED with evidence. Direct file editing is removed from its tools; the workflow forbids external submission during QA. Desktop defaults to two resident children and depth one. These instructions guide model behavior; they do not guarantee task success.
 
 <a id="personal-tools"></a>
 ## Personal tools
@@ -360,3 +362,5 @@ An unpackaged Electron process uses `.desktop-build/development/project` under i
 ## Dev Note
 
 Pre-launch CDN and capacity decisions are tracked in the [Desktop update proposal](../../.agents/notes/proposed/feature/2026-09-08-desktop-update-policy-and-installation.md#cdn-and-capacity-qualification).
+
+Browser image capture keeps hidden windows hidden, requests capture-time wakefulness, and stops waiting after five seconds. An unavailable image does not repeat a completed action; the host returns the current page observation.

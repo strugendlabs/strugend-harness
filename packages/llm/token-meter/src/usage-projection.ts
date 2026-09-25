@@ -55,6 +55,7 @@ const projectionSchema = z.object({
  */
 const tokenUsageStateSchema = z.object({
   totals: projectionSchema,
+  inheritedEventCount: z.number().int().nonnegative(),
   last: z.object({
     turn: z.number().int().nonnegative(),
     step: z.number().int().nonnegative(),
@@ -110,16 +111,17 @@ type ContextPressureState = z.infer<typeof contextPressureStateSchema>
 /**
  * Token-meter's session projection unit.
  *
- * Each v2 Assistant settlement contributes the last usage sample embedded in
+ * Inherited fork events are excluded; each locally recorded Assistant settlement contributes the last usage sample embedded in
  * its stream. `llm/retry-started` closes the replacement slot so the retried
  * attempt adds to the total.
  */
 export const tokenUsageProjectionDefinition = {
   key: 'tokenUsage',
-  stateVersion: 2,
+  stateVersion: 3,
   stateSchema: tokenUsageStateSchema,
-  init: () => ({ totals: zeroBuckets(), last: null }),
+  init: (_header, inheritedEventCount) => ({ totals: zeroBuckets(), last: null, inheritedEventCount }),
   apply: (state, event) => {
+    if (event.seq < state.inheritedEventCount) return state
     if (event.type === 'llm/retry-started') {
       return state.last?.turn === event.data.turn && state.last.step === event.data.step
         ? { ...state, last: null }
@@ -142,6 +144,7 @@ export const tokenUsageProjectionDefinition = {
     if (previous !== undefined && bucketsEqual(previous, buckets)) return state
 
     return {
+      inheritedEventCount: state.inheritedEventCount,
       totals: addReplacing(state.totals, previous, buckets),
       last: { turn, step, buckets },
     }

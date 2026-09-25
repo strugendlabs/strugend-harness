@@ -6,6 +6,7 @@ import * as automations from './automations.ts'
 import * as agentOsVision from './agentos-vision.ts'
 import * as agentOsTools from './agentos-tools.ts'
 import * as agentOsPersonalContext from './agentos-personal-context.ts'
+import * as agentOsTeam from './agentos-team.ts'
 import * as agentOsWorkflow from './agentos-workflow.ts'
 import * as agentOsPower from './agentos-power.ts'
 import * as strugendIntelligence from './strugend-intelligence.ts'
@@ -92,10 +93,11 @@ async function main(): Promise<void> {
     idleTimeoutMs: 60_000, minimumDecisionMemoryMiB: 8192,
   })
   await ctx.plugin(agentOsWorkflow)
+  await ctx.plugin(agentOsTeam)
   await ctx.plugin(agentOsPower)
   await ctx.plugin(agentOsTools)
   await ctx.plugin(agentOsPersonalContext, agentOsPersonalContext.Config({ memoryChars: 4000, deadlineMs: 1500 }))
-  await ctx.plugin(agentOsVision)
+  await ctx.plugin(agentOsVision, agentOsVision.Config({ maxTokens: 4096, timeoutMs: 20000 }))
   await ctx.plugin(strugendIntelligence, strugendIntelligence.Config({ localModelDir: '' } as strugendIntelligence.Config))
   const skillRoot = await desktopRequest<string>({ method: 'skill-root' })
   await ctx.plugin(skillFilesystem, { providerName: 'agent-os-recordings', includeDefaultRoots: false, customSkillDirs: [skillRoot] })

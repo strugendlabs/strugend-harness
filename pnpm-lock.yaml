@@ -685,6 +685,9 @@ importers:
       '@deepseek-ai/dsh-system-prompt':
         specifier: workspace:^
         version: link:../../packages/core/system-prompt
+      '@deepseek-ai/dsh-tool-subagent':
+        specifier: workspace:^
+        version: link:../../packages/subagent/tool-subagent
       '@deepseek-ai/dsh-tools':
         specifier: workspace:^
         version: link:../../packages/core/tools
@@ -713,6 +716,12 @@ importers:
       '@deepseek-ai/dsh-session-snapshot':
         specifier: workspace:^
         version: link:../../packages/test-support/session-snapshot
+      '@deepseek-ai/dsh-subagent':
+        specifier: workspace:^
+        version: link:../../packages/subagent/subagent
+      '@deepseek-ai/dsh-subagent-spawn-in-process':
+        specifier: workspace:^
+        version: link:../../packages/subagent/subagent-spawn-in-process
       '@deepseek-ai/libreoffice-kit':
         specifier: 0.0.1
         version: 0.0.1

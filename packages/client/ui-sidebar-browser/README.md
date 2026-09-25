@@ -52,6 +52,8 @@ The Web toolbar provides Back, Forward, Reload, Go, Open in system browser, and 
 
 -----
 
+Native browser-open events reveal an existing tab with the same native identity instead of creating another carrier. Background conversations retain their own tabs without switching the selected conversation.
+
 <a id="understand-the-implementation"></a>
 ## Understand the implementation
 
@@ -121,3 +123,5 @@ None.
 </details>
 
 **Runtime invariant:** No companion is published. `BrowserNavigation` is the sole URL-state writer; the store receives its immutable snapshots, and focused controller and component tests exercise publication and cleanup directly.
+
+The native mount carries the selected tab independently of visibility. Observation without a tab ID retains that selection across overlays and collapsed panes; closing the selected tab clears it.

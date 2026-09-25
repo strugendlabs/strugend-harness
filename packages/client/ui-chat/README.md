@@ -43,6 +43,8 @@ Each nonempty appended `system/message` owns a collapsed prompt row, including a
 <a id="turn-token-usage"></a>
 ## Turn token usage
 
+The composer usage counter includes the viewed agent and available delegated descendants, with separate totals in its dialog. Ordinary conversation forks are excluded. Opening the dialog refreshes catalog metadata without activating child agents; missing cached projections are reported as partial, and opening those conversations can rebuild their usage. These are recorded task totals, including repeated cached input, not the provider’s daily API-key bill: auxiliary calls, requests without reported usage, and unrelated tasks are excluded.
+
 A completed Turn shows an expandable usage row only when the loaded window includes `turn/start` and every started model attempt reports safe, exact usage. The row omits unavailable optional buckets. Incomplete or contradictory accounting hides the complete disclosure instead of presenting a partial total.
 
 After Assistant replies settle, the completed-turn timing dialog omits TTFT and decoding speed, both after live replies and after reopening history. Elapsed turn time remains available. The Session Stats pill reads timing independently from its durable projection.
