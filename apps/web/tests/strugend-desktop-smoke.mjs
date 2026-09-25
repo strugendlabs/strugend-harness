@@ -118,10 +118,10 @@ const OUT = fs.mkdtempSync(path.join(evidenceRoot, 'packaged-' + process.platfor
         name='desktop_browser';
         if(index===0)args={action:'open',url:base+'form'};
         else if(index===1){const seen=toolResult(body);args={action:'fill',tabId:seen.state.tabId,revision:seen.state.revision,ref:seen.elements.find(x=>x.name==='Caption').ref,value:'Scheduled fixture'}}
-        else if(index===2){name='automation_submission';args={action:'intent',identity:base+'fixture/account/42'}}
+        else if(index===2){const seen=toolResult(body);assert.equal(seen.elements.find(e=>e.name==='Caption')?.value,'Scheduled fixture','Scheduled input: '+JSON.stringify(seen));name='automation_submission';args={action:'intent',identity:base+'fixture/account/42'}}
         else if(index===3)args={action:'observe'};
         else if(index===4){const seen=toolResult(body);args={action:'click',tabId:seen.state.tabId,revision:seen.state.revision,ref:seen.elements.find(x=>x.name==='Save draft').ref}}
-        else if(index===5){assert(toolResult(body).text.includes('Saved: Scheduled fixture'));name='automation_submission';args={action:'confirmed',identity:base+'fixture/account/42',evidence:'Saved: Scheduled fixture'}}
+        else if(index===5){assert(toolResult(body).text.includes('Saved: Scheduled fixture'),'Scheduled click: '+JSON.stringify(toolResult(body)));name='automation_submission';args={action:'confirmed',identity:base+'fixture/account/42',evidence:'Saved: Scheduled fixture'}}
         else if(index===6){name='automation_finish';args={status:'completed',summary:'Verified local form receipt: Saved: Scheduled fixture'}}
         else{send(res,body.model,{content:'Scheduled form verified.'},'stop');return}
        }
@@ -179,7 +179,7 @@ const OUT = fs.mkdtempSync(path.join(evidenceRoot, 'packaged-' + process.platfor
  for(const key of ['ELECTRON_RUN_AS_NODE','IMPOSSIBL_API_KEY','TYPESAFE_API_KEY','CHRONOGRAPH_TOKEN','STRUGEND_GITHUB_TOKEN','STRUGEND_VERCEL_TOKEN'])delete env[key];
  async function launch(){
   const started=Date.now();
-  app=await electron.launch({executablePath:executable,args:[`--user-data-dir=${path.join(root,'chromium')}`],env,timeout:60000});
+  app=await electron.launch({executablePath:executable,args:[`--user-data-dir=${path.join(root,'chromium')}`,...(process.argv.includes('--mock-keychain')?['--use-mock-keychain']:[])],env,timeout:60000});
   const child=app.process();
   for(const stream of [child.stdout,child.stderr])stream?.on('data',data=>{mainLog=(mainLog+data.toString()).slice(-100000)});
   page=await app.firstWindow({timeout:60000});page.setDefaultTimeout(30000);page.on('pageerror',e=>errors.push(e.message));await page.waitForURL('dsh-app://app/');return started;
@@ -408,7 +408,7 @@ const OUT = fs.mkdtempSync(path.join(evidenceRoot, 'packaged-' + process.platfor
   await page.emulateMedia({colorScheme:'light',reducedMotion:'reduce'});const reduced=await page.evaluate(()=>({mark:getComputedStyle(document.querySelector('[data-dsh-boot] img')).animationName,track:getComputedStyle(document.querySelector('[data-dsh-boot-spinner]'),'::after').animationName}));assert.equal(reduced.mark,'none');assert.equal(reduced.track,'none');await page.screenshot({path:path.join(OUT,'loading-light.png')});
   await page.evaluate(()=>window.__releaseStrugendBoot());await page.locator('[data-dsh-boot]').waitFor({state:'detached',timeout:60000});await page.locator('[contenteditable="true"]').first().waitFor();assert.deepEqual(errors,[]);
   record('Branded loading supports light/dark, reduced motion and a clean handoff');
-  fs.writeFileSync(path.join(OUT,'results.json'),JSON.stringify({passed:true,provider:'Deterministic Core and remote Decision fixtures; graph disabled',localInference:runtime.localAllowed?'exercised':'skipped-memory-admission',checks,serviceCalls,errors},null,2));
- }catch(error){fs.writeFileSync(path.join(OUT,'errors.json'),JSON.stringify(errors,null,2));if(errors.length)console.error('Fixture errors:',errors);if(page){await page.screenshot({path:path.join(OUT,'failure.png')}).catch(()=>{});fs.writeFileSync(path.join(OUT,'failure-dom.txt'),await page.locator('body').innerText().catch(()=>''))}throw error}
+  fs.writeFileSync(path.join(OUT,'results.json'),JSON.stringify({passed:true,credentialStore:process.argv.includes('--mock-keychain')?'fixture mock keychain':'system',provider:'Deterministic Core and remote Decision fixtures; graph disabled',localInference:runtime.localAllowed?'exercised':'skipped-memory-admission',checks,serviceCalls,errors},null,2));
+ }catch(error){console.error('Packaged smoke failure:',error);fs.writeFileSync(path.join(OUT,'errors.json'),JSON.stringify(errors,null,2));if(errors.length)console.error('Fixture errors:',errors);if(page){await page.screenshot({path:path.join(OUT,'failure.png')}).catch(()=>{});fs.writeFileSync(path.join(OUT,'failure-dom.txt'),await page.locator('body').innerText().catch(()=>''))}throw error}
  finally{try{await closeApp()}finally{fs.writeFileSync(path.join(OUT,'main.log'),redact(mainLog));server.closeAllConnections();await new Promise(r=>server.close(r));fs.rmSync(root,{recursive:true,force:true,maxRetries:5,retryDelay:100})}}
 })().catch(error=>{console.error(String(error.message).split('Browser logs:')[0].replace(/token=[^\s]+/g,'token=[redacted]'));process.exitCode=1});

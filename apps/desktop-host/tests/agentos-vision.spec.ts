@@ -111,16 +111,35 @@ it('automatically attaches a fresh image after a click and honors an explicit te
   } finally { await f.close() }
 })
 
-it('preserves the completed action when its follow-up screenshot fails', async () => {
+it('returns the current revision after a completed action whose screenshot advances refs then fails', async () => {
   const f = await fixture('answer')
   try {
     f.request.mockResolvedValueOnce({ state: { tabId: 'tab', revision: 5 }, text: 'Sent confirmation', elements: [] })
       .mockRejectedValueOnce(new Error('Capture unavailable'))
+      .mockResolvedValueOnce({ state: { tabId: 'tab', revision: 7 }, text: 'Sent confirmation', elements: [{ ref: 'e2', name: 'Inbox' }] })
     const result = await f.call('desktop_browser', { action: 'click', tabId: 'tab', ref: 'send', revision: 4 })
     expect(result.isError).toBe(false)
     expect(JSON.stringify(result)).toContain('Sent confirmation')
     expect(JSON.stringify(result)).toContain('do not repeat a submission')
-    expect(f.request).toHaveBeenCalledTimes(2)
+    expect(JSON.stringify(result)).toContain('"revision":7')
+    expect(f.request.mock.calls.map(([value]) => (value as { command: unknown }).command)).toEqual([
+      { action: 'click', tabId: 'tab', ref: 'send', revision: 4 },
+      { action: 'observe', tabId: 'tab', screenshot: true },
+      { action: 'observe', tabId: 'tab', screenshot: false },
+    ])
+  } finally { await f.close() }
+})
+
+it('retains submission evidence if both capture and the current-page refresh fail', async () => {
+  const f = await fixture('answer')
+  try {
+    f.request.mockResolvedValueOnce({ state: { tabId: 'tab', revision: 5 }, text: 'Sent confirmation', elements: [] })
+      .mockRejectedValueOnce(new Error('Capture unavailable'))
+      .mockRejectedValueOnce(new Error('Renderer closed'))
+    const result = await f.call('desktop_browser', { action: 'click', tabId: 'tab', ref: 'send', revision: 4 })
+    expect(result.isError).toBe(false)
+    expect(JSON.stringify(result)).toContain('Sent confirmation')
+    expect(JSON.stringify(result)).toContain('These controls belong to the earlier action result')
   } finally { await f.close() }
 })
 

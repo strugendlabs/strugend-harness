@@ -134,6 +134,13 @@ export function apply(ctx: Context): void {
           } catch (error) {
             execution.signal.throwIfAborted()
             visualWarning = `The action completed, but its follow-up screenshot failed: ${error instanceof Error ? error.message : String(error)}. Observe before the next action; do not repeat a submission.`
+            try {
+              // A failed capture can still replace refs and advance the revision.
+              observation = await request({ action: 'observe', tabId: observation.state.tabId, screenshot: false })
+            } catch (refreshError) {
+              execution.signal.throwIfAborted()
+              visualWarning += ` Refresh also failed: ${refreshError instanceof Error ? refreshError.message : String(refreshError)}. These controls belong to the earlier action result.`
+            }
           }
         let image: ImageAttachmentRef | undefined
         if ('screenshot' in observation) {

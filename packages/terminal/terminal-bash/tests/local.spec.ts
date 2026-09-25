@@ -1,5 +1,6 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
+import { rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, parse } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -24,7 +25,8 @@ const contexts: Context[] = []
 
 afterEach(async () => {
   for (const ctx of contexts.splice(0)) await ctx.fiber.dispose()
-  for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true })
+  // ConPTY releases its working-directory handle after the child has exited.
+  for (const root of roots.splice(0)) await rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 })
 })
 
 class PassthroughSandbox extends SandboxProvider {
@@ -354,7 +356,8 @@ describe.skipIf(!hasPwsh)('terminal-bash pwsh real shell', () => {
       const { ctx, root, agent } = await harness('danger-full-access', {
         idleSilenceMs: 300,
         handoffGraceMs: 300,
-        timeoutMs: 8_000,
+        // Cold PowerShell startup uses the product's 30-second readiness budget.
+        timeoutMs: 30_000,
       }, 'pwsh')
       const created = await spawnWithStartupTrace(ctx, agent, root)
       // stdin_read can precede delivery of the printable prompt to the PTY reader.
@@ -395,13 +398,14 @@ describe.skipIf(!hasPwsh)('terminal-bash pwsh real shell', () => {
       if (previous === undefined) delete process.env.DSH_TEST_SECRET
       else process.env.DSH_TEST_SECRET = previous
     }
-  }, 30_000)
+  }, 90_000)
 
   it('pins UTF-8 output encoding so non-ASCII output survives the byte decode', async () => {
     const { ctx, root, agent } = await harness('danger-full-access', {
       idleSilenceMs: 300,
       handoffGraceMs: 300,
-      timeoutMs: 8_000,
+      // Cold PowerShell startup uses the product's 30-second readiness budget.
+      timeoutMs: 30_000,
     }, 'pwsh')
     const created = await spawnWithStartupTrace(ctx, agent, root)
     // The bootstrap itself must have pinned both encodings: the session byte
@@ -422,5 +426,5 @@ describe.skipIf(!hasPwsh)('terminal-bash pwsh real shell', () => {
     const result = await sent.done
     expect(result.viewport).toContain('中文 encoding-ok')
     await ctx.terminals.kill(agent, created.sessionId)
-  }, 30_000)
+  }, 90_000)
 })

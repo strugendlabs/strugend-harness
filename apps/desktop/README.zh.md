@@ -18,7 +18,7 @@ Creator 和 Web Plugin Manager 在 Electron Node 模式下使用 Desktop 内置 
 
 本地推理在 Windows 和 Apple Silicon 上使用 ONNX Runtime 1.30.0。Intel Mac 选择独立的 1.22.0 兼容依赖，因为[后续 npm 归档缺少 Intel Mac 绑定](https://github.com/microsoft/onnxruntime/issues/27961)。仅加载选中的运行时。发布前，原生验证会加载打包的 worker 和模型权重。
 
-浏览器操作使用有时限的定时采样，包括隐藏视图，并在输入前拒绝标签已变、节点已移除、控件已禁用或被遮挡的目标。观察和可信文本输入支持同源框架编辑器；跨源框架保持不透明。`fill_form` 预检查最多 30 个字段，页面变化中断时返回已填写及剩余引用，且不会提交表单。 原生日期时间及数字输入先验证值再填写；单选下拉框接受观察中的精确可用值或标签。智能体观察会显示已有侧栏标签。支持图像的模型在导航和点击后收到截图；辅助视觉失败时返回页面证据，并在本轮抑制重复辅助请求。
+浏览器操作使用有时限的定时采样，包括隐藏视图，并在输入前拒绝标签已变、节点已移除、控件已禁用或被遮挡的目标。观察和可信文本输入支持同源框架编辑器；跨源框架保持不透明。`fill_form` 预检查最多 30 个字段，页面变化中断时返回已填写及剩余引用，且不会提交表单。 原生日期时间及数字输入先验证值再填写；单选下拉框接受观察中的精确可用值或标签。智能体观察会显示已有侧栏标签。支持图像的模型在导航和点击后收到截图。截图失败时，工具刷新 DOM 控件及其修订号，而不会重做操作；如果刷新也失败，则保留此前操作证据并明确警告控件已过期。辅助视觉失败时返回页面证据，并在本轮抑制重复辅助请求。
 
 较大任务使用有并发限制的独立工作智能体及单独的 `qa_agent`。审核者继承选定模型，以新上下文检查实际产物，并附证据报告 PASS、FAIL 或 UNVERIFIED。其工具移除直接文件编辑，流程禁止 QA 进行外部提交。桌面默认最多两个驻留子智能体、深度一。这些指令指导模型行为，不保证任务成功。
 
@@ -186,6 +186,8 @@ Desktop 在本地打包工作区包，并通过目标捆绑的 Node 和 pnpm 安
 [Office 转换提供方](../../packages/document/office-to-pdf/README.zh.md)携带目标已声明的原生引擎；kit 未声明匹配原生目标时携带 WASM 引擎。准备阶段在打包前拒绝缺少目标引擎的情况。引擎资源、许可证和 notices 保留在运行时依赖树中。
 
 打包应用运行编译后的 JavaScript 和预生成的 Typert 元数据，不编译 TypeScript 插件。源码级调试导航和编辑器声明仍可从开发包中获取。[复制规则测试](tests/runtime-file-policy.spec.ts)覆盖排除项和保留资源；`prepare:dsh` 在 Host smoke 和最终清单验证之前，使用 Electron RunAsNode 执行[产物 smoke](tests/fixtures/runtime-payload-smoke.mjs)。
+
+[打包工作流测试](../web/tests/strugend-desktop-smoke.mjs)使用隔离配置目录及合成服务商凭据。可选参数 `--mock-keychain` 避免本地未签名构建触发交互式 macOS 钥匙串提示；该模式不验证操作系统凭据存储。发布 CI 不使用此参数。
 
 Windows 发布验收还需在 Desktop 构建后手动运行[目录和替换检查](scripts/smoke-windows.ps1)。将 `$Makensis`、`$SevenZip` 和 `$PluginDir` 分别设为锁定版本构建器的 NSIS 编译器、7-Zip 可执行文件和 x86-unicode NSIS 插件目录。从仓库根目录运行以下命令。它验证 目录替换与回滚和两种文件占用替换方式；不属于单元测试通道。
 
