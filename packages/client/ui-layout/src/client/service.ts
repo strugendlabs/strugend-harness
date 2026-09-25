@@ -37,8 +37,11 @@ export interface ILayout {
    * @returns a signal aborted by the next navigation or layout disposal; check it before committing UI state.
    */
   beginNavigation(): AbortSignal
-  /** Toggle the sidebar panel (closed ⟷ contract default width). */
-  toggleSidebar(): void
+  /**
+   * Set or toggle sidebar visibility while retaining its preferred width.
+   * @param expanded - Force open/closed when provided; otherwise toggle using the default width.
+   */
+  toggleSidebar(expanded?: boolean): void
   /**
    * Report the right panel's presentation without changing its expanded state.
    * @param track - whether the normal panel width reserves a grid track,
@@ -85,9 +88,8 @@ export class LayoutController implements ILayout {
     this.navigation.abort()
   }
 
-  /** Toggle the sidebar panel (closed ⟷ contract default width). */
-  toggleSidebar(): void {
-    this.panels.toggleSidebar()
+  toggleSidebar(expanded?: boolean): void {
+    this.panels.toggleSidebar(expanded)
   }
 
   /** Report the right panel's track and fullscreen presentation. */

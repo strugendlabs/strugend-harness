@@ -8,7 +8,7 @@ import type { BrowserWindow, WebContentsView } from 'electron'
 import { AgentOsStore } from '../src/agentos-store.ts'
 
 const navigation = vi.hoisted(() => ({
-  urls: [] as string[], inputs: [] as Record<string, unknown>[], release: () => {},
+  bounds: [] as unknown[], urls: [] as string[], inputs: [] as Record<string, unknown>[], release: () => {},
   acknowledge: (_event: Record<string, unknown>): Promise<void> => Promise.resolve(),
 }))
 vi.mock('electron', async () => {
@@ -22,6 +22,7 @@ vi.mock('electron', async () => {
     isLoading(): boolean { return false }
     isLoadingMainFrame(): boolean { return false }
     setWindowOpenHandler(): void {}
+    send(): void {}
     private attached = false
     debugger = {
       isAttached: (): boolean => this.attached,
@@ -49,13 +50,13 @@ vi.mock('electron', async () => {
     WebContentsView: class {
       webContents = new Contents()
       setVisible(): void {}
-      setBounds(): void {}
+      setBounds(value: unknown): void { navigation.bounds.push(value) }
     },
   }
 })
 import { AgentOsBrowser } from '../src/agentos-browser.ts'
 
-beforeEach(() => { navigation.urls = []; navigation.inputs = []; navigation.acknowledge = () => Promise.resolve() })
+beforeEach(() => { navigation.bounds = []; navigation.urls = []; navigation.inputs = []; navigation.acknowledge = () => Promise.resolve() })
 
 const dispose: Array<() => void> = []
 afterEach(() => { for (const cleanup of dispose.splice(0).reverse()) cleanup() })
@@ -168,6 +169,24 @@ it('keeps discovery isolated between chats even when their local sidebar tab num
   await expect(browser.act('chat-two', { action: 'observe', tabId: 'native-chat-one-tab2' })).rejects.toThrow('another chat')
   await expect(browser.act('empty-chat', { action: 'observe' })).rejects.toThrow('No browser tab is open in this chat')
   await expect(browser.act('empty-chat', { action: 'list' })).resolves.toEqual({ tabs: [] })
+})
+
+it('fills a credential only on its exact site with a fresh observation and respects takeover', async () => {
+  const { browser } = fixture()
+  await browser.mount('chat', 'login', bounds, true)
+  await navigate(browser, 'chat', 'login')
+  const state = browser.list('chat')[0]!
+  await expect(browser.fillCredential('other', 'login', 'https://example.test', 'alice', 'fixture', { revision: state.revision })).rejects.toThrow('another chat')
+  await expect(browser.fillCredential('chat', 'login', 'https://wrong.test', 'alice', 'fixture', { revision: state.revision })).rejects.toThrow('different website')
+  await expect(browser.fillCredential('chat', 'login', 'https://example.test', 'alice', 'fixture', { revision: state.revision - 1 })).rejects.toThrow('observe')
+  await browser.act('chat', { action: 'takeover', tabId: 'login' }, true)
+  await expect(browser.fillCredential('chat', 'login', 'https://example.test', 'alice', 'fixture', { revision: browser.list('chat')[0]!.revision })).rejects.toThrow('Resume')
+  await browser.act('chat', { action: 'resume', tabId: 'login' }, true)
+  const revision = browser.list('chat')[0]!.revision
+  await browser.fillCredential('chat', 'login', 'https://example.test', 'alice', 'fixture', { revision })
+  expect(browser.list('chat')[0]!.revision).toBe(revision + 1)
+  const cancellation = new AbortController(); cancellation.abort(new Error('Cancelled fixture'))
+  await expect(browser.fillCredential('chat', 'login', 'https://example.test', 'alice', 'fixture', { revision: revision + 1, signal: cancellation.signal })).rejects.toThrow('Cancelled fixture')
 })
 
 it('allows observing the only hidden tab but never returns a closed one', async () => {
@@ -339,4 +358,16 @@ it.each(['crash', 'close', 'cancel'] as const)('settles a blocked page read on %
     blocked.resolve({ text: 'Fixture cleanup', elements: [] })
     await read
   }
+})
+
+it('keeps a usable viewport for background tasks without a mounted sidebar', async () => {
+  const { browser } = fixture()
+  const opening = browser.act('background-task', { action: 'open', url: 'https://example.test/' })
+  await vi.waitFor(() => { expect(navigation.urls).toContain('https://example.test/') })
+  navigation.release(); await opening
+  const tab = browser.list('background-task')[0]
+  if (!tab) throw new Error('Background tab is missing')
+  expect(navigation.bounds).toContainEqual({ x: 0, y: 0, width: 1024, height: 768 })
+  await browser.mount('background-task', tab.tabId, { x: 0, y: 0, width: 0, height: 0 }, false)
+  expect(navigation.bounds.at(-1)).toEqual({ x: 0, y: 0, width: 1024, height: 768 })
 })

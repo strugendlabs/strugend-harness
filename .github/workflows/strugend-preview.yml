@@ -1,6 +1,9 @@
 name: Strugend desktop preview
 
 on:
+  push:
+    branches: [codex/strugend-preview]
+    paths: [package.json]
   workflow_dispatch:
     inputs:
       version:
@@ -16,11 +19,35 @@ permissions:
   contents: read
 
 concurrency:
-  group: strugend-preview-${{ inputs.version }}
+  group: strugend-preview-release
   cancel-in-progress: false
 
 jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+      build: ${{ steps.release.outputs.build }}
+      publish: ${{ steps.release.outputs.publish }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - id: release
+        run: node apps/desktop/scripts/strugend-release-plan.mjs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUESTED_VERSION: ${{ inputs.version }}
+          PUBLISH_REQUESTED: ${{ inputs.publish }}
   build:
+    needs: plan
+    if: needs.plan.outputs.build == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -36,7 +63,7 @@ jobs:
     env:
       DSH_TELEMETRY_DISABLED: '1'
       NODE_OPTIONS: --max-old-space-size=4096
-      PREVIEW_VERSION: ${{ inputs.version }}
+      PREVIEW_VERSION: ${{ needs.plan.outputs.version }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -60,6 +87,19 @@ jobs:
       - name: Run packaging and platform regression tests
         run: >-
           pnpm exec vitest run apps/desktop/tests/strugend-preview.spec.ts
+          apps/desktop-host/tests/automations.spec.ts
+          apps/desktop-host/tests/agentos-personal-context.spec.ts
+          apps/desktop-host/tests/agentos-workflow.spec.ts
+          apps/desktop/tests/agentos-personal.spec.ts
+          apps/desktop/tests/agentos-store.spec.ts
+          apps/desktop/tests/strugend-release-manifest.spec.ts
+          apps/desktop/tests/update-coordinator.spec.ts
+          packages/client/ui-workspace/tests/agentos-controller.client.spec.ts
+          packages/client/ui-workspace/tests/automations.client.spec.tsx
+          packages/client/ui-layout/tests/layout-store.client.spec.ts
+          packages/client/ui-layout/tests/service.client.spec.ts
+          apps/desktop/tests/preview-updates.spec.ts
+          apps/desktop/tests/update-preferences.spec.ts
           apps/desktop/tests/installer-packaging.spec.ts
           apps/desktop/tests/agentos-media-executable.spec.ts
           apps/desktop/tests/package-target.spec.ts
@@ -147,7 +187,7 @@ jobs:
           $lines | Set-Content -Encoding utf8NoBOM "$output/SHA256-${{ matrix.target }}.txt"
       - uses: actions/upload-artifact@v4
         with:
-          name: strugend-${{ matrix.target }}-${{ inputs.version }}
+          name: strugend-${{ matrix.target }}-${{ needs.plan.outputs.version }}
           compression-level: 0
           retention-days: 14
           if-no-files-found: error
@@ -160,13 +200,13 @@ jobs:
             apps/desktop/.desktop-build/targets/${{ matrix.target }}/unsigned-artifacts/SHA256-*.txt
 
   release:
-    if: inputs.publish
-    needs: build
+    if: needs.plan.outputs.publish == 'true'
+    needs: [plan, build]
     runs-on: ubuntu-latest
     permissions:
       contents: write
     env:
-      PREVIEW_VERSION: ${{ inputs.version }}
+      PREVIEW_VERSION: ${{ needs.plan.outputs.version }}
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
     steps:
@@ -175,9 +215,14 @@ jobs:
           persist-credentials: false
       - uses: actions/download-artifact@v4
         with:
-          pattern: strugend-*-${{ inputs.version }}
+          pattern: strugend-*-${{ needs.plan.outputs.version }}
           path: preview
           merge-multiple: true
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - name: Create verified update manifest
+        run: node apps/desktop/scripts/strugend-release-manifest.mjs preview "$PREVIEW_VERSION"
       - name: Publish BYOK test preview
         shell: bash
         run: |

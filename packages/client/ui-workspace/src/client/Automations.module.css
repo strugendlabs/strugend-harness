@@ -1,0 +1,17 @@
+.page { display: grid; gap: 12px; min-width: 0; font-size: 13px; line-height: 1.4; }
+.hint { color: var(--text-muted); margin: 0; }
+.inline { display: flex; gap: 8px; align-items: center; }
+.actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.actions button { padding: 5px 9px; border: 1px solid var(--border-color, #444); border-radius: 6px; background: transparent; color: inherit; cursor: pointer; }
+.actions button:disabled { opacity: .45; cursor: default; }
+.editor { display: grid; gap: 10px; padding: 12px; border: 1px solid var(--border-color, #444); border-radius: 8px; }
+.editor label { display: grid; gap: 4px; min-width: 0; }
+.editor input, .editor select, .editor textarea { width: 100%; box-sizing: border-box; border: 1px solid var(--border-color, #555); border-radius: 5px; padding: 6px 8px; color: inherit; background: var(--bg-primary, #202020); font: inherit; }
+.columns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.card { border-top: 1px solid var(--border-color, #444); padding-top: 10px; display: grid; gap: 5px; }
+.card p { margin: 0; }
+.heading { display: flex; gap: 8px; justify-content: space-between; }
+.heading span, .card small, .editor small { color: var(--text-muted, #aaa); }
+.summary { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 180px; overflow: auto; }
+.error { color: #ed8181; }
+@media (max-width: 600px) { .columns { grid-template-columns: 1fr; } }

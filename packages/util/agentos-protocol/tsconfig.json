@@ -13,6 +13,9 @@
     },
     {
       "path": "../values"
+    },
+    {
+      "path": "../brand"
     }
   ]
 }

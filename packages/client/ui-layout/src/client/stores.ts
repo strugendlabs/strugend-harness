@@ -59,7 +59,7 @@ type LayoutActions = {
   selectPanel: (draft: LayoutState, panelId: MainPanelId | null) => void
   retainMainPanels: (draft: LayoutState, panelIds: readonly string[]) => void
   setSidebar: (draft: LayoutState, px: number) => void
-  toggleSidebar: (draft: LayoutState) => void
+  toggleSidebar: (draft: LayoutState, expanded?: boolean) => void
   setViewportWidth: (draft: LayoutState, width: number) => void
   setRightbar: (draft: LayoutState, px: number) => void
   openRightbar: (draft: LayoutState, track: boolean, fullscreen: boolean) => void
@@ -108,10 +108,12 @@ export function createLayoutStore(): EngineStoreHandle<LayoutState, LayoutAction
       },
       // Narrow toggles flip only the override: the width preference survives
       // untouched, so re-widening restores the pre-squeeze layout.
-      toggleSidebar: (d) => {
+      toggleSidebar: (d, expanded?: boolean) => {
         d.layoutInfo.rightbarInstant = false
-        if (!minimal && d.layoutInfo.viewportWidth < SIDEBAR_AUTO_COLLAPSE) d.layoutInfo.narrowExpanded = !d.layoutInfo.narrowExpanded
-        else d.layoutInfo.sidebar = d.layoutInfo.sidebar === 0 ? sidebarDefault : 0
+        if (!minimal && d.layoutInfo.viewportWidth < SIDEBAR_AUTO_COLLAPSE)
+          d.layoutInfo.narrowExpanded = expanded ?? !d.layoutInfo.narrowExpanded
+        else if (expanded === undefined) d.layoutInfo.sidebar = d.layoutInfo.sidebar === 0 ? sidebarDefault : 0
+        else d.layoutInfo.sidebar = expanded ? d.layoutInfo.sidebar || sidebarDefault : 0
       },
       // Crossing the breakpoint in either direction drops the override: the
       // narrow default is auto-collapsed, the wide state is the preference.

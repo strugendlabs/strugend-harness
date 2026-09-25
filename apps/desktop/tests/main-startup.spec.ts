@@ -99,6 +99,7 @@ const harness = await vi.hoisted(async () => {
     }
   }
   class FakeHost {
+    readonly wakeAutomations = vi.fn()
     readonly updateTasks = vi.fn(async (_action: 'inspect' | 'lock' | 'unlock') => false)
     url = 'http://127.0.0.1:3080/?token=test'
     readonly ready = deferred()
@@ -123,6 +124,7 @@ const harness = await vi.hoisted(async () => {
     whenReady: () => Promise.resolve(),
     getLocale: (): string => 'en-US',
     getVersion: () => '1.0.0',
+    getLoginItemSettings: () => ({ wasOpenedAtLogin: false, openAtLogin: false }),
     getAppPath: () => 'desktop-test-app',
     getPath: () => 'desktop-test-app-data',
     setName: vi.fn(),

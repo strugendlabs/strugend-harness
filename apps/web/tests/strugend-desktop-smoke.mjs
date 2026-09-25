@@ -22,8 +22,10 @@ const OUT = fs.mkdtempSync(path.join(evidenceRoot, 'packaged-' + process.platfor
  const redact=value=>value.replace(/token=[^\s]+/g,'token=[redacted]');
  const record=(name,data={})=>{checks.push({name,...data}); console.log('PASS:',name)};
  const ptcResponses=new WeakSet();
+ let scheduling=false,scheduleStep=0,savedSchedule;const scheduledSteps=new Map();
+ let personalPhase='',personalStep=0,personalTab,personalLogin,personalRecording;
  const send=(res,model,delta,finish)=>{if(ptcResponses.has(res)&&delta.tool_calls)delta={...delta,tool_calls:delta.tool_calls.map(call=>({...call,function:{name:'run_code',arguments:JSON.stringify({code:call.function.name==='job_output'?`return (await tools.job_output(${call.function.arguments})).text;`:`return JSON.stringify((await tools[${JSON.stringify(call.function.name)}](${call.function.arguments}))${call.function.name==='desktop_browser'?'.observation':''});`,description:'Verify the packaged Strugend workflow'})}}))};res.setHeader('Content-Type','text/event-stream');for(const[d,f]of[[delta,null],[{},finish]])res.write('data: '+JSON.stringify({id:'strugend-e2e',object:'chat.completion.chunk',created:Math.floor(Date.now()/1000),model,choices:[{index:0,delta:d,finish_reason:f}]})+'\n\n');res.end('data: [DONE]\n\n')};
- const toolResult=body=>{const message=[...body.messages].reverse().find(x=>x.role==='tool');assert(message,'Missing tool result');const content=typeof message.content==='string'?message.content:message.content.filter(x=>x.type==='text').map(x=>x.text).join('\n');try{return JSON.parse(content)}catch{return JSON.parse(content.split('\n')[0])}};
+ const toolResult=body=>{const message=[...body.messages].reverse().find(x=>x.role==='tool');assert(message,'Missing tool result');const content=typeof message.content==='string'?message.content:message.content.filter(x=>x.type==='text').map(x=>x.text).join('\n');try{return JSON.parse(content)}catch{try{return JSON.parse(content.split('\n')[0])}catch{throw Error('Unexpected tool result: '+content.slice(0,1600))}}};
  const review={intent:'review_evidence',goal:'Verify the changed software behavior.',evidence:'The build exited with code zero, but no behavior test has run.'};
  const server=http.createServer(async(req,res)=>{
   if(req.method==='POST'){
@@ -42,13 +44,76 @@ const OUT = fs.mkdtempSync(path.join(evidenceRoot, 'packaged-' + process.platfor
     if(req.url.endsWith('/chat/completions')){
      if(!body.tools){send(res,body.model,{content:JSON.stringify(body.messages).includes('whether optional')?'Optional service check':'Workspace verification'},'stop');return}
      const system=JSON.stringify(body.messages.filter(x=>x.role==='system'));const upstream=system.match(/.{0,60}(DeepSeek Harness|powered by the deepseek|Current DSH file policy).{0,80}/i);assert(!upstream,'Received branded system prompt contains upstream identity: '+upstream?.[0]);
-     const hasTool=name=>ptcResponses.has(res)?system.includes(' '+name+': {'):body.tools.some(x=>x.function?.name===name);
+     const hasTool=name=>ptcResponses.has(res)?system.includes(' '+name+': '):body.tools.some(x=>x.function?.name===name);
      assert.equal(hasTool('decision_check'),!probing);
      assert(!body.tools.some(x=>/video/i.test(x.function?.name)));
      assert(!hasTool('memory_graph'));
      assert(!hasTool('video_edit'));
      assert(hasTool('deliver_project'));
      assert(hasTool('crawl_website'));
+     for(const personalTool of ['read_soul','update_soul','use_vault','record_skill'])assert(hasTool(personalTool),'Missing personal tool '+personalTool+'; schema: '+system.slice(Math.max(0,system.indexOf(personalTool)-100),system.indexOf(personalTool)+160));
+     if(personalPhase){
+      let name,args;const index=personalStep++;
+      assert(!JSON.stringify(body).includes('synthetic-vault-password'),'Vault password reached the provider');
+      if(personalPhase==='memory'){
+       if(index===0){name='read_soul';args={}}
+       else if(index===1){const current=toolResult(body);name='update_soul';args={revision:current.revision,text:current.text+'\nUse concise English for cover letters.\n'}}
+       else{assert(toolResult(body).text.includes('Use concise English for cover letters.'));send(res,body.model,{content:'Preference remembered.'},'stop');return}
+      }else if(personalPhase==='login-add'){
+       assert(JSON.stringify(body.messages).includes('Use concise English for cover letters.'),'Saved memory was not supplied to the next task');
+       if(index===0){name='desktop_browser';args={action:'open',url:'https://vault.example.test/login'}}
+       else if(index===1){personalTab=toolResult(body).state.tabId;name='use_vault';args={action:'check',tabId:personalTab}}
+       else if(index===2){assert.deepEqual(toolResult(body).logins,[]);name='use_vault';args={action:'add',tabId:personalTab}}
+       else{assert(toolResult(body).opened);send(res,body.model,{content:'Save your login in the secure Vault form and tell me when ready.'},'stop');return}
+      }else if(personalPhase==='login-fill'){
+       if(index===0){name='use_vault';args={action:'check',tabId:personalTab}}
+       else if(index===1){personalLogin=toolResult(body).logins[0];assert(personalLogin);name='desktop_browser';args={action:'observe',tabId:personalTab}}
+       else if(index===2){name='use_vault';args={action:'fill',id:personalLogin.id,tabId:personalTab,revision:toolResult(body).state.revision}}
+       else if(index===3){assert(toolResult(body).filled);name='desktop_browser';args={action:'observe',tabId:personalTab}}
+       else if(index===4){const seen=toolResult(body);assert(!JSON.stringify(seen).includes('synthetic-vault-password'));name='desktop_browser';args={action:'click',tabId:personalTab,revision:seen.state.revision,ref:seen.elements.find(x=>x.name==='Sign in').ref}}
+       else{assert(toolResult(body).text.includes('Signed in as fixture-user'));send(res,body.model,{content:'Saved login verified without exposing its password.'},'stop');return}
+      }else if(personalPhase==='record-start'){
+       if(index===0){name='record_skill';args={action:'start',tabId:personalTab}}
+       else{personalRecording=toolResult(body).recording;assert(personalRecording.id);send(res,body.model,{content:'Recording is ready. Demonstrate the workflow and say done.'},'stop');return}
+      }else if(personalPhase==='record-save'){
+       if(index===0){name='record_skill';args={action:'stop',tabId:personalTab}}
+       else if(index===1){const captured=toolResult(body).recording;assert(captured.steps.some(step=>step.action==='click'&&step.target==='Sign in'));assert(!JSON.stringify(captured).includes('synthetic-vault-password'));name='save_recorded_skill';args={id:captured.id,name:'fixture-login-workflow',description:'Use when signing in to the fixture portal.',instructions:'Open the fixture portal. Use Vault to fill the saved login. Click Sign in. Verify the signed-in confirmation.'}}
+       else{assert(toolResult(body).path.endsWith('SKILL.md'));send(res,body.model,{content:'Your demonstration is saved as a reusable skill.'},'stop');return}
+      }else if(personalPhase==='skill-use'){
+       if(index===0){assert(JSON.stringify(body.messages).includes('Use when signing in to the fixture portal.'),'Saved skill is missing from the agent catalog');name='skill';args={name:'fixture-login-workflow'}}
+       else{assert(toolResult(body).content.includes('Verify the signed-in confirmation.'));send(res,body.model,{content:'Saved skill loaded for this task.'},'stop');return}
+      }
+      send(res,body.model,{role:'assistant',tool_calls:[{index:0,id:'personal-'+personalPhase+'-'+index,type:'function',function:{name,arguments:JSON.stringify(args)}}]},'tool_calls');return;
+     }
+     const scheduled = JSON.stringify(body.messages).includes('Execute this user-saved scheduled task.')
+     if(scheduling || scheduled){
+      let name,args;
+      if(!scheduled){
+       if(scheduleStep++===0){assert(hasTool('automation_create'));name='automation_create';args={spec:{name:'Fixture form',instructions:'Complete the local fixture form at '+base+'form with Scheduled fixture. This is an explicitly authorized test submission.',rule:{kind:'interval',minutes:60,timeZone:'Europe/Berlin'},mode:'normal',submission:'automatic'}}}
+       else{savedSchedule=toolResult(body).automation;assert(savedSchedule.id);assert.equal(savedSchedule.submission,'automatic');send(res,body.model,{content:'Fixture schedule saved.'},'stop');return}
+      }else{
+       const text=JSON.stringify(body.messages);const occurrence=text.match(/Occurrence: ([^\\]+)\\nScheduled/)[1];
+       const index=scheduledSteps.get(occurrence)||0;const reviewRun=text.includes('Fixture draft');
+       assert(hasTool('automation_finish'));assert(hasTool('automation_submission'));
+       if(reviewRun){
+        if(index===0){name='write';args={file_path:path.join(workspace,'scheduled-draft.md'),content:'# Scheduled draft\nPrepared from the supplied fixture facts.\n'}}
+        else if(index===1){assert(fs.readFileSync(path.join(workspace,'scheduled-draft.md'),'utf8').includes('supplied fixture facts'));name='automation_finish';args={status:'needs_attention',summary:'Draft saved to '+path.join(workspace,'scheduled-draft.md')+' for review.'}}
+        else{send(res,body.model,{content:'Scheduled draft prepared.'},'stop');return}
+       }else{
+        name='desktop_browser';
+        if(index===0)args={action:'open',url:base+'form'};
+        else if(index===1){const seen=toolResult(body);args={action:'fill',tabId:seen.state.tabId,revision:seen.state.revision,ref:seen.elements.find(x=>x.name==='Caption').ref,value:'Scheduled fixture'}}
+        else if(index===2){name='automation_submission';args={action:'intent',identity:base+'fixture/account/42'}}
+        else if(index===3)args={action:'observe'};
+        else if(index===4){const seen=toolResult(body);args={action:'click',tabId:seen.state.tabId,revision:seen.state.revision,ref:seen.elements.find(x=>x.name==='Save draft').ref}}
+        else if(index===5){assert(toolResult(body).text.includes('Saved: Scheduled fixture'));name='automation_submission';args={action:'confirmed',identity:base+'fixture/account/42',evidence:'Saved: Scheduled fixture'}}
+        else if(index===6){name='automation_finish';args={status:'completed',summary:'Verified local form receipt: Saved: Scheduled fixture'}}
+        else{send(res,body.model,{content:'Scheduled form verified.'},'stop');return}
+       }
+       scheduledSteps.set(occurrence,index+1);
+      }
+      send(res,body.model,{role:'assistant',tool_calls:[{index:0,id:'schedule-'+scheduleStep+'-'+Date.now(),type:'function',function:{name,arguments:JSON.stringify(args)}}]},'tool_calls');return;
+     }
      if(backgroundProbe){
       if(backgroundStep++===0){const name=process.platform==='win32'?'pwsh':'bash';send(res,body.model,{role:'assistant',tool_calls:[{index:0,id:'background-proof',type:'function',function:{name,arguments:JSON.stringify({command:'echo build-observation',description:'Produce observed output for optional background review'})}}]},'tool_calls');return}
       const observation=[...body.messages].reverse().find(message=>message.role==='tool');assert(observation,'The background checkpoint has no tool observation');
@@ -257,6 +322,58 @@ const OUT = fs.mkdtempSync(path.join(evidenceRoot, 'packaged-' + process.platfor
   await page.getByText(/^(Application build and artifact verification passed\.|Workspace verification failed\.)$/).first().waitFor({timeout:120000});
   assert.deepEqual(errors,[]);assert.equal(deliveryStep,3);record('Agent starts a delivery job, builds and executes a local application, and collects its hashed receipt');
   delivering=false;
+  await newChat();
+  const personalTurn=async(phase,prompt,reply)=>{personalPhase=phase;personalStep=0;await page.locator('[contenteditable="true"]').first().fill(prompt);await page.getByRole('button',{name:'Send message',exact:true}).click();await page.getByText(reply,{exact:true}).waitFor({timeout:60000});assert.deepEqual(errors,[]);personalPhase=''};
+  await personalTurn('memory','Remember that I prefer concise English for cover letters.','Preference remembered.');
+  if(await page.getByRole('button',{name:'History',exact:true}).getAttribute('aria-expanded')!=='true')await page.getByRole('button',{name:'History',exact:true}).click();
+  await page.locator('#strugend-history').getByRole('button',{name:'Memory',exact:true}).click();
+  const memoryDialog=page.getByRole('dialog',{name:'Memory',exact:true});assert((await memoryDialog.getByRole('textbox',{name:'Memory',exact:true}).inputValue()).includes('Use concise English for cover letters.'));
+  await memoryDialog.getByRole('button',{name:'Close',exact:true}).click();await page.locator('#strugend-history').getByRole('button',{name:'Close history',exact:true}).click();
+  record('Agent saves a preference through the logged tool and the Memory panel refreshes');
+  await app.evaluate(({session})=>session.fromPartition('persist:agent-os-browser').protocol.handle('https',request=>{
+   if(new URL(request.url).hostname!=='vault.example.test')return new Response('Fixture host only',{status:404});
+   return new Response('<!doctype html><title>Fixture sign in</title><style>body{padding:30px;font:18px system-ui}input,button{display:block;margin:20px;padding:12px}</style><form onsubmit="event.preventDefault();document.querySelector(\'output\').textContent=\'Signed in as \'+document.querySelector(\'input\').value"><label>Username<input autocomplete="username" name="username"></label><label>Password<input type="password" name="password"></label><button>Sign in</button></form><output></output>',{headers:{'content-type':'text/html'}});
+  }));
+  await newChat();
+  await personalTurn('login-add','Sign in to the fixture portal for me.','Save your login in the secure Vault form and tell me when ready.');
+  const vaultDialog=page.getByRole('dialog',{name:'Vault',exact:true});await vaultDialog.waitFor();
+  await vaultDialog.getByLabel('Username / email',{exact:true}).fill('fixture-user');await vaultDialog.getByLabel('Password',{exact:true}).fill('synthetic-vault-password');
+  await vaultDialog.getByRole('button',{name:'Save login',exact:true}).click();await vaultDialog.getByText('Saved locally.',{exact:true}).waitFor();await vaultDialog.getByRole('button',{name:'Close',exact:true}).click();
+  await personalTurn('login-fill','Done, I saved the login. Continue signing in.','Saved login verified without exposing its password.');
+  record('A new task receives Memory automatically; agent requests secure credential entry and signs in through Vault');
+  await personalTurn('record-start','Let me show you this workflow so you can reuse it.','Recording is ready. Demonstrate the workflow and say done.');
+  await app.evaluate(async({webContents})=>{const view=webContents.getAllWebContents().find(w=>w.getURL()==='https://vault.example.test/login');if(!view)throw Error('Missing recording page');view.focus();const point=await view.executeJavaScript('(()=>{const r=document.querySelector("button").getBoundingClientRect();return {x:Math.round(r.x+r.width/2),y:Math.round(r.y+r.height/2)}})()');view.sendInputEvent({type:'mouseDown',button:'left',clickCount:1,...point});view.sendInputEvent({type:'mouseUp',button:'left',clickCount:1,...point})});
+  await page.waitForFunction(async id=>(await window.agentOS.request({type:'recording.list'})).find(r=>r.id===id)?.steps.some(step=>step.action==='click'),personalRecording.id);
+  await personalTurn('record-save','Done, save this workflow for next time.','Your demonstration is saved as a reusable skill.');
+  const recorded=await page.evaluate(()=>window.agentOS.request({type:'recording.list'}));assert(recorded.some(r=>r.id===personalRecording.id&&r.skillPath));
+  record('Agent records trusted browser actions, reads scrubbed steps and saves a discoverable reusable skill');
+  await newChat();await personalTurn('skill-use','Use the workflow I taught you for this portal.','Saved skill loaded for this task.');
+  record('A later task discovers and loads the recorded skill without restarting');
+  await newChat();scheduling=true;
+  await page.locator('[contenteditable="true"]').first().fill('Every hour, complete the local fixture form with Scheduled fixture. Automatically submit this test form. Use Europe/Berlin time.');
+  await page.getByRole('button',{name:'Send message',exact:true}).click();
+  await page.getByText('Fixture schedule saved.',{exact:true}).waitFor({timeout:60000});scheduling=false;
+  assert(savedSchedule.id);assert.equal(fs.realpathSync(savedSchedule.workspace),fs.realpathSync(workspace));record('Natural chat saves a persistent schedule using this workspace and provider');
+  const automation=async body=>page.evaluate(async body=>{const response=await fetch('/api/strugend/automations',body?{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)}:undefined);const value=await response.json();if(!response.ok)throw Error(JSON.stringify(value));return value},body);
+  await newChat();
+  await automation({action:'pause',id:savedSchedule.id});
+  const queued=await automation({action:'run',id:savedSchedule.id});
+  await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows().find(w=>w.webContents.getURL()==='dsh-app://app/').close());
+  const hidden=await app.evaluate(({BrowserWindow})=>!BrowserWindow.getAllWindows().find(w=>w.webContents.getURL()==='dsh-app://app/').isVisible());assert.equal(hidden,true);
+  const awaitRun=async id=>{
+   const deadline=Date.now()+90000;
+   while(Date.now()<deadline){const run=(await automation()).runs.find(r=>r.id===id);if(run&&!['queued','running'].includes(run.status))return run;await new Promise(resolve=>setTimeout(resolve,100))}
+   throw Error('Scheduled run did not settle: '+JSON.stringify(await automation()));
+  };
+  const completed=await awaitRun(queued.result.id);assert.equal(completed.status,'completed',completed.summary);assert(completed.sessionId);assert(completed.summary.includes('Saved: Scheduled fixture'));
+  await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].show());record('Background task submits a local fixture, confirms its receipt and creates a separate result conversation');
+  const draft=await automation({action:'create',spec:{name:'Fixture draft',instructions:'Save a local fixture draft for review.',workspace,mode:'normal',submission:'review',rule:{kind:'interval',minutes:60,timeZone:'Europe/Berlin'}}});
+  const draftRun=await automation({action:'run',id:draft.result.id});
+  const reviewed=await awaitRun(draftRun.result.id);assert.equal(reviewed.status,'needs_attention',reviewed.summary);assert(fs.existsSync(path.join(workspace,'scheduled-draft.md')));assert.notEqual(reviewed.sessionId,completed.sessionId);
+  record('Draft schedule creates the real document and records a review outcome without submitting');
+  await automation({action:'pause',id:savedSchedule.id});await automation({action:'pause',id:draft.result.id});
+  await closeApp();await launch();await page.locator('[contenteditable="true"]').first().waitFor({timeout:60000});
+  const recovered=await automation();assert(recovered.automations.some(a=>a.id===savedSchedule.id&&!a.enabled));assert(recovered.runs.some(r=>r.id===completed.id&&r.status==='completed'));record('Restart restores paused schedules and completed run history without replaying applications');
   await newChat();
   await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].setContentSize(880,600));await page.waitForFunction(()=>innerWidth===880);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);await page.screenshot({path:path.join(OUT,'empty-chat-small.png')});
   record('New chat fits the minimum window width without horizontal overflow');

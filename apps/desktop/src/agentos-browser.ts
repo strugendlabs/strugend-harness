@@ -122,6 +122,7 @@ export class AgentOsBrowser {
       view,
       window,
       renderer: new AbortController(),
+      bounds: { x: 0, y: 0, width: 1024, height: 768 },
       closed: false,
       queue: Promise.resolve(),
       state: {
@@ -140,6 +141,7 @@ export class AgentOsBrowser {
     }
     this.tabs.set(tabId, tab)
     window.contentView.addChildView(view)
+    view.setBounds({ x: 0, y: 0, width: 1024, height: 768 })
     view.setVisible(false)
     view.webContents.setWindowOpenHandler(({ url }) => {
       void this.act(sessionId, { action: 'open', url }, true).catch(() => {
@@ -330,13 +332,13 @@ export class AgentOsBrowser {
       bounds.height > 20000
     )
       throw new Error('Invalid browser viewport.')
-    tab.bounds = {
+    if (bounds.width > 0 && bounds.height > 0) tab.bounds = {
       x: Math.max(0, Math.round(bounds.x)),
       y: Math.max(0, Math.round(bounds.y)),
       width: Math.round(bounds.width),
       height: Math.round(bounds.height),
     }
-    tab.view.setBounds(tab.bounds)
+    if (tab.bounds) tab.view.setBounds(tab.bounds)
     tab.state.visible = visible && bounds.width > 0 && bounds.height > 0
     tab.view.setVisible(tab.state.visible)
     if (!tab.state.url && url !== undefined && tab.initialNavigation === undefined) {
@@ -651,6 +653,7 @@ export class AgentOsBrowser {
    * @param origin - Exact approved origin.
    * @param username - Login name.
    * @param password - Decrypted value kept inside the broker.
+   * @param options - Model callers require a fresh revision and respect user takeover; UI fills omit it.
    */
   async fillCredential(
     sessionId: string,
@@ -658,13 +661,19 @@ export class AgentOsBrowser {
     origin: string,
     username: string,
     password: string,
+    options?: { revision: number; signal?: AbortSignal | undefined },
   ): Promise<void> {
     const tab = this.owned(sessionId, tabId)
-    if (new URL(tab.view.webContents.getURL()).origin !== origin)
-      throw new Error('This login is saved for a different website.')
-    await this.script(
-      tab,
-      `(() => { if(location.origin!==${JSON.stringify(origin)})throw Error('Website changed.');const p=document.querySelector('input[type="password"]');if(!p)throw Error('No password field is visible.');const u=document.querySelector('input[autocomplete="username"],input[type="email"],input[name="username"]'); const set=(e,v)=>{const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;setter.call(e,v);e.dispatchEvent(new Event('input',{bubbles:true}));e.dispatchEvent(new Event('change',{bubbles:true}));};if(u)set(u,${JSON.stringify(username)});set(p,${JSON.stringify(password)});})()`,
-    )
+    await this.enqueue(tab, async (signal) => {
+      signal.throwIfAborted()
+      if (options !== undefined && (tab.state.takenOver || options.revision !== tab.state.revision))
+        throw new Error('Resume the agent and observe the login page again before filling.')
+      if (new URL(tab.view.webContents.getURL()).origin !== origin || !origin.startsWith('https://'))
+        throw new Error('This login is saved for a different website.')
+      await this.script(tab,
+        `(() => { if(location.origin!==${JSON.stringify(origin)})throw Error('Website changed.');const visible=e=>{const r=e.getBoundingClientRect();return r.width>0&&r.height>0&&getComputedStyle(e).visibility!=='hidden'&&!e.disabled;};const fields=[...document.querySelectorAll('input[type="password"]')].filter(visible);if(fields.length!==1)throw Error('Open a login form with one visible password field.');const p=fields[0];const u=[...(p.form||document).querySelectorAll('input[autocomplete="username"],input[type="email"],input[name="username"]')].find(visible); const set=(e,v)=>{const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;setter.call(e,v);e.dispatchEvent(new Event('input',{bubbles:true}));e.dispatchEvent(new Event('change',{bubbles:true}));};if(u)set(u,${JSON.stringify(username)});if(location.origin!==${JSON.stringify(origin)}||!p.isConnected)throw Error('Website changed.');set(p,${JSON.stringify(password)});})()`, signal)
+      tab.state.revision++
+      this.publish(tab)
+    }, options?.signal)
   }
 }

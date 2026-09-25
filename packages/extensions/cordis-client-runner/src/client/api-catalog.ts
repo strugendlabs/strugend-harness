@@ -99,9 +99,9 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'a signal aborted by the next navigation or layout disposal; check it before committing UI state.',
       },
       {
-        signature: 'toggleSidebar(): void',
-        description: 'Toggle the sidebar panel (closed ⟷ contract default width).',
-        parameters: [],
+        signature: 'toggleSidebar(expanded?: boolean): void',
+        description: 'Set or toggle sidebar visibility while retaining its preferred width.',
+        parameters: [{ name: 'expanded', description: 'Force open/closed when provided; otherwise toggle using the default width.' }],
       },
       {
         signature: 'openRightbar(track: boolean, fullscreen: boolean): void',

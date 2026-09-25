@@ -83,6 +83,21 @@
     },
     {
       "path": "../../packages/document/office-to-pdf"
+    },
+    {
+      "path": "../../packages/util/brand"
+    },
+    {
+      "path": "../../packages/preset/agent-presets"
+    },
+    {
+      "path": "../../packages/core/agent-default-model"
+    },
+    {
+      "path": "../../packages/workspace/workspace"
+    },
+    {
+      "path": "../../packages/session/session-title"
     }
   ]
 }

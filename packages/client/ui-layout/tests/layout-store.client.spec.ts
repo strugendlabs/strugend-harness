@@ -53,6 +53,22 @@ describe('createLayoutStore', () => {
     expect(store.getSnapshot().layoutInfo.sidebar).toBe(240)
   })
 
+  it('can request the sidebar for a secure form without closing or resizing an already-open panel', () => {
+    const { store, actions } = createLayoutStore().create()
+    actions.setSidebar(400)
+    actions.toggleSidebar(true)
+    expect(store.getSnapshot().layoutInfo.sidebar).toBe(400)
+    actions.toggleSidebar(false)
+    actions.toggleSidebar(true)
+    expect(store.getSnapshot().layoutInfo.sidebar).toBe(240)
+    actions.setViewportWidth(980)
+    actions.toggleSidebar(true)
+    actions.toggleSidebar(true)
+    expect(store.getSnapshot().layoutInfo.narrowExpanded).toBe(true)
+    actions.toggleSidebar(false)
+    expect(store.getSnapshot().layoutInfo.narrowExpanded).toBe(false)
+  })
+
   it('keeps the sidebar preference while toggling its narrow override', () => {
     const { store, actions } = createLayoutStore().create()
     actions.setSidebar(400)

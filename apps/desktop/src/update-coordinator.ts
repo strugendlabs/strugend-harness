@@ -7,6 +7,7 @@ import electronUpdater, { type AppUpdater, type ProgressInfo, type UpdateInfo } 
 import { gt, valid } from 'semver'
 import type { DesktopUpdateState } from './ipc.ts'
 import { DesktopUpdateHttpExecutor } from './update-http-executor.ts'
+import type { PreviewUpdateSource } from './preview-updates.ts'
 import { DesktopUpdatePreparationError } from './update-error.ts'
 
 const { autoUpdater } = electronUpdater
@@ -45,6 +46,7 @@ export class DesktopUpdateCoordinator {
    * @param updater - Process-owned Electron updater, replaceable at the network/platform test boundary.
    * @param enabled - Whether this process has a packaged update source.
    * @param currentVersion - Actual installed application version.
+   * @param preview - Verified installer source and manual handoff for unsigned previews.
    */
   constructor(
     private readonly publish: (state: DesktopUpdateState) => DesktopUpdateState,
@@ -52,6 +54,7 @@ export class DesktopUpdateCoordinator {
     private readonly updater: AppUpdater = autoUpdater,
     private readonly enabled: () => boolean = () => app.isPackaged && existsSync(join(process.resourcesPath, 'app-update.yml')),
     private readonly currentVersion: () => string = () => app.getVersion(),
+    private readonly preview?: { enabled(): boolean; source: PreviewUpdateSource; open(path: string): Promise<void> },
   ) {
     if (updater === autoUpdater) {
       // electron-updater omits this internal transport property from its public declarations.
@@ -106,7 +109,10 @@ export class DesktopUpdateCoordinator {
       if (version !== this.candidate) throw new Error('desktop update: download confirmation is stale')
       this.setState({ phase: 'downloading', version, percent: 0 })
       try {
-        await this.updater.downloadUpdate()
+        if (this.preview?.enabled()) {
+          await this.preview.source.download(version, (percent) =>{  this.onProgress({ percent } as ProgressInfo) })
+          this.downloaded = true
+        } else await this.updater.downloadUpdate()
         if (!this.downloaded) throw new Error('desktop update: platform preparation did not report readiness')
         return this.setState({ phase: 'ready', version })
       } catch (error) {
@@ -128,6 +134,10 @@ export class DesktopUpdateCoordinator {
     this.installOperation ??= Promise.resolve().then(async () => {
       this.setState({ phase: 'installing', version })
       try {
+        if (this.preview?.enabled()) {
+          await this.preview.open(await this.preview.source.installer(version))
+          return this.setState({ phase: 'ready', version })
+        }
         if (!await this.beforeRestart()) return this.setState({ phase: 'ready', version })
         this.assertLive()
         this.updater.quitAndInstall(true, true)
@@ -143,6 +153,7 @@ export class DesktopUpdateCoordinator {
   /** Remove owned listeners and prevent pending library operations from publishing into closed UI. */
   dispose(): void {
     this.disposed = true
+    this.preview?.source.dispose()
     this.updater.off('download-progress', this.onProgress)
     this.updater.off('update-downloaded', this.onDownloaded)
     // Pending updater promises can still emit EventEmitter errors during shutdown.
@@ -179,6 +190,10 @@ export class DesktopUpdateCoordinator {
     try {
       this.assertLive()
       if (!this.enabled()) throw new Error('desktop update: this application has no packaged update source')
+      if (this.preview?.enabled()) {
+        this.candidate = await this.preview.source.check(this.currentVersion())
+        return this.setState(this.candidate === undefined ? { phase: 'idle' } : { phase: 'available', version: this.candidate })
+      }
       const result = await this.updater.checkForUpdates()
       if (result === null) throw new Error('desktop update: no check result was returned')
       const version = result.updateInfo.version

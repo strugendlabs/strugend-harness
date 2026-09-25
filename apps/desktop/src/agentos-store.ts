@@ -288,22 +288,26 @@ export class AgentOsStore {
    * @param id - Demonstration identity.
    * @param name - Portable skill slug.
    * @param instructions - User-reviewed instructions.
+   * @param description - Task-specific discovery text; defaults to the recording title and first instruction.
    * @returns Skill file path.
    */
-  saveSkill(id: string, name: string, instructions: string): string {
+  saveSkill(id: string, name: string, instructions: string, description?: string): string {
     if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(name) || name.length > 80)
       throw new Error('Use a short lowercase skill-name with hyphens.')
     if (typeof instructions !== 'string' || !instructions.trim() || instructions.length > 65_536)
       throw new Error('Add the reviewed skill instructions.')
     const recording = this.recordings().find(item => item.id === id)
     if (recording === undefined) throw new Error('Recording not found.')
+    if (description !== undefined && (typeof description !== 'string' || !description.trim() || description.length > 500))
+      throw new Error('Describe when to use the skill in 1–500 characters.')
+    const discovery = description?.trim() ?? `${recording.title}: ${instructions.trim().split('\n')[0] ?? ''}`.slice(0, 500)
     const folder = join(this.root, 'skills', name)
     if (existsSync(folder)) throw new Error('That skill already exists. Choose a new version name.')
     mkdirSync(folder, { recursive: true, mode: 0o700 })
     const path = join(folder, 'SKILL.md')
     writeFileSync(
       path,
-      `---\nname: ${name}\ndescription: ${JSON.stringify(recording.title)}\n---\n\n${instructions.trim()}\n`,
+      `---\nname: ${name}\ndescription: ${JSON.stringify(discovery)}\n---\n\n${instructions.trim()}\n`,
       { mode: 0o600 },
     )
     writeFileSync(join(folder, 'recording.json'), JSON.stringify(recording, null, 2), { mode: 0o600 })

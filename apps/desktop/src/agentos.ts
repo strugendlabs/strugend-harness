@@ -8,6 +8,7 @@ import { AgentOsMedia } from './agentos-media.ts'
 import { AgentOsStore } from './agentos-store.ts'
 import { AgentOsBrowser } from './agentos-browser.ts'
 import { openLocation } from './strugend-location.ts'
+import type { DesktopBackground } from './background.ts'
 import { AgentOsCrawler } from './agentos-crawler.ts'
 
 /** Main-process feature composition; untrusted page renderers receive none of these APIs. */
@@ -18,12 +19,15 @@ export class AgentOsDesktop {
   private readonly crawler = new AgentOsCrawler()
   private clipboardTimer?: ReturnType<typeof setTimeout>
   private copiedPassword?: string
+  private readonly emit: (event: AgentOsEvent) => void
 
   /** @param root - Private application data. @param window - Owned window. @param assertSender - Top-level renderer authentication. */
   constructor(
     root: string,
     window: () => BrowserWindow | undefined,
     assertSender: (event: IpcMainInvokeEvent) => void,
+    private readonly background?: DesktopBackground,
+    private readonly updates?: { preferences(mode?: 'ask' | 'automatic'): unknown; check(): Promise<void> },
   ) {
     this.store = new AgentOsStore(root, {
       encrypt: (value) => {
@@ -41,6 +45,7 @@ export class AgentOsDesktop {
       const target = window()
       if (target !== undefined && !target.isDestroyed()) target.webContents.send('agent-os:event', event)
     }
+    this.emit = emit
     this.media = new AgentOsMedia(join(root, 'media'), this.store, emit)
     this.browser = new AgentOsBrowser(window, emit, this.store)
     const skillRoot = join(root, 'skills')
@@ -59,6 +64,16 @@ export class AgentOsDesktop {
       if (typeof input !== 'object' || input === null || !('type' in input)) throw new Error('Invalid desktop command.')
       const command = input as AgentOsCommand
       switch (command.type) {
+        case 'updates.preferences':
+          return this.updates?.preferences(command.mode)
+        case 'updates.check':
+          return this.updates?.check()
+        case 'background.read':
+          return this.background?.status() ?? { enabled: false, openAtLogin: false }
+        case 'background.login':
+          if (typeof command.enabled !== 'boolean') throw new Error('Invalid login preference.')
+          this.background?.login(command.enabled)
+          return this.background?.status()
         case 'location.open':
           return openLocation(command, shell)
         case 'media.list':
@@ -157,17 +172,89 @@ export class AgentOsDesktop {
       id?: string
       name?: string
       instructions?: string
+      description?: string
+      text?: string
+      revision?: string | number
+      action?: string
+      tabId?: string
+      limit?: number
       crawl?: unknown
+      enabled?: boolean
+      notification?: { title: string; sessionId: string }
+    }
+    if (request.method === 'automation-state' && typeof request.enabled === 'boolean') {
+      this.background?.setEnabled(request.enabled)
+      if (request.notification && typeof request.notification.title === 'string' && typeof request.notification.sessionId === 'string') this.background?.notify(request.notification.title, request.notification.sessionId)
+      return null
+    }
+    if (request.method === 'automation-browser-close' && typeof request.sessionId === 'string') {
+      for (const tab of this.browser.list(request.sessionId)) this.browser.close(tab.tabId)
+      return null
     }
     if (request.method === 'crawl') return this.crawler.run(request.crawl, signal)
+    if (request.method === 'personal-context') {
+      if (typeof request.limit !== 'number' || !Number.isSafeInteger(request.limit) || request.limit < 256 || request.limit > 65_536)
+        throw new Error('Invalid personal context limit.')
+      const memory = this.store.memory(), recordings = this.store.recordings()
+      return {
+        memory: { text: memory.text.slice(0, request.limit), revision: memory.revision, truncated: memory.text.length > request.limit },
+        savedLogins: this.store.vault().length, recordings: recordings.length,
+        savedSkills: recordings.filter(item => item.skillPath).length,
+      }
+    }
+    if (request.method === 'memory-write' && typeof request.text === 'string' && typeof request.revision === 'string') {
+      const memory = this.store.writeMemory(request.text, request.revision)
+      this.emit({ type: 'personal.changed' })
+      return memory
+    }
+    if (request.method === 'vault-use' && typeof request.sessionId === 'string' && typeof request.tabId === 'string') {
+      const tab = this.browser.list(request.sessionId).find(item => item.tabId === request.tabId)
+      if (!tab) throw new Error('Choose a browser tab owned by this conversation.')
+      const url = new URL(tab.url)
+      if (url.protocol !== 'https:' || url.username || url.password) throw new Error('Vault requires an exact HTTPS website.')
+      const matches = this.store.vault().filter(item => item.origin === url.origin)
+      if (request.action === 'check') return { origin: url.origin, logins: matches }
+      if (request.action === 'add') {
+        this.emit({ type: 'vault.open', origin: url.origin, sessionId: request.sessionId })
+        return { opened: true, origin: url.origin, instruction: 'Enter and save the login in the secure Vault form, then say done. No password is sent to the agent.' }
+      }
+      if (request.action === 'fill') {
+        const entry = matches.find(item => item.id === request.id)
+        if (!entry) throw new Error('Choose a matching saved login returned by check.')
+        if (typeof request.revision !== 'number' || !Number.isSafeInteger(request.revision))
+          throw new Error('Observe the page and provide its current revision.')
+        const password = this.store.secret(`vault:${entry.id}`)
+        if (password === undefined) throw new Error('Saved login is unavailable. Add it in Vault again.')
+        await this.browser.fillCredential(request.sessionId, request.tabId, entry.origin, entry.username, password,
+          { revision: request.revision, signal })
+        return { filled: true, origin: entry.origin, instruction: 'Observe the page, then submit the login within the authorized task and verify the result.' }
+      }
+    }
+    if (request.method === 'record-skill' && typeof request.sessionId === 'string' && typeof request.tabId === 'string') {
+      if (!this.browser.list(request.sessionId).some(item => item.tabId === request.tabId)) throw new Error('Choose a browser tab owned by this conversation.')
+      if (request.action === 'start') {
+        const recording = this.browser.startRecording(request.sessionId, request.tabId)
+        await this.browser.act(request.sessionId, { action: 'takeover', tabId: request.tabId }, true, signal)
+        return { recording, instruction: 'Demonstrate the workflow in this tab, then say done. Secret inputs are omitted.' }
+      }
+      if (request.action === 'stop') {
+        const recording = this.browser.stopRecording(request.tabId)
+        await this.browser.act(request.sessionId, { action: 'resume', tabId: request.tabId }, true, signal)
+        this.emit({ type: 'personal.changed' })
+        return { recording }
+      }
+    }
     if (request.method === 'recordings') return this.store.recordings()
     if (
       request.method === 'skill-save' &&
       typeof request.id === 'string' &&
       typeof request.name === 'string' &&
       typeof request.instructions === 'string'
-    )
-      return { path: this.store.saveSkill(request.id, request.name, request.instructions) }
+    ) {
+      const path = this.store.saveSkill(request.id, request.name, request.instructions, request.description)
+      this.emit({ type: 'personal.changed' })
+      return { path }
+    }
     if (request.method === 'media' && request.edit !== undefined)
       throw new Error('Video studio is coming soon.')
     if (request.method === 'media-list') return this.media.list()

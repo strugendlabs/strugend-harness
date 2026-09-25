@@ -1,0 +1,8 @@
+version: 1
+scenario: strugend-personal-tools
+profile: headless
+composition: strugend-personal-tools
+recording: authored
+header:
+  class: strugend-personal-tools
+  pin: true

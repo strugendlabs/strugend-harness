@@ -222,3 +222,26 @@ describe('desktop update coordinator', () => {
     expect(f.events.listenerCount('download-progress')).toBe(0)
   })
 })
+
+it('keeps unsigned preview transfers explicit and hands off only a verified installer', async () => {
+  const f = fixture()
+  const source = {
+    check: vi.fn(async () => '1.2.0'), download: vi.fn(async (_version: string, progress: (percent: number) => void) => { progress(100) }),
+    installer: vi.fn(async () => '/private/update/fixture.dmg'), dispose: vi.fn(),
+  }
+  const open = vi.fn(async () => {})
+  const coordinator = new DesktopUpdateCoordinator(state => state, f.beforeRestart, f.updater, () => true, () => '1.0.0', {
+    enabled: () => true, source: source as unknown as import('../src/preview-updates.ts').PreviewUpdateSource, open,
+  })
+  coordinators.push(coordinator)
+  expect(await coordinator.check()).toEqual({ phase: 'available', version: '1.2.0' })
+  expect(source.download).not.toHaveBeenCalled(); expect(f.checkForUpdates).not.toHaveBeenCalled()
+  expect((await coordinator.download('1.2.0')).phase).toBe('ready')
+  expect(open).not.toHaveBeenCalled()
+  await coordinator.install('1.2.0')
+  expect(open).toHaveBeenCalledWith('/private/update/fixture.dmg')
+  expect(f.beforeRestart).not.toHaveBeenCalled(); expect(f.quitAndInstall).not.toHaveBeenCalled()
+  source.installer.mockRejectedValueOnce(new Error('Installer changed'))
+  expect((await coordinator.install('1.2.0')).phase).toBe('error')
+  expect(open).toHaveBeenCalledTimes(1)
+})

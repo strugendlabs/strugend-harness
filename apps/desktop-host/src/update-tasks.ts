@@ -4,6 +4,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-jobs'
 import type {} from '@deepseek-ai/dsh-client-connection'
+import type {} from './automations.ts'
 
 /**
  * Register update admission on the owning Host context.
@@ -29,11 +30,12 @@ export function installDesktopUpdateTaskControl(ctx: Context): (action: 'inspect
   })
   return async (action) => {
     if (stopped) throw new Error('desktop update: Host is stopping')
-    if (action === 'unlock') { locked = false; lockGeneration++ }
+    if (action === 'unlock') { locked = false; lockGeneration++; ctx.get('strugendAutomations')?.lock(false) }
     const agents = ctx.get('agents')
     const jobs = ctx.get('jobs')
     if (agents === undefined || jobs === undefined) throw new Error('desktop update: task services are unavailable')
     if (action === 'lock') {
+      ctx.get('strugendAutomations')?.lock(true)
       locked = true
       const generation = ++lockGeneration
       // Read requests are not tasks; admitted writes must finish before the final work check.
@@ -43,7 +45,7 @@ export function installDesktopUpdateTaskControl(ctx: Context): (action: 'inspect
       if (generation !== lockGeneration) throw new Error('desktop update: admission lock was superseded')
     }
     const liveAgents = agents.list()
-    return liveAgents.some(agent => agent.status === 'running'
+    return ctx.get('strugendAutomations')?.running === true || liveAgents.some(agent => agent.status === 'running'
       || agent.inbox.nextTurn.length > 0 || agent.inbox.nextStep.length > 0)
       || [undefined, ...liveAgents].some(agent => jobs.list(agent)
         .some(job => job.status === 'running' || job.status === 'stopping'))

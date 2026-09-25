@@ -16,12 +16,14 @@ export interface AgentOsState {
   memory: { text: string; revision: string; path: string }
   vault: VaultItem[]
   recordings: Recording[]
+  vaultRequest?: { origin: string; sessionId: string; sequence: number } | undefined
   error: string
 }
 /** Observable workspace state and actions provided to the desktop workspace view. */
 export interface AgentOsInjected {
   hooks: { agentOs: HostObservable<AgentOsState> }
   openVideoStudio(): void
+  acknowledgeVaultRequest(sequence: number): void
   agentOsRequest(command: AgentOsCommand): Promise<unknown>
 }
 
@@ -46,6 +48,8 @@ export function createAgentOsController(
   }
   const listeners = new Set<() => void>()
   let disposed = false
+  let refreshSequence = 0
+  let requestSequence = 0
   const update = (patch: Partial<AgentOsState>): void => {
     if (disposed) return
     snapshot = { ...snapshot, ...patch }
@@ -53,12 +57,14 @@ export function createAgentOsController(
   }
   const refresh = async (): Promise<void> => {
     if (api === undefined) return
+    const sequence = ++refreshSequence
     const [organization, memory, vault, recordings] = await Promise.all([
       api.request({ type: 'organization.read' }),
       api.request({ type: 'memory.read' }),
       api.request({ type: 'vault.list' }),
       api.request({ type: 'recording.list' }),
     ])
+    if (sequence !== refreshSequence) return
     update({
       ready: true,
       organization: organization as OrganizationState,
@@ -70,6 +76,8 @@ export function createAgentOsController(
   }
   const recordingState = new Map<string, boolean>()
   const unsubscribe = api?.subscribe((event) => {
+    if (event.type === 'personal.changed') void refresh().catch((reason: unknown) => { update({ error: String(reason) }) })
+    if (event.type === 'vault.open') update({ vaultRequest: { origin: event.origin, sessionId: event.sessionId, sequence: ++requestSequence } })
     if (event.type === 'organization') update({ organization: event.state })
     if (event.type === 'browser') {
       const stopped = recordingState.get(event.state.tabId) === true && !event.state.recording
@@ -90,6 +98,9 @@ export function createAgentOsController(
   })
   return {
     openVideoStudio,
+    acknowledgeVaultRequest: (sequence) => {
+      if (snapshot.vaultRequest?.sequence === sequence) update({ vaultRequest: undefined })
+    },
     hooks: {
       agentOs: {
         getSnapshot: () => snapshot,

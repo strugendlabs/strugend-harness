@@ -1,5 +1,5 @@
 /** Nested organizational groups and desktop personal tools beside the existing project tree. */
-import { useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import type { InjectFace, PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
 import type { OrganizationMutation, ChatGroup, Recording, AgentOsCommand } from '@deepseek-ai/dsh-agentos-protocol'
@@ -7,9 +7,10 @@ import type { WorkspaceBrowserProps } from './contract/slots.ts'
 import type { AgentOsInjected } from './agentos-controller.ts'
 import { WorkspaceBrowser } from './rows/WorkspaceBrowser.tsx'
 import css from './AgentOs.module.css'
+import { Automations } from './Automations.tsx'
 
 type Props = WorkspaceBrowserProps & InjectFace<AgentOsInjected>
-type Dialog = 'memory' | 'vault' | 'skills' | 'group' | 'organize' | null
+type Dialog = 'automations' | 'memory' | 'vault' | 'skills' | 'group' | 'organize' | null
 
 function generatePassword(): string {
   const alphabet = 'abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$%&*'
@@ -43,9 +44,10 @@ export function StrugendWordmark({ t }: PropsLocale<'workspace'>): ReactNode {
 
 /** Adds desktop organization while preserving Harness workspaces and their existing controls. */
 export function AgentOsWorkspace(props: Props): ReactNode {
-  const { useAgentOs, agentOsRequest, useSessions, open, t, wide } = props
+  const { useAgentOs, agentOsRequest, acknowledgeVaultRequest, useSessions, open, t, wide } = props
   const state = useAgentOs(value => value)
   const sessions = useSessions(value => value)
+  const workspaces = props.useWorkspaces(value => value.items)
   const [dialog, setDialog] = useState<Dialog>(null)
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState('')
@@ -60,6 +62,14 @@ export function AgentOsWorkspace(props: Props): ReactNode {
   const [skillName, setSkillName] = useState('')
   const [query, setQuery] = useState('')
   const active = Object.values(sessions.byId).find(row => (row.retainedBy.mainView ?? 0) > 0)
+  useEffect(() => {
+    const request = state.vaultRequest
+    if (request === undefined) return
+    setDialog('vault')
+    setNotice('')
+    setLogin(current => current.password ? current : { name: new URL(request.origin).hostname, origin: request.origin, username: '', password: '' })
+    acknowledgeVaultRequest(request.sequence)
+  }, [state.vaultRequest, acknowledgeVaultRequest])
   const act = async (command: AgentOsCommand): Promise<unknown> => {
     setBusy(true)
     setNotice('')
@@ -249,6 +259,7 @@ export function AgentOsWorkspace(props: Props): ReactNode {
       {wide && (
         <>
           <nav className={css.nav} aria-label={t('agentos.tools')}>
+            <button type="button" onClick={() => { show('automations') }}><span aria-hidden="true">◷</span>{t('agentos.automations')}</button>
             <button
               type="button"
               onClick={() => {
@@ -425,6 +436,7 @@ export function AgentOsWorkspace(props: Props): ReactNode {
                   {editing && <p className={css.hint}>{t('agentos.deleteHint')}</p>}
                 </form>
               )}
+              {dialog === 'automations' && <Automations t={t} workspace={workspaces.find(w => active && w.sessionIds.includes(active.id))?.path ?? workspaces[0]?.path ?? ''} openTask={(id) => { setDialog(null); open(id) }} />}
               {dialog === 'memory' && (
                 <div className={css.form}>
                   <p className={css.hint}>{t('agentos.memoryHint')}</p>

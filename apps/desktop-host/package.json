@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-desktop-host",
   "description": "Private Node-mode host process for the Electron desktop application",
-  "version": "0.1.6-alpha.2.20260923.3",
+  "version": "0.1.6-alpha.2.20260925.1",
   "private": true,
   "license": "MIT",
   "type": "module",
@@ -13,6 +13,7 @@
     "@deepseek-ai/cordis": "workspace:^",
     "@deepseek-ai/dsh": "workspace:^",
     "@deepseek-ai/dsh-agent": "workspace:^",
+    "@deepseek-ai/dsh-agent-default-model": "workspace:^",
     "@deepseek-ai/dsh-agentos-protocol": "workspace:^",
     "@deepseek-ai/dsh-app-boot": "workspace:^",
     "@deepseek-ai/dsh-attachment": "workspace:^",
@@ -23,6 +24,7 @@
     "@deepseek-ai/dsh-host-webserver": "workspace:^",
     "@deepseek-ai/dsh-jobs": "workspace:^",
     "@deepseek-ai/dsh-llm": "workspace:^",
+    "@deepseek-ai/dsh-office-to-pdf": "workspace:^",
     "@deepseek-ai/dsh-permission-presets": "workspace:^",
     "@deepseek-ai/dsh-sandbox-policy": "workspace:^",
     "@deepseek-ai/dsh-session": "workspace:^",
@@ -34,18 +36,21 @@
     "@deepseek-ai/dsh-tools": "workspace:^",
     "@deepseek-ai/dsh-util-values": "workspace:^",
     "@deepseek-ai/schemastery": "workspace:^",
+    "croner": "10.0.1",
     "tar": "^7.5.0",
-    "@deepseek-ai/dsh-agent-default-model": "workspace:^",
-    "@deepseek-ai/dsh-office-to-pdf": "workspace:^"
+    "@deepseek-ai/dsh-brand": "workspace:^",
+    "@deepseek-ai/dsh-agent-presets": "workspace:^",
+    "@deepseek-ai/dsh-workspace": "workspace:^",
+    "@deepseek-ai/dsh-session-title": "workspace:^"
   },
   "devDependencies": {
-    "@receptron/laya": "0.1.2",
-    "@deepseek-ai/dsh-session-persistence": "workspace:^",
-    "onnxruntime-node": "1.30.0",
-    "onnxruntime-node-intel-mac": "npm:onnxruntime-node@1.22.0",
-    "@huggingface/tokenizers": "0.2.0",
-    "@deepseek-ai/dsh-session-snapshot": "workspace:^",
     "@deepseek-ai/dsh-agent-loop-testkit": "workspace:^",
-    "@deepseek-ai/libreoffice-kit": "0.0.1"
+    "@deepseek-ai/dsh-session-persistence": "workspace:^",
+    "@deepseek-ai/dsh-session-snapshot": "workspace:^",
+    "@deepseek-ai/libreoffice-kit": "0.0.1",
+    "@huggingface/tokenizers": "0.2.0",
+    "@receptron/laya": "0.1.2",
+    "onnxruntime-node": "1.30.0",
+    "onnxruntime-node-intel-mac": "npm:onnxruntime-node@1.22.0"
   }
 }

@@ -66,6 +66,10 @@ export class DesktopHostUncleanExitError extends Error {}
 
 /** One Web backend running under the Electron executable in Node mode. */
 export class DesktopHostProcess {
+  /** Request a deadline refresh after OS resume. */
+  wakeAutomations(): void {
+    if (this.child?.connected && !this.stopping) this.child.send({ type: 'automation-wake' }, (error) => { if (error) this.fail(error) })
+  }
   private child: ChildProcess | undefined
   private readyResolve!: (ready: DesktopHostReady) => void
   private readyReject!: (error: Error) => void

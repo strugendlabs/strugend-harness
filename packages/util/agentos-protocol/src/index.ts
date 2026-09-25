@@ -105,6 +105,14 @@ export interface VaultItem {
   updatedAt: number
 }
 
+/** Bounded personal context for the first model request of a turn; contains no credentials. */
+export interface PersonalContext {
+  memory: { text: string; revision: string; truncated: boolean }
+  savedLogins: number
+  recordings: number
+  savedSkills: number
+}
+
 /** A recorded step, scrubbed at capture time. */
 export interface RecordedStep {
   action: string
@@ -149,6 +157,10 @@ export interface VideoEdit {
 
 /** Commands available only to the owned, top-level application renderer. */
 export type AgentOsCommand =
+  | { type: 'updates.preferences'; mode?: 'ask' | 'automatic' }
+  | { type: 'updates.check' }
+  | { type: 'background.read' }
+  | { type: 'background.login'; enabled: boolean }
   | { type: 'location.open'; path: string; reveal?: boolean }
   | { type: 'media.list' }
   | { type: 'media.import' }
@@ -176,6 +188,9 @@ export type AgentOsCommand =
 
 /** Main-process notifications, containing only redacted application state. */
 export type AgentOsEvent =
+  | { type: 'personal.changed' }
+  | { type: 'vault.open'; origin: string; sessionId: string }
+  | { type: 'automation.open'; sessionId: string }
   | { type: 'media'; assets: MediaAsset[] }
   | { type: 'media.progress'; jobId: string; progress: number; name: string; error?: string }
   | { type: 'organization'; state: OrganizationState }
@@ -193,3 +208,5 @@ declare global {
     agentOS?: AgentOsDesktopApi
   }
 }
+
+export type { AutomationId, AutomationRunId, AutomationRule, AutomationSpec, Automation, AutomationRunStatus, AutomationRun, AutomationSnapshot } from './automations.ts'

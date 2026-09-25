@@ -86,6 +86,13 @@ export const en = {
   mandatoryCopied: 'Link copied',
   mandatoryCopyFailed: 'Copy failed. Select and copy the address below manually.',
   mandatoryAddress: 'Download address',
+  previewUpdateReady: 'The verified preview installer is ready.',
+  previewUpdateDetail: 'This preview is unsigned. Open the installer, quit Strugend when ready, and finish installation. Your conversations, credentials, and schedules are kept. Automatic installation becomes available with signed releases.',
+  previewUpdateOpen: 'Open installer',
+  backgroundOpen: 'Open Strugend',
+  backgroundQuit: 'Quit Strugend (schedules stop)',
+  backgroundActive: 'Strugend · scheduled tasks enabled',
+  backgroundResult: 'A scheduled task has an update. Open Strugend to view it.',
   mandatoryNotification: 'Return to the application to confirm installation and restart.',
 } as const
 
@@ -178,6 +185,13 @@ export const zh = {
   mandatoryCopied: '已复制链接',
   mandatoryCopyFailed: '复制失败，请手动选择下方地址复制。',
   mandatoryAddress: '下载地址',
+  previewUpdateReady: '已验证的预览版安装程序已准备好。',
+  previewUpdateDetail: '此预览版未签名。打开安装程序，准备好后退出 Strugend 并完成安装。会话、凭据和定时任务将保留。签名发行版将支持自动安装。',
+  previewUpdateOpen: '打开安装程序',
+  backgroundOpen: '打开 Strugend',
+  backgroundQuit: '退出 Strugend（停止定时任务）',
+  backgroundActive: 'Strugend · 定时任务已启用',
+  backgroundResult: '定时任务有新结果。打开 Strugend 查看。',
   mandatoryNotification: '返回应用确认安装并重启。',
 } as const satisfies DesktopMessages
 

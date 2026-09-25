@@ -7,7 +7,7 @@ describe('Client Cordis inspect catalog', () => {
       .toEqual([
         'selectPanel(panelId: MainPanelId | null): void',
         'beginNavigation(): AbortSignal',
-        'toggleSidebar(): void',
+        'toggleSidebar(expanded?: boolean): void',
         'openRightbar(track: boolean, fullscreen: boolean): void',
         'closeRightbar(): void',
       ])

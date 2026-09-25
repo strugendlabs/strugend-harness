@@ -39,6 +39,9 @@ import { DesktopMandatoryUpdateWindow } from './mandatory-update-window.ts'
 import { DesktopPolicyTestAuth } from './policy-test-auth.ts'
 import { DesktopUpdateDialog, type UpdateDialogOptions } from './update-dialog.ts'
 import { readDesktopRuntime } from './runtime-tree.ts'
+import { UpdatePreferences } from './update-preferences.ts'
+import { PreviewUpdateSource } from './preview-updates.ts'
+import { DesktopBackground } from './background.ts'
 import { AgentOsDesktop } from './agentos.ts'
 import { agentOsIdentity } from './agentos-identity.ts'
 
@@ -248,7 +251,13 @@ async function main(): Promise<void> {
     }
   }
   let navigation: { window: BrowserWindow; url: string; promise: Promise<void> } | undefined
-  const agentOS = new AgentOsDesktop(join(process.env.DSH_HOME ?? join(app.getPath('appData'), 'Agent OS', 'harness'), 'agent-os'), currentMainWindow, assertProductSender)
+  let automaticInstall = false
+  const updatePreferences = new UpdatePreferences(join(app.getPath('userData'), 'update-preferences.json'), () => app.isPackaged && !previewDistribution)
+  const background = new DesktopBackground(currentMainWindow, () => { focusPrimaryWindow() }, {
+    open: messages.backgroundOpen, quit: messages.backgroundQuit,
+    active: messages.backgroundActive, attention: messages.backgroundResult,
+  })
+  const agentOS = new AgentOsDesktop(join(process.env.DSH_HOME ?? join(app.getPath('appData'), 'Agent OS', 'harness'), 'agent-os'), currentMainWindow, assertProductSender, background, { preferences: mode => mode === undefined ? updatePreferences.read() : updatePreferences.write(mode), check: () => openUpdatePrompt(true) })
   const navigateMain = (url: string): Promise<void> => {
     const window = mainWindow
     if (quitting || window === undefined || window.isDestroyed()) return Promise.resolve()
@@ -286,6 +295,7 @@ async function main(): Promise<void> {
           updateStopFailure = error
         }
       },
+      wakeAutomations: () =>{  host.wakeAutomations() },
       updateTasks: (action: 'inspect' | 'lock' | 'unlock') => host.updateTasks(action),
     }
   }, (state) => {
@@ -356,6 +366,7 @@ async function main(): Promise<void> {
     return startup
   }
 
+  const previewSource = new PreviewUpdateSource(join(app.getPath('userData'), 'updates'), `${process.platform === 'darwin' ? 'mac' : 'win'}-${process.arch}`)
   const updates = new DesktopUpdateCoordinator(
     publishUpdate,
     async () => {
@@ -372,7 +383,9 @@ async function main(): Promise<void> {
         buttons: active ? [messages.updateStopTasks, messages.updateLater] : [messages.installAndRestart],
         defaultId: 1, cancelId: 1,
       }
-      if (isMandatory()) {
+      if (automaticInstall) {
+        if (active || isMandatory()) return false
+      } else if (isMandatory()) {
         if (!await mandatoryUI?.confirm(updates.state.version ?? '', active)) return false
       } else {
         if (mainWindow === undefined) return false
@@ -382,7 +395,7 @@ async function main(): Promise<void> {
       if (backend.host !== host) throw new DesktopUpdatePreparationError('tasks-unavailable', messages.updateTasksUnavailable)
       try {
         const stillActive = await host.updateTasks('lock')
-        if (stillActive && !active) throw new DesktopUpdatePreparationError('tasks-changed', messages.updateTasksChanged)
+        if (stillActive && (!active || automaticInstall)) throw new DesktopUpdatePreparationError('tasks-changed', messages.updateTasksChanged)
         mandatoryUI?.preparingRestart(stillActive)
         requireCleanStop = true
         updateStopFailure = undefined
@@ -402,10 +415,31 @@ async function main(): Promise<void> {
       return true
     },
     undefined,
-    () => app.isPackaged && !previewDistribution,
+    () => app.isPackaged,
+    () => app.getVersion(),
+    { enabled: () => previewDistribution, source: previewSource, open: async (path) => {
+      const response = await ordinaryMessageBox({ type: 'info', title: messages.updateTitle, message: messages.previewUpdateReady, detail: messages.previewUpdateDetail, buttons: [messages.previewUpdateOpen, messages.later], defaultId: 0, cancelId: 1 })
+      if (response.response !== 0) return
+      const error = await shell.openPath(path)
+      if (error) throw new Error(error)
+    } },
   )
 
-  const updateSchedule = new DesktopUpdateSchedule(updates, resolveDesktopUpdateScheduleConfig(process.env))
+  const updateSchedule = new DesktopUpdateSchedule({
+    get state() { return updates.state },
+    check: async (manual) => {
+      let state = await updates.check(manual)
+      if (manual || quitting || automaticInstall || updatePreferences.read().mode !== 'automatic' || previewDistribution || isMandatory()) return state
+      if (!state.version || !['available', 'ready'].includes(state.phase)) return state
+      if (!backend.host || await backend.host.updateTasks('inspect')) return state
+      automaticInstall = true
+      try {
+        if (state.phase === 'available') state = await updates.download(state.version)
+        if (state.phase === 'ready' && state.version) state = await updates.install(state.version)
+        return state
+      } finally { automaticInstall = false }
+    },
+  }, resolveDesktopUpdateScheduleConfig(process.env))
 
   const downloadUpdate = async (version: string): Promise<DesktopUpdateState> => {
     updateJournal?.action('download-requested')
@@ -520,9 +554,9 @@ async function main(): Promise<void> {
         return
       }
       if (state.phase !== 'available' && !(state.phase === 'error' && state.failedOperation === 'download')) return
-      if (manual) {
+      if (manual || previewDistribution) {
         const result = await ordinaryMessageBox({ title: messages.updateCheckTitle, message: messages.updateAvailable,
-          detail: formatDesktopMessage(messages.updateDetail, { version: state.version ?? '' }),
+          detail: formatDesktopMessage(messages.updateDetail, { version: state.version ?? '' }) + (previewDistribution ? `\n\n${previewSource.notes}` : ''),
           buttons: [messages.updateDownload], cancelId: 1 })
         if (result.response !== 0) return
       }
@@ -589,10 +623,14 @@ async function main(): Promise<void> {
     if (!quitting) void mandatoryPolicy?.check('foreground-or-resume').catch((error: unknown) => { console.error(error) })
     if (!quitting) void updateSchedule.check().catch((error: unknown) => { console.error(error) })
   }
+  const resumeAutomations = (): void => { backend.host?.wakeAutomations() }
   powerMonitor.on('resume', automaticCheck)
+  powerMonitor.on('resume', resumeAutomations)
   app.on('will-quit', () => {
     updateSchedule.dispose()
+    background.dispose()
     powerMonitor.off('resume', automaticCheck)
+    powerMonitor.off('resume', resumeAutomations)
     updates.dispose()
   })
 
@@ -677,9 +715,11 @@ async function main(): Promise<void> {
   }
 
   const createMainWindow = (): BrowserWindow => {
-    const window = createWindow(appPreload, true, true)
+    const loginLaunch = process.platform === 'darwin' && app.getLoginItemSettings().wasOpenedAtLogin
+    const window = createWindow(appPreload, !process.argv.includes('--background') && !loginLaunch, true)
     mainWindow = window
     window.on('focus', automaticCheck)
+    window.on('close', (event) => { if (!quitting && background.keepRunning) { event.preventDefault(); window.hide() } })
     window.on('closed', () => { if (mainWindow === window) mainWindow = undefined })
     window.webContents.on('did-fail-load', (_event, code, description, url, isMainFrame) => {
       if (isMainFrame && code !== -3 && !quitting && !window.isDestroyed()) {
@@ -715,7 +755,7 @@ async function main(): Promise<void> {
     if (BrowserWindow.getAllWindows().length === 0) focusPrimaryWindow()
   })
   app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') app.quit()
+    if (process.platform !== 'darwin' && !background.keepRunning) app.quit()
   })
   app.on('before-quit', (event) => {
     shuttingDown = true
@@ -730,6 +770,7 @@ async function main(): Promise<void> {
     quitting = true
     mainWindow?.hide()
     updateSchedule.dispose()
+    background.dispose()
     updateDialog.dispose()
     mandatoryUI?.dispose()
     void Promise.all([Promise.resolve(mandatoryPolicy?.dispose()).then(() => policyAuth?.dispose()), backend.close()])

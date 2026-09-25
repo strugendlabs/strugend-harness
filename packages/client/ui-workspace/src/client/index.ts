@@ -10,6 +10,8 @@
  */
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import { UpdateSettings } from './UpdateSettings.tsx'
 import { ComponentController } from './component-controller.ts'
 import { OptionalTools, OptionalToolsSetup, type OptionalToolsInjected } from './OptionalTools.tsx'
 import type { Context } from '@deepseek-ai/cordis'
@@ -90,9 +92,14 @@ export function apply(ctx: Context): void {
   const workspaces = ctx.get('workspaces') as IWorkspaces
   const uiWorkspace = new UiWorkspaceService(
     ctx, ctx.remote.directoryPicker, workspaces, sessions)
+  if (desktopApi) ctx.effect(() => desktopApi.subscribe((event) => {
+    if (event.type === 'automation.open') uiWorkspace.openSession(event.sessionId as SessionId)
+    if (event.type === 'vault.open') ctx.layout.toggleSidebar(true)
+  }))
   ctx.slots.provideRoot({ hooks: { workspaces: workspaces.list } })
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'ui-workspace: dictionaries')
   if (desktopApi !== undefined) {
+    ctx.slots.inject('settings.section', () => ctx.slots.register({ name: 'settings.section', id: 'strugend-updates', order: 16, locale: NS, label: () => ctx.locale.bind(NS)('updates.title') }, UpdateSettings))
     const components = new ComponentController((path, init) => fetch(path, init))
     ctx.effect(() => () => { components.dispose() }, 'optional tools: status lifecycle')
     const componentInjected = (): OptionalToolsInjected => ({
@@ -135,6 +142,7 @@ export function apply(ctx: Context): void {
     uiWorkspace.openSession(sessionId)
   }
   const browserInjected = (): WorkspaceBrowserInjected & AgentOsInjected => ({
+    acknowledgeVaultRequest: (sequence) => { desktop.acknowledgeVaultRequest(sequence) },
     agentOsRequest: command => desktop.agentOsRequest(command),
     openVideoStudio: () => { desktop.openVideoStudio() },
     // Explicit group actions keep their target; unscoped New Session inherits

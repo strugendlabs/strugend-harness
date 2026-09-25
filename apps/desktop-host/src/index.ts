@@ -2,8 +2,10 @@
 
 import { mkdir, writeFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
+import * as automations from './automations.ts'
 import * as agentOsVision from './agentos-vision.ts'
 import * as agentOsTools from './agentos-tools.ts'
+import * as agentOsPersonalContext from './agentos-personal-context.ts'
 import * as agentOsWorkflow from './agentos-workflow.ts'
 import * as agentOsPower from './agentos-power.ts'
 import * as strugendIntelligence from './strugend-intelligence.ts'
@@ -92,10 +94,12 @@ async function main(): Promise<void> {
   await ctx.plugin(agentOsWorkflow)
   await ctx.plugin(agentOsPower)
   await ctx.plugin(agentOsTools)
+  await ctx.plugin(agentOsPersonalContext, agentOsPersonalContext.Config({ memoryChars: 4000, deadlineMs: 1500 }))
   await ctx.plugin(agentOsVision)
   await ctx.plugin(strugendIntelligence, strugendIntelligence.Config({ localModelDir: '' } as strugendIntelligence.Config))
   const skillRoot = await desktopRequest<string>({ method: 'skill-root' })
   await ctx.plugin(skillFilesystem, { providerName: 'agent-os-recordings', includeDefaultRoots: false, customSkillDirs: [skillRoot] })
+  await ctx.plugin(automations, automations.Config({ root: join(resolveDshHome(), 'strugend-automations'), idlePollMs: 5000, clockCheckMs: 60000 }))
   control.updateTasks = installDesktopUpdateTaskControl(ctx)
   await ctx.plugin(desktopOffice, {
     source: process.argv[4] ?? join(runtimeDir, '..', 'runtime', 'primary-runtime'),

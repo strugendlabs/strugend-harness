@@ -1,0 +1,5 @@
+- insert:
+    - id: strugend-desktop-workflow
+      name: ../../../apps/desktop-host/src/agentos-workflow.ts
+    - id: strugend-desktop-tools
+      name: ../../../apps/desktop-host/src/agentos-tools.ts
