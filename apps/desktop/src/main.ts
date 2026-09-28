@@ -44,6 +44,7 @@ import { PreviewUpdateSource } from './preview-updates.ts'
 import { DesktopBackground } from './background.ts'
 import { AgentOsDesktop } from './agentos.ts'
 import { agentOsIdentity } from './agentos-identity.ts'
+import { openLocation } from './strugend-location.ts'
 
 const agentOsBrand = agentOsIdentity(process.env.DEEPSEEK_BASE_URL)
 // Keep the native credential and Chromium profile identity stable across display-name changes.
@@ -420,7 +421,11 @@ async function main(): Promise<void> {
     { enabled: () => previewDistribution, source: previewSource, open: async (path) => {
       const response = await ordinaryMessageBox({ type: 'info', title: messages.updateTitle, message: messages.previewUpdateReady, detail: messages.previewUpdateDetail, buttons: [messages.previewUpdateOpen, messages.later], defaultId: 0, cancelId: 1 })
       if (response.response !== 0) return
-      const error = await shell.openPath(process.platform === 'linux' ? dirname(path) : path)
+      if (process.platform === 'linux') {
+        await openLocation({ path: dirname(path) }, shell)
+        return
+      }
+      const error = await shell.openPath(path)
       if (error) throw new Error(error)
     } },
   )
