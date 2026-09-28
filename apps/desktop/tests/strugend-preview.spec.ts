@@ -1,3 +1,4 @@
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { createElectronBuilderConfig } from '../scripts/electron-builder-config.mjs'
 import { validateDesktopPackageEnvironment } from '../scripts/desktop-package-environment.mjs'
@@ -46,6 +47,6 @@ it('ships branded Linux AppImage and Debian installers', () => {
   const config = createElectronBuilderConfig({ ...environment, DSH_DESKTOP_UNSIGNED: '1' }, 'linux', 'x64')
   expect(config.linux.target).toEqual(['AppImage', 'deb'])
   expect(config.linux.executableName).toBe('strugend-harness')
-  expect(config.linux.icon).toContain('strugend/icon.png')
+  expect(config.linux.icon).toContain(join('strugend', 'icon.png'))
   expect(() => { validateDesktopPackageEnvironment({ DSH_DESKTOP_APP_ID: 'com.example.desktop' }, { platform: 'linux', arch: 'x64' }, { unsigned: true }) }).toThrow('requires the Strugend preview')
 })
