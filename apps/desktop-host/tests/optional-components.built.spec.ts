@@ -88,6 +88,9 @@ it.skipIf(!enabled)('downloads and installs the native decision and document arc
       expect(sdk.startsWith(decision)).toBe(true)
       expect(createRequire(sdk).resolve('onnxruntime-node').startsWith(decision)).toBe(true)
       expect((await stat(join(decision, 'model', 'laya.onnx'))).isFile()).toBe(true)
+      for (const provider of ['cuda', 'tensorrt']) {
+        await expect(stat(join(decision, 'node_modules', 'onnxruntime-node', 'bin', 'napi-v6', 'linux', 'x64', `libonnxruntime_providers_${provider}.so`))).rejects.toMatchObject({ code: 'ENOENT' })
+      }
     }
     const documents = await install('documents')
     const python = join(documents, 'primary-runtime', 'dependencies', 'python', process.platform === 'win32' ? 'python.exe' : 'bin/python3')

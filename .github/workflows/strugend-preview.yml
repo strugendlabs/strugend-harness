@@ -64,6 +64,8 @@ jobs:
     timeout-minutes: 90
     env:
       DSH_TELEMETRY_DISABLED: '1'
+      ONNXRUNTIME_NODE_INSTALL: skip
+      ONNXRUNTIME_NODE_INSTALL_CUDA: skip
       NODE_OPTIONS: --max-old-space-size=4096
       PREVIEW_VERSION: ${{ needs.plan.outputs.version }}
     steps:
@@ -177,7 +179,7 @@ jobs:
           elseif ($IsLinux) {
             $package = Get-ChildItem $output -File -Filter '*.deb' | Select-Object -First 1
             if (-not $package) { throw 'The Linux package is missing' }
-            sudo dpkg -i $package.FullName
+            sudo apt-get install -y $package.FullName
             if ($LASTEXITCODE -ne 0) { throw 'Linux package installation failed' }
             $app = '/opt/Strugend Harness/strugend-harness'
             if (-not (Test-Path $app)) { throw 'The Linux package did not install the application' }

@@ -48,6 +48,7 @@ async function copyPackages(
       const entry = relative(source, path).replaceAll('\\', '/')
       if (entry.split('/').includes('node_modules') || /(?:\.map|\.d\.ts)$/u.test(entry)) return false
       if (name.startsWith('onnxruntime-node') && entry.startsWith('bin/napi-v6/')) {
+        if (/libonnxruntime_providers_(?:cuda|tensorrt)\.so$/u.test(entry)) return false
         const [os, cpu] = entry.slice('bin/napi-v6/'.length).split('/')
         if (os && os !== platform || cpu && cpu !== arch) return false
       }
