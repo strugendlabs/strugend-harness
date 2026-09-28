@@ -219,8 +219,19 @@ const OUT = fs.mkdtempSync(path.join(evidenceRoot, 'packaged-' + process.platfor
   record('Coding is the default; all four task modes and the Strugend logo load');
   await app.evaluate(({dialog},folder)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[folder]})},workspace);
   await page.getByRole('button',{name:'Choose workspace',exact:true}).click();
+  const chosenWorkspace=page.getByRole('button',{name:'Choose workspace',exact:true}).getByText(path.basename(workspace),{exact:true});
+  const directoryBrowser=page.getByRole('dialog',{name:'Select Workspace Directory',exact:true});
+  await chosenWorkspace.or(directoryBrowser).waitFor();
+  if(await directoryBrowser.isVisible()){
+   await directoryBrowser.getByRole('button',{name:'Edit path',exact:true}).click();
+   const pathInput=directoryBrowser.getByRole('textbox',{name:'Edit path',exact:true});
+   await pathInput.fill(workspace);await pathInput.press('Enter');
+   await directoryBrowser.getByRole('navigation').getByRole('button',{name:path.basename(workspace),exact:true}).waitFor();
+   await directoryBrowser.getByRole('button',{name:'Open',exact:true}).click();
+   await directoryBrowser.waitFor({state:'hidden'});
+  }
   await page.getByText('What shall we work on?',{exact:true}).waitFor();
-  await page.getByRole('button',{name:'Choose workspace',exact:true}).getByText(path.basename(workspace),{exact:true}).waitFor();
+  await chosenWorkspace.waitFor();
   await page.locator('[contenteditable="true"]').first().waitFor();
   await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].setContentSize(1440,900));
   await page.waitForFunction(()=>innerWidth===1440);
@@ -330,7 +341,7 @@ const OUT = fs.mkdtempSync(path.join(evidenceRoot, 'packaged-' + process.platfor
   decisionFails=false;
   await closeSettings();
   await page.evaluate(folder=>window.agentOS.request({type:'location.open',path:folder}),workspace);
-  record('Native location bridge opens the real workspace in Finder or File Explorer');
+  record('Native location bridge opens the real workspace in the system file manager');
   const missingLocation=await page.evaluate(async folder=>{try{await window.agentOS.request({type:'location.open',path:folder});return ''}catch(error){return String(error)}},path.join(workspace,'missing-location'));
   assert.match(missingLocation,/moved|exist/i);record('Native location failure reaches the caller instead of reporting success');
   fs.writeFileSync(path.join(workspace,'build.mjs'),"import {writeFileSync} from 'node:fs'; writeFileSync('app.cjs', 'console.log(42)');");

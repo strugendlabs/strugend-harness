@@ -83,7 +83,9 @@ export function createElectronBuilderConfig(
     appId,
     extraMetadata: { dshDesktopAppId: appId, dshMandatoryUpdatePolicy: policy, strugendDistribution: preview ? 'byok-preview' : undefined, homepage: 'https://github.com/strugendlabs/strugend-harness' },
     productName: 'Strugend Harness',
-    artifactName: 'strugend-harness-${version}-${os}-${arch}.${ext}',
+    artifactName: resolvedPlatform === 'linux'
+      ? 'strugend-harness-${version}-linux-x64.${ext}'
+      : 'strugend-harness-${version}-${os}-${arch}.${ext}',
     directories: { output: unsigned ? join(buildPaths.root, 'unsigned-artifacts') : buildPaths.artifacts },
     asar: true,
     electronDist: buildPaths.electron,

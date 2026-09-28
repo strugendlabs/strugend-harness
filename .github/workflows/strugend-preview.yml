@@ -85,7 +85,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y xvfb dbus-x11 gnome-keyring libsecret-1-0 libfuse2 libnss3 libgtk-3-0 libasound2 libgbm1
+          sudo apt-get install -y xvfb dbus-x11 gnome-keyring libsecret-1-0 nautilus libfuse2 libnss3 libgtk-3-0 libasound2 libgbm1
       - run: pnpm install --frozen-lockfile
       - name: Check native CPU inference bindings
         run: >-
@@ -190,11 +190,11 @@ jobs:
             $app = Join-Path $bundle.FullName 'Contents/MacOS/Strugend Harness'
           }
           if ($IsLinux) {
-            xvfb-run -a dbus-run-session -- bash apps/desktop/scripts/linux-desktop-smoke.sh "$app"
+            xvfb-run -a -s '-screen 0 1920x1080x24' dbus-run-session -- bash apps/desktop/scripts/linux-desktop-smoke.sh "$app"
             if ($LASTEXITCODE -ne 0) { throw 'Packaged Linux desktop checks failed' }
             $image = Get-ChildItem $output -File -Filter '*.AppImage' | Select-Object -First 1
             if (-not $image) { throw 'The Linux AppImage is missing' }
-            xvfb-run -a dbus-run-session -- bash apps/desktop/scripts/linux-desktop-smoke.sh $image.FullName
+            xvfb-run -a -s '-screen 0 1920x1080x24' dbus-run-session -- bash apps/desktop/scripts/linux-desktop-smoke.sh $image.FullName
             if ($LASTEXITCODE -ne 0) { throw 'AppImage desktop checks failed' }
           } else {
             node apps/web/tests/strugend-desktop-smoke.mjs "$app"

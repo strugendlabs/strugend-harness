@@ -18,7 +18,7 @@ Linux x64 预览版提供 AppImage 和 Debian/Ubuntu 安装包，并在 Ubuntu 2
 
 [Strugend 开发指南](../../AGENT_OS_README.md) 定义本地分支的启动及服务配置。产品品牌使用 Strugend Harness；原生凭据标识和已有数据路径保持稳定。服务商中立的设置流程选择主模型。可选 Laya 检查在受监督的辅助进程中并行运行；只有经版本验证的配方可以进入 Core 上下文。模型权重和文档运行时是独立的可选下载。参见[资源策略与验证限制](../../STRUGEND_PLAN.md)。图谱记忆和视频工作室已禁用并标记即将推出。任务拥有的交付作业保留构建与发布回执；Finder/Explorer 操作使用 Electron 原生 shell 并报告失败。
 
-本地推理在 Windows 和 Apple Silicon 上使用 ONNX Runtime 1.30.0。Intel Mac 选择独立的 1.22.0 兼容依赖，因为[后续 npm 归档缺少 Intel Mac 绑定](https://github.com/microsoft/onnxruntime/issues/27961)。仅加载选中的运行时。发布前，原生验证会加载打包的 worker 和模型权重。
+本地推理在 Windows、Linux 和 Apple Silicon 上使用 ONNX Runtime 1.30.0。Intel Mac 选择独立的 1.22.0 兼容依赖，因为[后续 npm 归档缺少 Intel Mac 绑定](https://github.com/microsoft/onnxruntime/issues/27961)。仅加载选中的运行时。发布前，原生验证会加载打包的 worker 和模型权重。
 
 浏览器操作使用有时限的定时采样，包括隐藏视图，并在输入前拒绝标签已变、节点已移除、控件已禁用或被遮挡的目标。观察和可信文本输入支持同源框架编辑器；跨源框架保持不透明。`fill_form` 预检查最多 30 个字段，页面变化中断时返回已填写及剩余引用，且不会提交表单。 原生日期时间及数字输入先验证值再填写；单选下拉框接受观察中的精确可用值或标签。智能体观察会显示已有侧栏标签。支持图像的模型在导航和点击后收到截图。截图失败时，工具刷新 DOM 控件及其修订号，而不会重做操作；如果刷新也失败，则保留此前操作证据并明确警告控件已过期。辅助视觉失败时返回页面证据，并在本轮抑制重复辅助请求。
 
@@ -177,7 +177,7 @@ pnpm run package:desktop:mac:x64
 pnpm run package:desktop:win:x64
 ```
 
-macOS arm64 命令要求 Apple Silicon。macOS x64 命令可以在 Intel macOS 或带 Rosetta 的 Apple Silicon 上运行。Windows x64 命令要求 Windows x64。Linux 不是受支持的 Desktop 发布目标。
+macOS arm64 命令要求 Apple Silicon。macOS x64 命令可以在 Intel macOS 或带 Rosetta 的 Apple Silicon 上运行。Windows x64 命令要求 Windows x64。Linux 仅提供未签名的 Strugend 预览版。
 
 每个目标都在 `apps/desktop/.desktop-build/targets/<target>/` 下持有自己的打包输入、已准备运行时、包集合、dsh 依赖树、pnpm 准备状态、未打包应用、更新元数据和最终产物。Electron 归档缓存继续由 `.desktop-build/downloads` 共享，因为每个归档文件名都包含版本、平台和架构，并且在解包前经过验证。目标构建绝不读取其他目标的可变准备状态。
 
@@ -189,7 +189,7 @@ Desktop 在本地打包工作区包，并通过目标捆绑的 Node 和 pnpm 安
 
 打包应用运行编译后的 JavaScript 和预生成的 Typert 元数据，不编译 TypeScript 插件。源码级调试导航和编辑器声明仍可从开发包中获取。[复制规则测试](tests/runtime-file-policy.spec.ts)覆盖排除项和保留资源；`prepare:dsh` 在 Host smoke 和最终清单验证之前，使用 Electron RunAsNode 执行[产物 smoke](tests/fixtures/runtime-payload-smoke.mjs)。
 
-[打包工作流测试](../web/tests/strugend-desktop-smoke.mjs)使用隔离配置目录及合成服务商凭据。可选参数 `--mock-keychain` 避免本地未签名构建触发交互式 macOS 钥匙串提示；该模式不验证操作系统凭据存储。发布 CI 不使用此参数。
+[打包工作流测试](../web/tests/strugend-desktop-smoke.mjs)使用隔离配置目录及合成服务商凭据，支持原生和应用内目录选择。可选参数 `--mock-keychain` 避免本地未签名构建触发交互式 macOS 钥匙串提示；该模式不验证操作系统凭据存储。发布 CI 不使用此参数。Linux 验收在隔离的 X11/D-Bus 会话中使用 GNOME Keyring 和 Nautilus，验证实际凭据存储和文件夹打开功能。
 
 Windows 发布验收还需在 Desktop 构建后手动运行[目录和替换检查](scripts/smoke-windows.ps1)。将 `$Makensis`、`$SevenZip` 和 `$PluginDir` 分别设为锁定版本构建器的 NSIS 编译器、7-Zip 可执行文件和 x86-unicode NSIS 插件目录。从仓库根目录运行以下命令。它验证 目录替换与回滚和两种文件占用替换方式；不属于单元测试通道。
 

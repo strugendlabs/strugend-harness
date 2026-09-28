@@ -51,6 +51,7 @@ it('ships branded Linux AppImage and Debian installers', () => {
   expect(config.linux.target).toEqual(['AppImage', 'deb'])
   expect(config.linux.executableName).toBe('strugend-harness')
   expect(config.linux.icon).toContain(join('strugend', 'icon.png'))
+  expect(config.artifactName).toBe('strugend-harness-${version}-linux-x64.${ext}')
   expect(() => { validateDesktopPackageEnvironment({ DSH_DESKTOP_APP_ID: 'com.example.desktop' }, { platform: 'linux', arch: 'x64' }, { unsigned: true }) }).toThrow('requires the Strugend preview')
 })
 
