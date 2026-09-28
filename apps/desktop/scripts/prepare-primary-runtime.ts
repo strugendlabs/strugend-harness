@@ -126,7 +126,7 @@ export async function preparePrimaryRuntime(
     const desktop = JSON.parse(readFileSync(join(import.meta.dirname, '..', 'package.json'), 'utf8')) as { version: string }
     const manifest: PrimaryRuntimeManifest = {
       desktopVersion: desktop.version,
-      platform: target === 'win-x64' ? 'win32' : 'darwin',
+      platform: target === 'win-x64' ? 'win32' : target === 'linux-x64' ? 'linux' : 'darwin',
       arch: target === 'mac-arm64' ? 'arm64' : 'x64',
       payloadDigest: primaryRuntimePayloadDigest(target, lock, pnpm.version),
       pythonPackages: lock.pythonPackages,

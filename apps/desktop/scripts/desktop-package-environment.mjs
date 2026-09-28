@@ -19,19 +19,19 @@ const FILE_SETTINGS = ['DSH_DESKTOP_WINDOWS_CER_FILE', 'DSH_DESKTOP_WINDOWS_SIGN
 
 /**
  * Read the target's required UTF-8 dotenv file; release settings never fall back to ambient values.
- * @param {'win32' | 'darwin'} platform Target platform.
+ * @param {'win32' | 'darwin' | 'linux'} platform Target platform.
  * @param {NodeJS.ProcessEnv} environment Parent environment, retained only for unrelated build tools.
  * @param {string} appRoot Desktop application directory; relative credential paths resolve here.
  * @returns {NodeJS.ProcessEnv} Isolated environment with file-owned release settings.
  */
 export function loadDesktopPackageEnvironment(platform, environment = process.env, appRoot = APP_ROOT) {
-  const path = join(appRoot, platform === 'win32' ? '.env.windows' : '.env.macos')
+  const path = join(appRoot, platform === 'win32' ? '.env.windows' : platform === 'linux' ? '.env.linux' : '.env.macos')
   let contents
   try {
     contents = readFileSync(path, 'utf8')
   }
   catch {
-    throw new Error(`desktop package: cannot read ${path}; copy ${path}.example and fill in the local settings`)
+    throw new Error(`desktop package: cannot read ${path}; copy ${path}${platform === 'linux' ? '.strugend' : ''}.example and fill in the local settings`)
   }
   let settings
   try {
@@ -41,7 +41,7 @@ export function loadDesktopPackageEnvironment(platform, environment = process.en
     // Parser diagnostics can contain credential-bearing input.
     throw new Error(`desktop package: invalid dotenv syntax in ${path}`)
   }
-  const platformSetting = platform === 'win32' ? WINDOWS_SETTING : MACOS_SETTING
+  const platformSetting = platform === 'win32' ? WINDOWS_SETTING : platform === 'darwin' ? MACOS_SETTING : /$^/u
   for (const name of Object.keys(settings)) {
     if (!SHARED_SETTING.test(name) && !platformSetting.test(name)) {
       throw new Error(`desktop package: unsupported setting ${name} in ${path}; use the platform template`)
@@ -70,13 +70,14 @@ function requireReadableFile(environment, name) {
 /**
  * Validate release configuration before preparation without invoking a token or Apple's services.
  * @param {NodeJS.ProcessEnv} environment File-owned release settings.
- * @param {{ platform: 'win32' | 'darwin', arch: string }} target Selected release target.
+ * @param {{ platform: 'win32' | 'darwin' | 'linux', arch: string }} target Selected release target.
  * @param {{ unsigned?: boolean, prepareOnly?: boolean }} options Explicit packaging mode.
  * @returns {void}
  */
 export function validateDesktopPackageEnvironment(environment, target, options = {}) {
   resolveDesktopAppId(environment)
   const preview = isStrugendPreviewDistribution(environment)
+  if (target.platform === 'linux' && !preview) throw new Error('Linux packaging requires the Strugend preview distribution')
   if (preview && !options.unsigned) throw new Error('Strugend preview packaging requires explicit unsigned mode')
   if (options.unsigned && target.platform === 'darwin' && !preview) throw new Error('Unsigned macOS packaging requires the Strugend preview distribution')
   if (!preview) resolveDesktopPolicyEnvironment(environment)

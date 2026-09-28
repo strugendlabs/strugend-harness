@@ -52,3 +52,22 @@ it('rejects incomplete platform releases, path traversal and mismatched platform
   input.installers[0]!.file = 'mac.dmg'
   expect(() => previewManifest(input, version)).toThrow(/platform/)
 })
+
+it('discovers Linux updates separately while preserving the legacy desktop manifest', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'strugend-linux-update-')); dispose.push(() => rm(root, { recursive: true, force: true }))
+  const linux = { version, installers: [{ target: 'linux-x64', file: 'strugend-linux-x64.AppImage', bytes: bytes.length, sha256: digest }] }
+  const fetcher = vi.fn<typeof fetch>(async (input) => {
+    const url = input instanceof Request ? input.url : input.toString()
+    if (url.includes('api.github.com')) return Response.json([{ tag_name: `strugend-v${version}`, draft: false, assets: [{ name: 'strugend-update-linux.json' }, { name: linux.installers[0]!.file }] }])
+    if (url.endsWith('strugend-update-linux.json')) return Response.json(linux)
+    return new Response(bytes)
+  })
+  const source = new PreviewUpdateSource(root, 'linux-x64', fetcher); dispose.push(() => { source.dispose() })
+  expect(await source.check('0.1.0')).toBe(version)
+  await source.download(version, () => {})
+  expect(await readFile(await source.installer(version))).toEqual(bytes)
+  expect(() => previewManifest(linux, version)).toThrow()
+  expect(() => previewManifest(manifest(), version, true)).toThrow()
+  linux.installers[0]!.file = 'wrong.exe'
+  expect(() => previewManifest(linux, version, true)).toThrow('platform')
+})

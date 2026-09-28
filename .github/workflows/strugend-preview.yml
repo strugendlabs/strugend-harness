@@ -52,6 +52,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - target: linux-x64
+            runner: ubuntu-22.04
           - target: win-x64
             runner: windows-2022
           - target: mac-arm64
@@ -77,6 +79,11 @@ jobs:
         with:
           path: .artifacts/laya-model
           key: laya-multilingual-${{ hashFiles('apps/desktop-host/src/laya-manifest.json') }}
+      - name: Install Linux desktop dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb dbus-x11 gnome-keyring libsecret-1-0 libfuse2 libnss3 libgtk-3-0 libasound2 libgbm1
       - run: pnpm install --frozen-lockfile
       - name: Check native CPU inference bindings
         run: >-
@@ -100,6 +107,9 @@ jobs:
           packages/llm/token-meter/tests/token-usage-projection.spec.ts
           apps/desktop/tests/agentos-personal.spec.ts
           apps/desktop/tests/agentos-store.spec.ts
+          apps/desktop/tests/background.spec.ts
+          apps/desktop/tests/desktop-build-paths.spec.ts
+          apps/desktop/tests/primary-runtime-preparation.spec.ts
           apps/desktop/tests/strugend-release-manifest.spec.ts
           apps/desktop/tests/update-coordinator.spec.ts
           packages/client/ui-workspace/tests/agentos-controller.client.spec.ts
@@ -164,12 +174,30 @@ jobs:
             $app = Join-Path $installRoot 'Strugend Harness.exe'
             if (-not (Test-Path $app)) { throw 'The installer did not create the application' }
           }
+          elseif ($IsLinux) {
+            $package = Get-ChildItem $output -File -Filter '*.deb' | Select-Object -First 1
+            if (-not $package) { throw 'The Linux package is missing' }
+            sudo dpkg -i $package.FullName
+            if ($LASTEXITCODE -ne 0) { throw 'Linux package installation failed' }
+            $app = '/opt/Strugend Harness/strugend-harness'
+            if (-not (Test-Path $app)) { throw 'The Linux package did not install the application' }
+          }
           else {
             $bundle = Get-ChildItem $output -Directory -Recurse -Filter 'Strugend Harness.app' | Select-Object -First 1
             if (-not $bundle) { throw 'Packaged application bundle is missing' }
             $app = Join-Path $bundle.FullName 'Contents/MacOS/Strugend Harness'
           }
-          node apps/web/tests/strugend-desktop-smoke.mjs "$app"
+          if ($IsLinux) {
+            xvfb-run -a dbus-run-session -- bash apps/desktop/scripts/linux-desktop-smoke.sh "$app"
+            if ($LASTEXITCODE -ne 0) { throw 'Packaged Linux desktop checks failed' }
+            $image = Get-ChildItem $output -File -Filter '*.AppImage' | Select-Object -First 1
+            if (-not $image) { throw 'The Linux AppImage is missing' }
+            xvfb-run -a dbus-run-session -- bash apps/desktop/scripts/linux-desktop-smoke.sh $image.FullName
+            if ($LASTEXITCODE -ne 0) { throw 'AppImage desktop checks failed' }
+          } else {
+            node apps/web/tests/strugend-desktop-smoke.mjs "$app"
+            if ($LASTEXITCODE -ne 0) { throw 'Packaged desktop checks failed' }
+          }
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -188,9 +216,9 @@ jobs:
           $packs = "apps/desktop/.desktop-build/targets/${{ matrix.target }}/component-artifacts"
           Copy-Item "$packs/*.tar.gz" $output
           Copy-Item "$packs/components-*.json" $output
-          $core = Get-ChildItem $output -File | Where-Object { $_.Extension -in '.exe', '.dmg', '.zip' }
+          $core = Get-ChildItem $output -File | Where-Object { $_.Extension -in '.exe', '.dmg', '.zip', '.AppImage', '.deb' }
           if ($core.Count -eq 0 -or ($core | Where-Object Length -gt 419430400)) { throw 'Core installers must exist and remain at most 400 MiB' }
-          $files = Get-ChildItem $output -File | Where-Object { $_.Extension -in '.exe', '.dmg', '.zip', '.gz', '.json' }
+          $files = Get-ChildItem $output -File | Where-Object { $_.Extension -in '.exe', '.dmg', '.zip', '.AppImage', '.deb', '.gz', '.json' }
           if ($files.Count -eq 0) { throw 'No installers were produced' }
           $lines = $files | ForEach-Object { "{0}  {1}" -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant(), $_.Name }
           $lines | Set-Content -Encoding utf8NoBOM "$output/SHA256-${{ matrix.target }}.txt"
@@ -201,6 +229,8 @@ jobs:
           retention-days: 14
           if-no-files-found: error
           path: |
+            apps/desktop/.desktop-build/targets/${{ matrix.target }}/unsigned-artifacts/*.AppImage
+            apps/desktop/.desktop-build/targets/${{ matrix.target }}/unsigned-artifacts/*.deb
             apps/desktop/.desktop-build/targets/${{ matrix.target }}/unsigned-artifacts/*.exe
             apps/desktop/.desktop-build/targets/${{ matrix.target }}/unsigned-artifacts/*.dmg
             apps/desktop/.desktop-build/targets/${{ matrix.target }}/unsigned-artifacts/*.zip

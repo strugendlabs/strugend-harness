@@ -134,3 +134,14 @@ describe('Desktop local packaging configuration', () => {
     })
   })
 })
+
+it('loads Linux settings without inheriting macOS signing or accepting platform signing fields', async () => {
+  await withDirectory(async (directory) => {
+    await writeFile(join(directory, '.env.linux'), 'DSH_DESKTOP_APP_ID=com.strugend.harness\nDSH_DESKTOP_DISTRIBUTION=strugend-preview\n')
+    const environment = loadDesktopPackageEnvironment('linux', { PATH: 'tools', APPLE_ID: 'unused' }, directory)
+    expect(environment).toEqual({ PATH: 'tools', DSH_DESKTOP_APP_ID: 'com.strugend.harness', DSH_DESKTOP_DISTRIBUTION: 'strugend-preview' })
+    expect(() => { validateDesktopPackageEnvironment(environment, { platform: 'linux', arch: 'x64' }, { unsigned: true }) }).not.toThrow()
+    await writeFile(join(directory, '.env.linux'), 'DSH_DESKTOP_WINDOWS_TOKEN_PIN=unused\n')
+    expect(() => loadDesktopPackageEnvironment('linux', {}, directory)).toThrow('unsupported setting')
+  })
+})

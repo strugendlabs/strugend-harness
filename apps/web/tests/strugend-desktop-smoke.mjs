@@ -293,11 +293,11 @@ const OUT = fs.mkdtempSync(path.join(evidenceRoot, 'packaged-' + process.platfor
   await page.screenshot({path:path.join(OUT,'chat-after-action.png')});
   await noVendor();record('Real agent loop operates the visible sidebar form after focus moves the button');
   await page.getByText('Workspace verification',{exact:true}).first().waitFor();
-  await closeApp();
-  const resources=process.platform==='darwin'?path.resolve(path.dirname(executable),'../Resources'):path.join(path.dirname(executable),'resources');
+  const resources=await app.evaluate(()=>process.resourcesPath);
   const catalog=JSON.parse(fs.readFileSync(path.join(resources,'runtime','component-catalog.json'),'utf8'));
+  await closeApp();
   const decisionPack=catalog.components.find(x=>x.id==='decision');assert(decisionPack);
-  const staged=process.env.LAYA_COMPONENT_ROOT||path.join(APP,'.desktop-build','targets',`${process.platform==='darwin'?'mac':'win'}-${process.arch}`,'components','decision');
+  const staged=process.env.LAYA_COMPONENT_ROOT||path.join(APP,'.desktop-build','targets',`${process.platform==='darwin'?'mac':process.platform==='win32'?'win':'linux'}-${process.arch}`,'components','decision');
   const installedPack=path.join(home,'strugend-components','decision',decisionPack.version);
   fs.mkdirSync(path.dirname(installedPack),{recursive:true});fs.cpSync(staged,installedPack,{recursive:true,dereference:true});
   fs.writeFileSync(path.join(installedPack,'.installed.json'),JSON.stringify({sha256:decisionPack.sha256,version:decisionPack.version}));

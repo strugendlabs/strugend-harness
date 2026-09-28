@@ -81,7 +81,7 @@ export function createElectronBuilderConfig(
   if (preparedRuntime !== undefined) buildPaths.dsh = preparedRuntime
   return {
     appId,
-    extraMetadata: { dshDesktopAppId: appId, dshMandatoryUpdatePolicy: policy, strugendDistribution: preview ? 'byok-preview' : undefined },
+    extraMetadata: { dshDesktopAppId: appId, dshMandatoryUpdatePolicy: policy, strugendDistribution: preview ? 'byok-preview' : undefined, homepage: 'https://github.com/strugendlabs/strugend-harness' },
     productName: 'Strugend Harness',
     artifactName: 'strugend-harness-${version}-${os}-${arch}.${ext}',
     directories: { output: unsigned ? join(buildPaths.root, 'unsigned-artifacts') : buildPaths.artifacts },
@@ -177,7 +177,7 @@ export function createElectronBuilderConfig(
       verifyMacOSSignatureAfterSign(context, macOSSigning ?? resolveMacOSSigningEnvironment(env))
     },
     artifactBuildCompleted: async artifact => {
-      if (preview && /\.(?:exe|dmg|zip)$/u.test(artifact.file) && (await stat(artifact.file)).size > 400 * 1024 * 1024) {
+      if (preview && /\.(?:exe|dmg|zip|AppImage|deb)$/u.test(artifact.file) && (await stat(artifact.file)).size > 400 * 1024 * 1024) {
         throw new Error('The Strugend core download exceeds 400 MiB; optional components must remain outside the application.')
       }
       if (unsigned || !artifact.file.endsWith('.dmg')) return
@@ -198,8 +198,14 @@ export function createElectronBuilderConfig(
       target: ['nsis'],
     },
     linux: {
+      icon: fileURLToPath(new URL('../resources/strugend/icon.png', import.meta.url)),
       category: 'Development',
-      target: ['AppImage'],
+      executableName: 'strugend-harness',
+      packageName: 'strugend-harness',
+      synopsis: 'Strugend coding and everyday task assistant',
+      maintainer: 'Strugend Labs',
+      target: ['AppImage', 'deb'],
+      desktop: { entry: { StartupWMClass: 'Strugend Harness' } },
     },
     nsis: {
       installerSidebar: join(buildPaths.root, 'installer-ui', 'uninstaller-sidebar.bmp'),

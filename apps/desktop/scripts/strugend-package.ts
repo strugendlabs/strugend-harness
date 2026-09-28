@@ -12,11 +12,11 @@ const { values, positionals } = parseArgs({
   allowPositionals: true,
   options: { version: { type: 'string' }, check: { type: 'boolean', default: false }, dir: { type: 'boolean', default: false } },
 })
-if (positionals.length !== 1 || !values.version) throw new Error('Usage: pnpm strugend:package <win-x64|mac-arm64|mac-x64> --version <confirmed-version> [--check] [--dir]')
+if (positionals.length !== 1 || !values.version) throw new Error('Usage: pnpm strugend:package <win-x64|mac-arm64|mac-x64|linux-x64> --version <confirmed-version> [--check] [--dir]')
 const invocation = parseDesktopPackageInvocation([positionals[0]!, '--unsigned'])
 const manifest = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8')) as { version: string }
 if (manifest.version !== values.version) throw new Error('The confirmed preview version must match the repository manifests')
-const platform = invocation.target.platform === 'win32' ? 'windows' : 'macos'
+const platform = invocation.target.platform === 'win32' ? 'windows' : invocation.target.platform === 'linux' ? 'linux' : 'macos'
 const template = readFileSync(resolve(appRoot, `.env.${platform}.strugend.example`), 'utf8')
 try { writeFileSync(resolve(appRoot, `.env.${platform}`), template, { flag: 'wx', mode: 0o600 }) }
 catch (error) { if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error }

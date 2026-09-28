@@ -17,10 +17,16 @@ export class DesktopBackground {
   get keepRunning(): boolean { return this.enabled }
   /** @returns Current scheduling presence and OS login preference. */
   status(): { enabled: boolean; openAtLogin: boolean } {
-    return { enabled: this.enabled, openAtLogin: app.getLoginItemSettings({ args: ['--background'] }).openAtLogin }
+    return { enabled: this.enabled, openAtLogin: process.platform === 'linux' ? false : app.getLoginItemSettings({ args: ['--background'] }).openAtLogin }
   }
   /** @param enabled - User-selected launch-at-login preference. */
-  login(enabled: boolean): void { app.setLoginItemSettings({ openAtLogin: enabled, args: ['--background'] }) }
+  login(enabled: boolean): void {
+    if (process.platform === 'linux') {
+      if (enabled) throw new Error('Add Strugend Harness to your desktop environment’s Startup Applications to start at login.')
+      return
+    }
+    app.setLoginItemSettings({ openAtLogin: enabled, args: ['--background'] })
+  }
   /** @param enabled - Whether any saved automation remains enabled. */
   setEnabled(enabled: boolean): void {
     this.enabled = enabled

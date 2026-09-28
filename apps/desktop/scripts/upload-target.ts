@@ -2,7 +2,7 @@
 
 import { resolve } from 'node:path'
 import { parseArgs } from 'node:util'
-import type { DesktopPackageTargetName } from './package-target.ts'
+import type { DesktopAutoUpdateTarget as DesktopPackageTargetName } from './desktop-auto-update-environment.mjs'
 import { createDesktopCos } from './desktop-cos.ts'
 import { resolveDesktopUploadConfig } from './desktop-auto-update-environment.mjs'
 import { loadDesktopPackageEnvironment } from './desktop-package-environment.mjs'

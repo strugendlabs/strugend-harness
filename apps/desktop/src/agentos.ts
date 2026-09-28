@@ -31,12 +31,12 @@ export class AgentOsDesktop {
   ) {
     this.store = new AgentOsStore(root, {
       encrypt: (value) => {
-        if (!safeStorage.isEncryptionAvailable())
+        if (!safeStorage.isEncryptionAvailable() || (process.platform === 'linux' && safeStorage.getSelectedStorageBackend() === 'basic_text'))
           throw new Error('System credential encryption is unavailable. Sign in to your desktop session and try again.')
         return safeStorage.encryptString(value)
       },
       decrypt: (value) => {
-        if (!safeStorage.isEncryptionAvailable())
+        if (!safeStorage.isEncryptionAvailable() || (process.platform === 'linux' && safeStorage.getSelectedStorageBackend() === 'basic_text'))
           throw new Error('System credential encryption is unavailable. Sign in to your desktop session and try again.')
         return safeStorage.decryptString(value)
       },

@@ -6,12 +6,13 @@ import { join } from 'node:path'
 const [directory, version] = process.argv.slice(2)
 if (!directory || !version || !/^\d+\.\d+\.\d+(?:-[\w.-]+)?$/.test(version)) throw new Error('Pass artifact directory and release version.')
 const installers = []
-for (const target of ['win-x64', 'mac-arm64', 'mac-x64']) {
-  const file = `strugend-harness-${version}-${target}.${target.startsWith('win') ? 'exe' : 'dmg'}`
+for (const target of ['win-x64', 'mac-arm64', 'mac-x64', 'linux-x64']) {
+  const file = `strugend-harness-${version}-${target}.${target === 'linux-x64' ? 'AppImage' : target.startsWith('win') ? 'exe' : 'dmg'}`
   const path = join(directory, file), info = await stat(path)
   if (!info.isFile() || info.size < 1 || info.size > 400 * 1024 ** 2) throw new Error(`Invalid installer: ${file}`)
   const hash = createHash('sha256')
   for await (const chunk of createReadStream(path)) hash.update(chunk)
   installers.push({ target, file, bytes: info.size, sha256: hash.digest('hex') })
 }
-await writeFile(join(directory, 'strugend-update.json'), JSON.stringify({ version, installers }, null, 2) + '\n')
+await writeFile(join(directory, 'strugend-update.json'), JSON.stringify({ version, installers: installers.filter(i => i.target !== 'linux-x64') }, null, 2) + '\n')
+await writeFile(join(directory, 'strugend-update-linux.json'), JSON.stringify({ version, installers: installers.filter(i => i.target === 'linux-x64') }, null, 2) + '\n')

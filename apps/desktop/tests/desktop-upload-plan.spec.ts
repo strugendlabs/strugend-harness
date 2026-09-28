@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { load } from 'js-yaml'
 import { createDesktopUploadPlan } from '../scripts/desktop-upload-plan.ts'
 import { desktopUpdateMetadataFilename } from '../scripts/desktop-auto-update-environment.mjs'
-import type { DesktopPackageTargetName } from '../scripts/package-target.ts'
+import type { DesktopAutoUpdateTarget as DesktopPackageTargetName } from '../scripts/desktop-auto-update-environment.mjs'
 
 const temporaryDirectories: string[] = []
 const TEST_ORIGIN = 'https://desktop-updates.example.com'

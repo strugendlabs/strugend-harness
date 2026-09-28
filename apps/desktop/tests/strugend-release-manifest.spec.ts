@@ -13,13 +13,18 @@ it('hashes every native artifact and refuses an incomplete release', () => {
     expect(() => execFileSync(process.execPath, args, { stdio: 'pipe' })).toThrow()
     for (const target of ['win-x64', 'mac-arm64', 'mac-x64'])
       writeFileSync(join(root, `strugend-harness-${version}-${target}.${target.startsWith('win') ? 'exe' : 'dmg'}`), target)
+    expect(() => execFileSync(process.execPath, args, { stdio: 'pipe' })).toThrow()
+    writeFileSync(join(root, `strugend-harness-${version}-linux-x64.AppImage`), 'linux-x64')
     execFileSync(process.execPath, args, { stdio: 'pipe' })
     const manifest = JSON.parse(readFileSync(join(root, 'strugend-update.json'), 'utf8')) as {
       version: string
       installers: Array<{ target: string; sha256: string; bytes: number }>
     }
     expect(manifest.version).toBe(version); expect(manifest.installers).toHaveLength(3)
-    for (const installer of manifest.installers) {
+    const linux = JSON.parse(readFileSync(join(root, 'strugend-update-linux.json'), 'utf8')) as typeof manifest
+    expect(linux.installers).toHaveLength(1)
+    expect(linux.installers[0]!.target).toBe('linux-x64')
+    for (const installer of [...manifest.installers, ...linux.installers]) {
       expect(installer.bytes).toBe(Buffer.byteLength(installer.target))
       expect(installer.sha256).toBe(createHash('sha256').update(installer.target).digest('hex'))
     }

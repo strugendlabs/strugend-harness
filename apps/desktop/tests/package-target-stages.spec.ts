@@ -54,7 +54,7 @@ it.each(['--unsigned', '--prepare-only'])('keeps %s hardware-free and creates no
   expect(writeFileSync).not.toHaveBeenCalled()
 })
 
-it.each([['win-x64', 'win32', 'x64'], ['mac-arm64', 'darwin', 'arm64']] as const)
+it.each([['win-x64', 'win32', 'x64'], ['mac-arm64', 'darwin', 'arm64'], ['linux-x64', 'linux', 'x64']] as const)
 ('builds the Strugend preview for %s without signing or update records', async (name, platform, arch) => {
   const { run, stages } = supervisor()
   await packageTarget(parseDesktopPackageInvocation([name, '--unsigned'], platform, arch),

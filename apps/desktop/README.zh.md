@@ -14,6 +14,8 @@ Creator 和 Web Plugin Manager 在 Electron Node 模式下使用 Desktop 内置 
 
 ## Strugend 本地应用
 
+Linux x64 预览版提供 AppImage 和 Debian/Ubuntu 安装包，并在 Ubuntu 22.04 上构建和测试。这些产物不支持 Linux ARM64 或 musl 发行版。AppImage 需要 FUSE 2 以及允许 Chromium 沙箱运行的系统；Debian 安装包会安装沙箱辅助程序。Vault 需要已解锁的 Secret Service 密钥环。登录时启动通过桌面环境的“启动应用程序”配置；Strugend 运行时，应用内的计划任务会继续执行。Linux 更新使用单独的校验清单，并打开下载文件夹供手动安装，以保持现有 Windows 和 macOS 预览版的更新发现功能。
+
 [Strugend 开发指南](../../AGENT_OS_README.md) 定义本地分支的启动及服务配置。产品品牌使用 Strugend Harness；原生凭据标识和已有数据路径保持稳定。服务商中立的设置流程选择主模型。可选 Laya 检查在受监督的辅助进程中并行运行；只有经版本验证的配方可以进入 Core 上下文。模型权重和文档运行时是独立的可选下载。参见[资源策略与验证限制](../../STRUGEND_PLAN.md)。图谱记忆和视频工作室已禁用并标记即将推出。任务拥有的交付作业保留构建与发布回执；Finder/Explorer 操作使用 Electron 原生 shell 并报告失败。
 
 本地推理在 Windows 和 Apple Silicon 上使用 ONNX Runtime 1.30.0。Intel Mac 选择独立的 1.22.0 兼容依赖，因为[后续 npm 归档缺少 Intel Mac 绑定](https://github.com/microsoft/onnxruntime/issues/27961)。仅加载选中的运行时。发布前，原生验证会加载打包的 worker 和模型权重。

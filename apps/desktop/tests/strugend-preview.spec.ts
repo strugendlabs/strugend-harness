@@ -6,7 +6,7 @@ import { isStrugendPreviewDistribution } from '../scripts/strugend-distribution.
 const environment = { DSH_DESKTOP_APP_ID: 'com.strugend.harness', DSH_DESKTOP_DISTRIBUTION: 'strugend-preview' }
 
 describe('Strugend BYOK test distribution', () => {
-  it.each(['win32', 'darwin'] as const)('creates an explicit unsigned %s preview without an updater', (platform) => {
+  it.each(['win32', 'darwin', 'linux'] as const)('creates an explicit unsigned %s preview without an updater', (platform) => {
     validateDesktopPackageEnvironment(environment, { platform, arch: 'x64' }, { unsigned: true })
     const config = createElectronBuilderConfig({ ...environment, DSH_DESKTOP_UNSIGNED: '1' }, platform, 'x64')
     expect(config.productName).toBe('Strugend Harness')
@@ -40,4 +40,12 @@ describe('Strugend BYOK test distribution', () => {
     expect(() => { validateDesktopPackageEnvironment({ DSH_DESKTOP_APP_ID: 'com.example.application' },
       { platform: 'darwin', arch: 'arm64' }, { unsigned: true }) }).toThrow('requires the Strugend preview')
   })
+})
+
+it('ships branded Linux AppImage and Debian installers', () => {
+  const config = createElectronBuilderConfig({ ...environment, DSH_DESKTOP_UNSIGNED: '1' }, 'linux', 'x64')
+  expect(config.linux.target).toEqual(['AppImage', 'deb'])
+  expect(config.linux.executableName).toBe('strugend-harness')
+  expect(config.linux.icon).toContain('strugend/icon.png')
+  expect(() => { validateDesktopPackageEnvironment({ DSH_DESKTOP_APP_ID: 'com.example.desktop' }, { platform: 'linux', arch: 'x64' }, { unsigned: true }) }).toThrow('requires the Strugend preview')
 })

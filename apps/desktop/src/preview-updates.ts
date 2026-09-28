@@ -13,22 +13,25 @@ export interface PreviewManifest { version: string; installers: PreviewInstaller
  * Validate release metadata before deriving any download destination.
  * @param input - Downloaded JSON.
  * @param version - Checked release tag version.
+ * @param linux - Select the separate Linux manifest; older desktop clients retain the three-platform manifest.
  * @returns Validated platform manifest.
  */
-export function previewManifest(input: unknown, version: string): PreviewManifest {
+export function previewManifest(input: unknown, version: string, linux = false): PreviewManifest {
   if (!input || typeof input !== 'object' || !('version' in input) || input.version !== version
     || !('installers' in input) || !Array.isArray(input.installers)) throw new Error('Invalid release manifest.')
+  const targets = linux ? ['linux-x64'] : ['win-x64', 'mac-arm64', 'mac-x64']
   const installers = input.installers.map((item: unknown) => {
     if (!item || typeof item !== 'object') throw new Error('Invalid release installer.')
     const r = item as Record<string, unknown>
-    if (!['win-x64', 'mac-arm64', 'mac-x64'].includes(String(r.target)) || typeof r.file !== 'string'
-      || !/^[a-zA-Z0-9._-]+\.(exe|dmg)$/u.test(r.file) || basename(r.file) !== r.file
+    if (!targets.includes(String(r.target)) || typeof r.file !== 'string'
+      || !/^[a-zA-Z0-9._-]+\.(exe|dmg|AppImage)$/u.test(r.file) || basename(r.file) !== r.file
       || !Number.isSafeInteger(r.bytes) || Number(r.bytes) < 1 || Number(r.bytes) > 600 * 1024 ** 2
       || typeof r.sha256 !== 'string' || !/^[a-f0-9]{64}$/u.test(r.sha256)) throw new Error('Invalid release installer.')
-    if (String(r.target).startsWith('mac-') !== r.file.endsWith('.dmg')) throw new Error('Incorrect installer platform.')
+    const extension = r.target === 'linux-x64' ? '.AppImage' : r.target === 'win-x64' ? '.exe' : '.dmg'
+    if (!r.file.endsWith(extension)) throw new Error('Incorrect installer platform.')
     return r as unknown as PreviewInstaller
   })
-  if (installers.length !== 3 || new Set(installers.map(i => i.target)).size !== 3) throw new Error('Release is missing a native installer.')
+  if (installers.length !== targets.length || new Set(installers.map(i => i.target)).size !== targets.length) throw new Error('Release is missing a native installer.')
   return { version, installers }
 }
 
@@ -47,17 +50,19 @@ export class PreviewUpdateSource {
   get notes(): string { return this.selected?.notes ?? '' }
   /** @param current - Installed version. @returns Newer qualified preview, or undefined when current. */
   async check(current: string): Promise<string | undefined> {
+    const linux = this.target === 'linux-x64'
+    const metadata = linux ? 'strugend-update-linux.json' : 'strugend-update.json'
     const releases = await this.json('https://api.github.com/repos/strugendlabs/strugend-harness/releases?per_page=30')
     if (!Array.isArray(releases)) throw new Error('GitHub did not return releases.')
     const candidates = releases.filter((r: unknown): r is { tag_name: string; body?: string; assets: Array<{ name: string }> } =>
       !!r && typeof r === 'object' && 'draft' in r && r.draft === false && 'tag_name' in r && typeof r.tag_name === 'string' && r.tag_name.startsWith('strugend-v')
       && valid(r.tag_name.slice(10)) !== null && gt(r.tag_name.slice(10), current) && 'assets' in r && Array.isArray(r.assets)
-      && r.assets.some((a: unknown) => !!a && typeof a === 'object' && 'name' in a && a.name === 'strugend-update.json'))
+      && r.assets.some((a: unknown) => !!a && typeof a === 'object' && 'name' in a && a.name === metadata))
       .sort((a, b) => rcompare(a.tag_name.slice(10), b.tag_name.slice(10)))
     this.selected = undefined
     if (!candidates[0]) return undefined
     const release = candidates[0], version = release.tag_name.slice(10)
-    const manifest = previewManifest(await this.json(this.url(version, 'strugend-update.json')), version)
+    const manifest = previewManifest(await this.json(this.url(version, metadata)), version, linux)
     const installer = manifest.installers.find(i => i.target === this.target)
     if (!installer || !release.assets.some(a => a.name === installer.file)) throw new Error('No installer for this computer.')
     this.selected = { version, installer, notes: typeof release.body === 'string' ? release.body.slice(0, 4000) : '' }

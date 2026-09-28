@@ -78,7 +78,7 @@ async function inventory(root: string): Promise<{ files: number; installedBytes:
  */
 export async function prepareOptionalComponents(): Promise<void> {
   const target = resolveDesktopBuildTarget(), paths = resolveDesktopTargetBuildPaths()
-  const platform = target === 'win-x64' ? 'win32' : 'darwin', arch = target === 'mac-arm64' ? 'arm64' : 'x64'
+  const platform = target === 'win-x64' ? 'win32' : target === 'linux-x64' ? 'linux' : 'darwin', arch = target === 'mac-arm64' ? 'arm64' : 'x64'
   const { version } = JSON.parse(await readFile(join(import.meta.dirname, '../package.json'), 'utf8')) as { version: string }
   const roots = join(paths.root, 'components'), output = join(paths.root, 'component-artifacts')
   await rm(roots, { recursive: true, force: true }); await rm(output, { recursive: true, force: true })

@@ -23,7 +23,7 @@ async function phase<T>(name: string, operation: () => Promise<T>): Promise<T> {
 }
 
 it.skipIf(!enabled)('downloads and installs the native decision and document archives through the shipping manager', async ({ signal, onTestFinished }) => {
-  const buildRoot = resolve(process.env.LAYA_PACKAGED_ROOT ?? `apps/desktop/.desktop-build/targets/${process.platform === 'darwin' ? 'mac' : 'win'}-${process.arch}`)
+  const buildRoot = resolve(process.env.LAYA_PACKAGED_ROOT ?? `apps/desktop/.desktop-build/targets/${process.platform === 'darwin' ? 'mac' : process.platform === 'win32' ? 'win' : 'linux'}-${process.arch}`)
   const packaged = parseComponentCatalog(JSON.parse(await readFile(join(buildRoot, 'runtime', 'component-catalog.json'), 'utf8')))
   const root = await mkdtemp(join(tmpdir(), 'strugend-native-components-'))
   const server = createServer((request, response) => {

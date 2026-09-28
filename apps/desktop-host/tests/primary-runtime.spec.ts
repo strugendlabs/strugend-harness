@@ -22,7 +22,7 @@ async function fixture() {
   const source = join(directory, 'resources')
   const root = join(directory, 'home', 'dsh-runtimes', 'dsh-primary-runtime')
   const manifest: PrimaryRuntimeManifest = {
-    desktopVersion: '1.0.0', platform: process.platform === 'win32' ? 'win32' : 'darwin', arch: process.arch,
+    desktopVersion: '1.0.0', platform: process.platform, arch: process.arch,
     components: { python: '3.12.14', node: '24.21.0', pnpm: '11.7.0', numpy: '2.3.5', pandas: '3.0.1' },
     pythonPackages: { 'python-docx': '1.2.0', 'python-pptx': '1.0.2', openpyxl: '3.1.5' },
   }
@@ -37,7 +37,7 @@ async function fixture() {
   return { source, root, manifest, directory }
 }
 
-it.each(['win32', 'darwin'])('returns %s interpreter and package paths', (platform) => {
+it.each(['win32', 'darwin', 'linux'])('returns %s interpreter and package paths', (platform) => {
   const manifest: PrimaryRuntimeManifest = { desktopVersion: '1', platform, arch: 'x64', components: { python: '3.12.14', node: '24.21.0', pnpm: '11.7.0', numpy: '2.3.5', pandas: '3.0.1' } }
   const paths = workspaceDependencyPaths('/runtime', manifest)
   expect(paths.pythonDistributions).toEqual({})
@@ -45,7 +45,7 @@ it.each(['win32', 'darwin'])('returns %s interpreter and package paths', (platfo
   expect(paths.pythonPackages).toBe(join('/runtime', 'dependencies', 'python', ...(platform === 'win32' ? ['Lib'] : ['lib', 'python3.12']), 'site-packages'))
 })
 
-it.skipIf(process.platform === 'linux')('installs offline, reuses the same release, and leaves environment and user packages unchanged', async () => {
+it('installs offline, reuses the same release, and leaves environment and user packages unchanged', async () => {
   const { source, root, manifest } = await fixture()
   const environment = { ...process.env }
   const installed = await installPrimaryRuntime(source, root)
@@ -56,7 +56,7 @@ it.skipIf(process.platform === 'linux')('installs offline, reuses the same relea
   expect(process.env).toEqual(environment)
 })
 
-it.skipIf(process.platform === 'linux')('replaces release components and recovers an interrupted directory swap', async () => {
+it('replaces release components and recovers an interrupted directory swap', async () => {
   const { source, root, manifest } = await fixture()
   await installPrimaryRuntime(source, root)
   await rename(root, `${root}.previous`)
@@ -65,7 +65,7 @@ it.skipIf(process.platform === 'linux')('replaces release components and recover
   expect((await readPrimaryRuntime(root)).desktopVersion).toBe('2.0.0')
 })
 
-it.skipIf(process.platform === 'linux')('replaces dependencies when the locked payload changes without a Desktop version change', async () => {
+it('replaces dependencies when the locked payload changes without a Desktop version change', async () => {
   const { source, root, manifest } = await fixture()
   const first = { ...manifest, payloadDigest: 'a'.repeat(64), pythonPackages: { 'python-docx': '1.1.2' } }
   await writeFile(join(source, 'runtime.json'), JSON.stringify(first))
@@ -80,7 +80,7 @@ it.skipIf(process.platform === 'linux')('replaces dependencies when the locked p
   await expect(readFile(join(installed.pythonPackages, 'old-package.py'))).rejects.toMatchObject({ code: 'ENOENT' })
 })
 
-it.skipIf(process.platform === 'linux')('upgrades a release manifest without a payload digest', async () => {
+it('upgrades a release manifest without a payload digest', async () => {
   const { source, root, manifest } = await fixture()
   await installPrimaryRuntime(source, root)
   await writeFile(join(source, 'runtime.json'), JSON.stringify({ ...manifest, payloadDigest: 'a'.repeat(64), pythonPackages: { 'python-docx': '1.2.0' } }))
@@ -88,7 +88,7 @@ it.skipIf(process.platform === 'linux')('upgrades a release manifest without a p
   expect((await readPrimaryRuntime(root)).payloadDigest).toBe('a'.repeat(64))
 })
 
-it.skipIf(process.platform === 'linux')('replaces changed payload bytes when only the digest changes', async () => {
+it('replaces changed payload bytes when only the digest changes', async () => {
   const { source, root, manifest } = await fixture()
   const first = { ...manifest, payloadDigest: 'a'.repeat(64), pythonPackages: { 'python-docx': '1.2.0' } }
   const sourceFile = join(workspaceDependencyPaths(source, first).pythonPackages, 'library.py')
@@ -102,7 +102,7 @@ it.skipIf(process.platform === 'linux')('replaces changed payload bytes when onl
   expect((await readPrimaryRuntime(root)).pythonPackages).toEqual(first.pythonPackages)
 })
 
-it.skipIf(process.platform === 'linux')('keeps the installed release when the replacement payload is incomplete', async () => {
+it('keeps the installed release when the replacement payload is incomplete', async () => {
   const { source, root, manifest } = await fixture()
   await installPrimaryRuntime(source, root)
   await writeFile(join(source, 'runtime.json'), JSON.stringify({ ...manifest, desktopVersion: '2.0.0' }))
@@ -111,7 +111,7 @@ it.skipIf(process.platform === 'linux')('keeps the installed release when the re
   expect((await readPrimaryRuntime(root)).desktopVersion).toBe('1.0.0')
 })
 
-it.skipIf(process.platform === 'linux')('refuses linked installation directories without modifying their targets', async () => {
+it('refuses linked installation directories without modifying their targets', async () => {
   const { source, root, directory } = await fixture()
   const outside = join(directory, 'outside')
   await mkdir(outside)
@@ -153,7 +153,7 @@ it.each([
   await expect(readPrimaryRuntime(source)).rejects.toThrow('invalid metadata')
 })
 
-it.skipIf(process.platform === 'linux')('loads the real tool through Cordis, exposes installed paths, and unregisters on disposal', async () => {
+it('loads the real tool through Cordis, exposes installed paths, and unregisters on disposal', async () => {
   const { source, root, manifest, directory } = await fixture()
   const ctx = new Context()
   try {

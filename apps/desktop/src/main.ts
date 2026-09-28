@@ -2,7 +2,7 @@ import { WINDOWS_TITLEBAR_HEIGHT } from './windows-layout.ts'
 /** Electron shell: desktop project ownership, custom protocol, windows, and lifecycle. */
 
 import { readFile, writeFile } from 'node:fs/promises'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
   app,
@@ -276,7 +276,7 @@ async function main(): Promise<void> {
     const hostInspectPort = developmentHostInspectPort(development)
     const host = new DesktopHostProcess(resources.node, resources.dsh, activeProject,
       hostInspectPort, process.env, onFailure,
-      development ? join(app.getAppPath(), '.desktop-build', 'targets', `${process.platform === 'darwin' ? 'mac' : 'win'}-${process.arch}`, 'runtime', 'primary-runtime')
+      development ? join(app.getAppPath(), '.desktop-build', 'targets', `${process.platform === 'darwin' ? 'mac' : process.platform === 'win32' ? 'win' : 'linux'}-${process.arch}`, 'runtime', 'primary-runtime')
         : join(process.resourcesPath, 'runtime', 'primary-runtime'),
       development ? 'link' : 'runtime', resources, (request, signal) => agentOS.hostRequest(request, signal))
     return {
@@ -366,7 +366,7 @@ async function main(): Promise<void> {
     return startup
   }
 
-  const previewSource = new PreviewUpdateSource(join(app.getPath('userData'), 'updates'), `${process.platform === 'darwin' ? 'mac' : 'win'}-${process.arch}`)
+  const previewSource = new PreviewUpdateSource(join(app.getPath('userData'), 'updates'), `${process.platform === 'darwin' ? 'mac' : process.platform === 'win32' ? 'win' : 'linux'}-${process.arch}`)
   const updates = new DesktopUpdateCoordinator(
     publishUpdate,
     async () => {
@@ -420,7 +420,7 @@ async function main(): Promise<void> {
     { enabled: () => previewDistribution, source: previewSource, open: async (path) => {
       const response = await ordinaryMessageBox({ type: 'info', title: messages.updateTitle, message: messages.previewUpdateReady, detail: messages.previewUpdateDetail, buttons: [messages.previewUpdateOpen, messages.later], defaultId: 0, cancelId: 1 })
       if (response.response !== 0) return
-      const error = await shell.openPath(path)
+      const error = await shell.openPath(process.platform === 'linux' ? dirname(path) : path)
       if (error) throw new Error(error)
     } },
   )

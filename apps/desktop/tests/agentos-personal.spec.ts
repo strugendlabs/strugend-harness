@@ -2,12 +2,12 @@
 import { mkdtempSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import type { BrowserWindow } from 'electron'
+import { safeStorage, type BrowserWindow } from 'electron'
 import { expect, it, vi } from 'vitest'
 import type { AgentOsEvent } from '@deepseek-ai/dsh-agentos-protocol'
 vi.mock('electron', () => ({
   app: { isPackaged: false }, ipcMain: { handle: () => {}, removeHandler: () => {} },
-  safeStorage: { isEncryptionAvailable: () => true,
+  safeStorage: { isEncryptionAvailable: () => true, getSelectedStorageBackend: () => 'gnome_libsecret',
     encryptString: (value: string) => Buffer.from(value), decryptString: (value: Buffer) => value.toString() },
   clipboard: {}, shell: {}, session: {}, WebContentsView: vi.fn(),
 }))
@@ -40,4 +40,16 @@ it('saves memory with conflict detection, scopes vault metadata, and opens a sec
     expect(await desktop.hostRequest({ method: 'personal-context', limit: 256 })).toMatchObject({ memory: { text: 'Use concise English.', truncated: false }, savedLogins: 2 })
     await expect(desktop.hostRequest({ method: 'personal-context', limit: -1 })).rejects.toThrow('limit')
   } finally { await desktop.dispose(); rmSync(root, { recursive: true, force: true }); vi.restoreAllMocks() }
+})
+
+it('refuses Linux Vault writes when Electron falls back to unprotected basic text storage', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'strugend-keyring-'))
+  vi.stubGlobal('process', { ...process, platform: 'linux' })
+  vi.spyOn(safeStorage, 'getSelectedStorageBackend').mockReturnValue('basic_text')
+  const desktop = new AgentOsDesktop(root, () => undefined, () => {})
+  try {
+    expect(() => desktop.store.saveVault({ name: 'Portal', origin: 'https://example.test', username: 'alice', password: 'fixture-secret' })).toThrow('encryption is unavailable')
+  } finally {
+    await desktop.dispose(); rmSync(root, { recursive: true, force: true }); vi.restoreAllMocks(); vi.unstubAllGlobals()
+  }
 })

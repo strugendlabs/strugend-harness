@@ -6,7 +6,7 @@ import { readFile, stat } from 'node:fs/promises'
 import { basename, join, resolve } from 'node:path'
 import { dump, load } from 'js-yaml'
 import { prerelease } from 'semver'
-import type { DesktopPackageTargetName } from './package-target.ts'
+import type { DesktopAutoUpdateTarget as DesktopPackageTargetName } from './desktop-auto-update-environment.mjs'
 import {
   desktopBuildRecordFilename,
   desktopUpdateMetadataFilename,
