@@ -201,12 +201,12 @@ export function createElectronBuilderConfig(
       icon: fileURLToPath(new URL('../resources/strugend/icon.png', import.meta.url)),
       category: 'Development',
       executableName: 'strugend-harness',
-      packageName: 'strugend-harness',
       synopsis: 'Strugend coding and everyday task assistant',
       maintainer: 'Strugend Labs',
       target: ['AppImage', 'deb'],
       desktop: { entry: { StartupWMClass: 'Strugend Harness' } },
     },
+    deb: { packageName: 'strugend-harness' },
     nsis: {
       installerSidebar: join(buildPaths.root, 'installer-ui', 'uninstaller-sidebar.bmp'),
       uninstallerSidebar: join(buildPaths.root, 'installer-ui', 'uninstaller-sidebar.bmp'),

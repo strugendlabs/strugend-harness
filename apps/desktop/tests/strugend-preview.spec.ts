@@ -1,4 +1,7 @@
 import { join } from 'node:path'
+import { readFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
+import { validateSchema } from 'app-builder-lib/out/util/config/schemaValidator.js'
 import { describe, expect, it } from 'vitest'
 import { createElectronBuilderConfig } from '../scripts/electron-builder-config.mjs'
 import { validateDesktopPackageEnvironment } from '../scripts/desktop-package-environment.mjs'
@@ -49,4 +52,12 @@ it('ships branded Linux AppImage and Debian installers', () => {
   expect(config.linux.executableName).toBe('strugend-harness')
   expect(config.linux.icon).toContain(join('strugend', 'icon.png'))
   expect(() => { validateDesktopPackageEnvironment({ DSH_DESKTOP_APP_ID: 'com.example.desktop' }, { platform: 'linux', arch: 'x64' }, { unsigned: true }) }).toThrow('requires the Strugend preview')
+})
+
+it('validates the packaged configuration against electron-builder and rejects misplaced Debian options', () => {
+  const require = createRequire(import.meta.url)
+  const schema: unknown = JSON.parse(readFileSync(require.resolve('app-builder-lib/scheme.json'), 'utf8'))
+  const config = createElectronBuilderConfig({ ...environment, DSH_DESKTOP_UNSIGNED: '1' }, 'linux', 'x64')
+  expect(() => { validateSchema(schema, config) }).not.toThrow()
+  expect(() => { validateSchema(schema, { ...config, linux: { ...config.linux, packageName: 'misplaced' } }) }).toThrow('Invalid configuration')
 })
