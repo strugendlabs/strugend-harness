@@ -141,6 +141,27 @@ describe('changed files native open route', () => {
     expect(opener.mock.lastCall?.[0].path).toBe(await realpath(outside))
   })
 
+  it('reveals a listed file in the Host file manager at its verified absolute path, inside or outside the workspace', async () => {
+    const { cwd, open, opener, outside } = await fixture()
+    const response = await open('?sessionId=owner&seq=9&index=0&action=reveal')
+    expect(response.status).toBe(204)
+    expect(response.headers.get('cache-control')).toBe('no-store')
+    expect(opener).toHaveBeenLastCalledWith(
+      { path: await realpath(join(cwd, 'src', 'lib', 'a.ts')), action: 'reveal' }, expect.any(AbortSignal))
+    expect((await open('?sessionId=owner&seq=9&index=2&action=reveal')).status).toBe(204)
+    expect(opener.mock.lastCall?.[0]).toEqual({ path: await realpath(outside), action: 'reveal' })
+  })
+
+  it('refuses an unsupported native action before it resolves any file or desktop', async () => {
+    const { open, opener, summary, readEvent } = await fixture()
+    for (const action of ['delete', '', 'REVEAL']) {
+      expect((await open(`?sessionId=owner&seq=9&index=0&action=${action}`)).status).toBe(400)
+    }
+    expect(summary).not.toHaveBeenCalled()
+    expect(readEvent).not.toHaveBeenCalled()
+    expect(opener).not.toHaveBeenCalled()
+  })
+
   it.each(['', '?seq=9', '?sessionId=owner', '?sessionId=owner&seq=9', '?sessionId=owner&seq=9&index=-1', '?sessionId=owner&seq=9&index=1.5', '?sessionId=owner&seq=x'])(
     'rejects invalid coordinates before reading: %s', async (query) => {
       const { open, readEvent } = await fixture()

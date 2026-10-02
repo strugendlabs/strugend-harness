@@ -259,7 +259,7 @@ describe('ReviewTab', () => {
     expect(store.getSnapshot().byTab[TAB]).toMatchObject({ split: true, wrap: true })
   })
 
-  it('opens the whole file in the sidebar and the native open only with a desktop', () => {
+  it('opens the whole file in the sidebar, and opens or reveals it in one click only with a desktop', () => {
     const summaries = new ChangesSummaryStore()
     summaries.state.set({ [SUMMARY_URL]: summary })
     const controller = new PresentedOpenController()
@@ -268,20 +268,49 @@ describe('ReviewTab', () => {
     expect(injected.reloadPresentedHost).not.toHaveBeenCalled()
     fireEvent.click(view.getByRole('button', { name: 'Open ~/out/big.bin in sidebar' }))
     expect(tabActions.openResource).toHaveBeenCalledWith(fileAddressFor(SESSION, '/work/app', '/tmp/out/big.bin'))
-    fireEvent.click(view.getByRole('button', { name: 'Open ~/out/big.bin in default app' }))
+    const open = view.getByRole('button', { name: 'Open ~/out/big.bin in default app' })
+    fireEvent.click(open)
     expect(injected.openChanged).toHaveBeenCalledWith('viewed', 5, 1)
+    const reveal = view.getByRole('button', { name: 'Show ~/out/big.bin in the file manager' })
+    expect(reveal.getAttribute('title')).toBe('Show in Finder')
+    fireEvent.click(reveal)
+    expect(injected.openChanged).toHaveBeenLastCalledWith('viewed', 5, 1, 'reveal')
     act(() => { controller.state.set({ '/api/changes.open?sessionId=viewed&seq=5&index=1': 'opening' }) })
     expect((view.getByRole('button', { name: 'Open ~/out/big.bin in default app' }) as HTMLButtonElement).disabled).toBe(true)
+    expect((view.getByRole('button', { name: 'Show ~/out/big.bin in the file manager' }) as HTMLButtonElement).disabled).toBe(true)
+    act(() => { controller.state.set({ '/api/changes.open?sessionId=viewed&seq=5&index=1': 'revealing' }) })
+    expect((view.getByRole('button', { name: 'Show ~/out/big.bin in the file manager' }) as HTMLButtonElement).disabled).toBe(true)
     act(() => { controller.state.set({ '/api/changes.open?sessionId=viewed&seq=5&index=1': 'error' }) })
     expect(view.getByRole('button', { name: 'Open ~/out/big.bin in default app' }).hasAttribute('data-error')).toBe(true)
+    // A failed reveal stays on its own tooltip and is retried by the same button.
+    act(() => { controller.state.set({ '/api/changes.open?sessionId=viewed&seq=5&index=1': 'revealError' }) })
+    const failed = view.getByRole('button', { name: 'Show ~/out/big.bin in the file manager' })
+    expect(failed.hasAttribute('data-error')).toBe(true)
+    expect((failed as HTMLButtonElement).disabled).toBe(false)
     act(() => { controller.state.set({ '/api/changes.open?sessionId=viewed&seq=5&index=1': 'nativeUnavailable' }) })
     expect(view.queryByRole('button', { name: 'Open ~/out/big.bin in default app' })).toBeNull()
+    expect(view.queryByRole('button', { name: 'Show ~/out/big.bin in the file manager' })).toBeNull()
     act(() => {
       controller.state.set({})
       controller.host.set({ name: 'server', available: false, fileManager: null })
     })
     expect(view.queryByRole('button', { name: 'Open ~/out/big.bin in default app' })).toBeNull()
+    expect(view.queryByRole('button', { name: 'Show ~/out/big.bin in the file manager' })).toBeNull()
     expect(view.getByText(en['changes.oversized'])).toBeTruthy()
+  })
+
+  it.each([
+    ['finder', 'Show in Finder'], ['explorer', 'Show in File Explorer'], ['directory', 'Open containing folder'],
+  ] as const)('names the Host %s file-manager action on the reveal tool', (fileManager, label) => {
+    const summaries = new ChangesSummaryStore()
+    summaries.state.set({ [SUMMARY_URL]: summary })
+    const controller = new PresentedOpenController()
+    controller.host.set({ name: 'desktop', available: true, fileManager })
+    const { view, injected } = mount({ summaries, controller, params: { index: 1 } })
+    const reveal = view.getByRole('button', { name: 'Show ~/out/big.bin in the file manager' })
+    expect(reveal.getAttribute('title')).toBe(label)
+    fireEvent.click(reveal)
+    expect(injected.openChanged).toHaveBeenCalledWith('viewed', 5, 1, 'reveal')
   })
 
   it('states the summary and comparison that stand in for hunks, and retries a failed read', () => {

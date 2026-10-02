@@ -27,6 +27,9 @@ export const zh = {
   'error.notRegularFile': '该路径不是普通文件，没有可显示的内容',
   'error.unavailable': '读取失败：{message}',
   retry: '重试',
+  openInSystem: '用系统应用打开',
+  showInFolder: '在文件夹中显示',
+  openFailed: '打开失败：{message}',
 } satisfies Record<string, string>
 
 /** Text-preview dictionary key union. */
@@ -53,4 +56,7 @@ export const en = {
   'error.notRegularFile': 'Not a regular file, nothing to display.',
   'error.unavailable': 'Read failed: {message}',
   retry: 'Retry',
+  openInSystem: 'Open in system app',
+  showInFolder: 'Show in folder',
+  openFailed: 'Could not open this file: {message}',
 } satisfies Record<SidebarDocumentPreviewKey, string>

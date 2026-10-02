@@ -1,0 +1,43 @@
+/* The frame owns the pane's width, so a wide video shrinks to fit and never
+   scrolls horizontally; a tall one keeps its aspect ratio inside the body. */
+.frame {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 100%;
+  padding: 12px;
+  font-family: var(--dsw-font, sans-serif);
+  white-space: normal;
+}
+
+.video {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 8px;
+  background: #000;
+}
+
+.audio {
+  display: block;
+  width: 100%;
+  max-width: 520px;
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 100%;
+  margin: 0;
+  padding: 10px;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: normal;
+}

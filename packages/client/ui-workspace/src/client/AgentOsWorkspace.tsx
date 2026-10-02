@@ -44,7 +44,7 @@ export function StrugendWordmark({ t }: PropsLocale<'workspace'>): ReactNode {
 
 /** Adds desktop organization while preserving Harness workspaces and their existing controls. */
 export function AgentOsWorkspace(props: Props): ReactNode {
-  const { useAgentOs, agentOsRequest, acknowledgeVaultRequest, useSessions, open, t, wide } = props
+  const { useAgentOs, agentOsRequest, acknowledgeVaultRequest, useSessions, openVideoStudio, open, t, wide } = props
   const state = useAgentOs(value => value)
   const sessions = useSessions(value => value)
   const workspaces = props.useWorkspaces(value => value.items)
@@ -290,11 +290,12 @@ export function AgentOsWorkspace(props: Props): ReactNode {
             </button>
             <button
               type="button"
-              disabled
-              title={t('agentos.comingSoon')}
+              onClick={() => {
+                openVideoStudio()
+              }}
             >
               <span aria-hidden="true">▷</span>
-              {t('agentos.video')}<small>{t('agentos.comingSoon')}</small>
+              {t('agentos.video')}
             </button>
           </nav>
           <section className={css.organization} aria-label={t('agentos.groups')}>

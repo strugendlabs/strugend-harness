@@ -6,7 +6,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode, UIEvent } from 'react'
 import {
-  Button, IconChevronDownOutline14, IconCodeOutline16, IconPanelLeftOutline16, IconRightUpOutline16, IconWrapLinesOutline16, Menu, Tooltip,
+  Button, IconChevronDownOutline14, IconCodeOutline16, IconFolderOpenOutline16, IconPanelLeftOutline16,
+  IconRightUpOutline16, IconWrapLinesOutline16, Menu, Tooltip,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { InjectFace, PropsLocale, PropsRuntime, PropsStore } from '@deepseek-ai/dsh-client-ui-slots'
 import type { ObservableSnapshot } from '@deepseek-ai/dsh-client-store'
@@ -196,6 +197,12 @@ export function ReviewTab({
   const split = state?.split === true
   const wrap = state?.wrap === true
   const native = host !== null && host !== 'error' && host.available && phase !== 'nativeUnavailable'
+  // Both native actions share one gesture state: one that is pending blocks the other.
+  const nativePending = phase === 'opening' || phase === 'revealing'
+  // The key stays a literal union so the dictionary lookup is checked, while the
+  // visible label is the translated string a button title needs.
+  const revealKey = host !== null && host !== 'error' ? host.fileManager ?? 'directory' : 'directory'
+  const revealLabel = t(`presented.${revealKey}`)
   const summaryState = summary === undefined || summary === 'loading' ? 'loading' : summary === 'missing' ? 'missing' : 'ready'
   return (
     <div className={css.root} data-changes-review data-review-state={summaryState}>
@@ -230,9 +237,16 @@ export function ReviewTab({
               onClick={() => { tab.actions.openResource(fileAddressFor(sessionId, cwd, file.path)) }}><IconCodeOutline16 /></button>
           </Tooltip>}
           {file !== undefined && native && <Tooltip label={t(phase === 'error' ? 'diff.openNativeError' : 'diff.openNative')} side="bottom" delayMs={500}>
-            <button type="button" className={css.tool} disabled={phase === 'opening'} data-review-tool="open-native"
+            <button type="button" className={css.tool} disabled={nativePending} data-review-tool="open-native"
               aria-label={t('diff.openNativeAria', { name: file.display })} data-error={phase === 'error' || undefined}
               onClick={() => { void openChanged(sessionId, seq, index) }}><IconRightUpOutline16 /></button>
+          </Tooltip>}
+          {file !== undefined && native && <Tooltip label={t(phase === 'revealError' ? 'presented.revealError' : `presented.${revealKey}`)} side="bottom" delayMs={500}>
+            <button type="button" className={css.tool} disabled={nativePending} data-review-tool="reveal-native"
+              aria-label={t('presented.revealAria', { name: file.display })}
+              title={phase === 'revealError' ? t('presented.revealError') : revealLabel}
+              data-error={phase === 'revealError' || undefined}
+              onClick={() => { void openChanged(sessionId, seq, index, 'reveal') }}><IconFolderOpenOutline16 /></button>
           </Tooltip>}
         </span>
       </div>

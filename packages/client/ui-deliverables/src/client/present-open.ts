@@ -32,14 +32,17 @@ export class PresentedOpenController {
   }
 
   /**
-   * Open one recorded changed file in the Host's default application.
+   * Open or reveal one recorded changed file on the Host desktop. Both actions
+   * share one state key per file, so a pending request coalesces them and a
+   * failure is retried by the same gesture.
    * @param sessionId - viewed Session.
    * @param seq - durable workspace/changes event sequence.
    * @param index - original file index within that event.
+   * @param action - default application open or file-manager reveal.
    * @returns after the Host acknowledges opening or the error state is published.
    */
-  openChanged(sessionId: SessionId, seq: number, index: number): Promise<void> {
-    return this.openUrl(changedFileUrl(sessionId, seq, index), 'open')
+  openChanged(sessionId: SessionId, seq: number, index: number, action: PresentedAction = 'open'): Promise<void> {
+    return this.openUrl(changedFileUrl(sessionId, seq, index), action)
   }
 
   private async openUrl(url: string, action: PresentedAction): Promise<void> {

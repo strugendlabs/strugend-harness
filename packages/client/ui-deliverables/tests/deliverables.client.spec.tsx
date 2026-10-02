@@ -835,9 +835,10 @@ describe('presented files', () => {
     fireEvent.click(view.getByRole('button', { name: 'Open report-0.docx in sidebar' }))
     expect(preview).toHaveBeenCalledTimes(2)
     expect(preview).toHaveBeenLastCalledWith('report-0.docx')
-    fireEvent.click(view.getByRole('button', { name: 'More file actions for report-0.docx' }))
-    fireEvent.click(view.getByRole('menuitem', { name: 'Open in default app' }))
+    fireEvent.click(view.getByRole('button', { name: 'Open report-0.docx in the default app' }))
     expect(props.openPresented).toHaveBeenCalledWith('child-session', 2, 0, 'open')
+    fireEvent.click(view.getByRole('button', { name: 'Show report-0.docx in the file manager' }))
+    expect(props.openPresented).toHaveBeenLastCalledWith('child-session', 2, 0, 'reveal')
     fireEvent.click(view.getByRole('button', { name: 'Collapse delivered files' }))
     expect(view.container.querySelectorAll('[data-presented-file]')).toHaveLength(4)
     expect(view.container.querySelector('[data-changed-files]')).toBeNull()
@@ -911,7 +912,8 @@ it.each(['opening', 'opened', 'error'] as const)('shows the %s state and permits
     { path: 'report.txt', seq: 2, index: 0 },
   ] }} openFile={() => {}} sessionId={SessionId('session')} t={makeTranslate(en)} />)
   expect(view.getByText(en[`presented.${phase}`])).toBeTruthy()
-  expect((view.getByRole('button', { name: 'More file actions for report.txt' }) as HTMLButtonElement).disabled).toBe(phase === 'opening')
+  expect((view.getByRole('button', { name: 'Open report.txt in the default app' }) as HTMLButtonElement).disabled).toBe(phase === 'opening')
+  expect((view.getByRole('button', { name: 'Show report.txt in the file manager' }) as HTMLButtonElement).disabled).toBe(phase === 'opening')
 })
 
 

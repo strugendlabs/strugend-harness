@@ -30,6 +30,10 @@ export function VideoStudio({ useVideoStudio, videoRequest, openSocial, t }: Pro
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const active = state.assets.find(asset => asset.id === selected) ?? state.assets.at(-1)
+  // Audio-only imports carry no frame size, and libraries saved before audio
+  // import existed hold video only.
+  const audio = state.assets.filter(asset => asset.media === 'audio')
+  const isAudio = (asset: MediaAsset): boolean => asset.media === 'audio'
   const request = async (command: AgentOsCommand): Promise<unknown> => {
     setError('')
     setBusy(true)
@@ -126,6 +130,32 @@ export function VideoStudio({ useVideoStudio, videoRequest, openSocial, t }: Pro
           </small>
         </div>
       )}
+      {active && (
+        <div className={css.actions}>
+          <button
+            disabled={busy}
+            title={t('video.openWithSystem')}
+            onClick={() => {
+              void request({ type: 'location.open', path: active.path }).catch(() => {
+                /* The visible error keeps the path on screen. */
+              })
+            }}
+          >
+            {t('video.openWithSystem')}
+          </button>
+          <button
+            disabled={busy}
+            title={t('video.revealFile')}
+            onClick={() => {
+              void request({ type: 'location.open', path: active.path, reveal: true }).catch(() => {
+                /* The visible error keeps the path on screen. */
+              })
+            }}
+          >
+            {t('video.revealFile')}
+          </button>
+        </div>
+      )}
       {(error || state.progress?.error) && (
         <p className={css.error} role="alert">
           {error || state.progress?.error}
@@ -141,12 +171,14 @@ export function VideoStudio({ useVideoStudio, videoRequest, openSocial, t }: Pro
                   setSelected(asset.id)
                 }}
               >
-                <span>{asset.kind === 'export' ? '↗' : '▷'}</span>
+                <span>{asset.kind === 'export' ? '↗' : isAudio(asset) ? '♪' : '▷'}</span>
                 <span>{asset.name}</span>
                 <small>{asset.duration.toFixed(1)}{t('video.seconds')}</small>
               </button>
               <button
                 aria-label={t('video.add')}
+                disabled={isAudio(asset)}
+                title={isAudio(asset) ? t('video.audioOnly') : t('video.add')}
                 onClick={() => {
                   add(asset)
                 }}
@@ -271,6 +303,19 @@ export function VideoStudio({ useVideoStudio, videoRequest, openSocial, t }: Pro
             {t('video.mute')}
           </label>
         </div>
+        <label>
+          {t('video.music')}
+          <select
+            aria-label={t('video.music')}
+            value={musicPath ?? ''}
+            onChange={(event) => {
+              setMusicPath(event.target.value === '' ? undefined : event.target.value)
+            }}
+          >
+            <option value="">{t('video.musicNone')}</option>
+            {audio.map(track => <option key={track.id} value={track.path}>{track.name}</option>)}
+          </select>
+        </label>
         <label>
           {t('video.captions')}
           <textarea

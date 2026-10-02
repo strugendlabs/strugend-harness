@@ -39,6 +39,22 @@ it('opens changed files through their own coordinates', async () => {
   await controller.dispose()
 })
 
+it('reveals a changed file in the file manager under its own state key and reports a retryable failure', async () => {
+  const fetcher = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>().mockResolvedValue(new Response(null, { status: 204 }))
+  vi.stubGlobal('fetch', fetcher)
+  const controller = new PresentedOpenController()
+  await controller.openChanged(id, 9, 1, 'reveal')
+  expect(fetcher.mock.calls.map(call => call[0]))
+    .toEqual(['/api/changes.open?sessionId=fork&seq=9&index=1&action=reveal'])
+  expect(controller.state.getSnapshot()['/api/changes.open?sessionId=fork&seq=9&index=1']).toBe('revealed')
+  fetcher.mockResolvedValueOnce(new Response(null, { status: 500 }))
+  await controller.openChanged(id, 9, 1, 'reveal')
+  expect(controller.state.getSnapshot()['/api/changes.open?sessionId=fork&seq=9&index=1']).toBe('revealError')
+  await controller.openChanged(id, 9, 1, 'reveal')
+  expect(controller.state.getSnapshot()['/api/changes.open?sessionId=fork&seq=9&index=1']).toBe('revealed')
+  await controller.dispose()
+})
+
 it.each(['http', 'network'])('publishes retryable %s failures', async (failure) => {
   const fetcher = vi.fn()
   if (failure === 'http') fetcher.mockResolvedValueOnce(new Response(null, { status: 500 }))

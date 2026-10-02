@@ -34,6 +34,11 @@ export const zh = {
   'video.publishHint': '打开社交账号，然后让智能体上传导出文件并准备文案。发布前检查目标账号与帖子。',
   'video.linkedin': 'LinkedIn',
   'video.instagram': 'Instagram',
+  'video.music': '背景音乐',
+  'video.musicNone': '不添加音乐',
+  'video.audioOnly': '音频',
+  'video.openWithSystem': '用系统应用打开',
+  'video.revealFile': '在文件夹中显示',
 
   'type.label': '浏览器',
   'guide.title': '浏览器',
@@ -108,6 +113,11 @@ export const en = {
   'video.publishHint': 'Open a social account, then ask the agent to upload this export and prepare the caption. Review the destination and post before publishing.',
   'video.linkedin': 'LinkedIn',
   'video.instagram': 'Instagram',
+  'video.music': 'Background music',
+  'video.musicNone': 'No music',
+  'video.audioOnly': 'Audio',
+  'video.openWithSystem': 'Open in system app',
+  'video.revealFile': 'Show in folder',
 
   'type.label': 'Browser',
   'guide.title': 'Browser',

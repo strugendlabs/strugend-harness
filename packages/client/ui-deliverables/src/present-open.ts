@@ -55,6 +55,12 @@ export function registerPresentOpen(ctx: Context): void {
 
 const NUMERIC = /^\d+$/
 
+/** The native file action a route query names; an absent action means open and an unsupported one is refused. */
+function fileAction(request: Request): 'open' | 'reveal' | undefined {
+  const action = new URL(request.url).searchParams.get('action') ?? 'open'
+  return action === 'open' || action === 'reveal' ? action : undefined
+}
+
 function coordinate(value: string | null): number | undefined {
   return value !== null && NUMERIC.test(value) && Number.isSafeInteger(Number(value)) ? Number(value) : undefined
 }
@@ -96,9 +102,9 @@ async function openVerified(ctx: Context, request: Request, path: string, action
 }
 
 async function handlePresentOpen(ctx: Context, request: Request): Promise<Response> {
+  const action = fileAction(request)
+  if (action === undefined) return new Response('Invalid file action.', { status: 400 })
   const query = new URL(request.url).searchParams
-  const action = query.get('action') ?? 'open'
-  if (action !== 'open' && action !== 'reveal') return new Response('Invalid file action.', { status: 400 })
   const id = query.get('sessionId')
   const seq = coordinate(query.get('seq'))
   const index = coordinate(query.get('index'))
@@ -159,6 +165,8 @@ async function handleChangesDiff(ctx: Context, request: Request): Promise<Respon
 }
 
 async function handleChangesOpen(ctx: Context, request: Request): Promise<Response> {
+  const action = fileAction(request)
+  if (action === undefined) return new Response('Invalid file action.', { status: 400 })
   const coordinates = changedFileCoordinates(request)
   if (coordinates instanceof Response) return coordinates
   const { id, seq, index } = coordinates
@@ -171,7 +179,7 @@ async function handleChangesOpen(ctx: Context, request: Request): Promise<Respon
     const file = changes.files[index]
     if (file === undefined) return new Response('Changed file not found in this summary.', { status: 404 })
     const { absolutePath: path } = await ctx.workspaceFiles.stat({ sessionId: id, workspaceRoot }, file.path, request.signal)
-    return await openVerified(ctx, request, path, 'open')
+    return await openVerified(ctx, request, path, action)
   } catch (error: unknown) {
     request.signal.throwIfAborted()
     return new Response('Changed file unavailable.', { status: failureStatus(error) })

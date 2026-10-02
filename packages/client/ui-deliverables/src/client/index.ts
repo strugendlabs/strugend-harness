@@ -2,8 +2,9 @@
  * Deliverables plugin, browser half: registers the changed-files card and
  * delivery cards into the chat view's turn-tail list, the `changes-review`
  * right-Sidebar tab type that reviews one turn's changed files one comparison
- * at a time, and provides the `chatFileMentions` service that links
- * inline-code mentions of produced or delivered files in the closing prose.
+ * at a time with its own default-application and file-manager actions, and
+ * provides the `chatFileMentions` service that links inline-code mentions of
+ * produced or delivered files in the closing prose.
  * All policy lives here — the supported mutation calls, mention matching, row
  * cap, and copy — so composing this plugin out of cordis.yml removes every
  * surface; the owning view renders an empty list and inert prose at zero cost.
@@ -67,7 +68,7 @@ export function apply(ctx: ClientContext): void {
         reloadPresentedHost: () => opener.loadHost(),
         loadChangesSummary: (sessionId, seq) => summaries.load(sessionId, seq),
         openPresented: (sessionId, seq, index, action) => opener.open(sessionId, seq, index, action),
-        openChanged: (sessionId, seq, index) => opener.openChanged(sessionId, seq, index),
+        openChanged: (sessionId, seq, index, action) => opener.openChanged(sessionId, seq, index, action),
         openChangesReview: (coordinates, index) => {
           ctx.sidebarRight.openResource(changesReviewAddress(coordinates), { params: { index } })
         },
@@ -87,7 +88,7 @@ export function apply(ctx: ClientContext): void {
         loadChangesSummary: (sessionId, seq) => summaries.load(sessionId, seq),
         loadChangesDiff: (sessionId, seq, index) => diffs.load(sessionId, seq, index),
         reloadPresentedHost: () => opener.loadHost(),
-        openChanged: (sessionId, seq, index) => opener.openChanged(sessionId, seq, index),
+        openChanged: (sessionId, seq, index, action) => opener.openChanged(sessionId, seq, index, action),
       }),
     },
     ReviewTab,

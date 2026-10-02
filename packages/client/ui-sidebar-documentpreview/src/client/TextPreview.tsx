@@ -15,12 +15,15 @@ import type { ReactNode, RefObject } from 'react'
 import clsx from 'clsx'
 import type { ObservableSnapshot } from '@deepseek-ai/dsh-client-store'
 import type { InjectFace, PropsLocale, PropsRenderSlots, PropsRuntime, PropsStore } from '@deepseek-ai/dsh-client-ui-slots'
-import { FileTypeIcon, IconRefreshOutline16, Menu, Tooltip, classifyFileType } from '@deepseek-ai/dsh-client-ui-primitives'
+import {
+  FileTypeIcon, IconFolderOpenOutline16, IconRefreshOutline16, IconRightUpOutline16, Menu, Tooltip, classifyFileType,
+} from '@deepseek-ai/dsh-client-ui-primitives'
 import { pathPartsOf } from '@deepseek-ai/dsh-util-workspace-path'
 import type { TextInjected } from './face.ts'
 import { failureLine } from './failure-line.ts'
 import { IconNowrapFill16, IconWrapFill16 } from './icons.tsx'
 import { LoadingIndicator } from './LoadingIndicator.tsx'
+import { canOpenOnHost, openOnHost } from './open-on-host.ts'
 import { hostFileOf } from './rpc.ts'
 import type { TextStore } from './store.ts'
 import type { DocumentContent } from './document/contract.ts'
@@ -121,6 +124,16 @@ export function TextPreview({
   const pathRef = useRef<HTMLDivElement | null>(null)
   const pathTextRef = useRef<HTMLSpanElement | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [hostFailure, setHostFailure] = useState('')
+  const onDesktop = canOpenOnHost()
+  const openHost = async (reveal: boolean): Promise<void> => {
+    setHostFailure('')
+    try {
+      await openOnHost(displayPath, reveal)
+    } catch (reason: unknown) {
+      setHostFailure(reason instanceof Error ? reason.message : String(reason))
+    }
+  }
   const displayPath = meta.value?.absolutePath ?? current?.complete?.absolutePath ?? file.path
   usePathClipped(pathRef, pathTextRef, displayPath, state !== undefined)
   // Every tab of this type is a `file` resource address, so its params are the
@@ -329,7 +342,38 @@ export function TextPreview({
             <IconRefreshOutline16 />
           </button>
         </Tooltip>
+        {onDesktop && (
+          <Tooltip label={t('openInSystem')} side="bottom" delayMs={500}>
+            <button
+              type="button"
+              className={css.tool}
+              aria-label={t('openInSystem')}
+              data-textpreview-tool="open-system"
+              onClick={() => { void openHost(false) }}
+            >
+              <IconRightUpOutline16 />
+            </button>
+          </Tooltip>
+        )}
+        {onDesktop && (
+          <Tooltip label={t('showInFolder')} side="bottom" delayMs={500}>
+            <button
+              type="button"
+              className={css.tool}
+              aria-label={t('showInFolder')}
+              data-textpreview-tool="reveal-system"
+              onClick={() => { void openHost(true) }}
+            >
+              <IconFolderOpenOutline16 />
+            </button>
+          </Tooltip>
+        )}
       </div>
+      {hostFailure !== '' && (
+        <p className={css.changed} role="alert" data-textpreview-host-error>
+          <span>{t('openFailed', { message: hostFailure })}</span>
+        </p>
+      )}
       <div
         ref={bindBody}
         className={clsx(css.body, state.wrap && css.wrap)}
