@@ -10,9 +10,58 @@ import type { AgentOsStore } from './agentos-store.ts'
 import type { AgentOsEvent, MediaAsset, VideoEdit } from '@deepseek-ai/dsh-agentos-protocol'
 import { resolveMediaExecutable } from './agentos-media-executable.ts'
 
+/** Stream facts read from one media file before it is admitted. */
+interface ProbedMedia {
+  duration: number
+  width: number
+  height: number
+  audio: boolean
+  video: boolean
+  codec?: string
+}
+
 function executable(name: 'ffmpeg' | 'ffprobe'): string {
   return resolveMediaExecutable(name, { platform: process.platform, environment: process.env,
     ...('resourcesPath' in process ? { resources: process.resourcesPath } : {}) })
+}
+
+/** Containers a Chromium media element plays without converting first. */
+const PLAYABLE_CONTAINERS = new Set(['.mp4', '.m4v', '.mov', '.webm'])
+/** Video codecs a Chromium media element decodes without a system add-on. */
+const PLAYABLE_CODECS = new Set(['h264', 'vp8', 'vp9', 'av1'])
+/** Audio containers a Chromium media element plays without converting first. */
+const PLAYABLE_AUDIO_CONTAINERS = new Set(['.mp3', '.m4a', '.wav', '.ogg', '.oga', '.opus', '.flac'])
+/** Response types for every media suffix the library can hold. */
+const MEDIA_CONTENT_TYPES: Readonly<Record<string, string>> = {
+  '.mp4': 'video/mp4', '.m4v': 'video/mp4', '.mov': 'video/quicktime', '.webm': 'video/webm',
+  '.mp3': 'audio/mpeg', '.m4a': 'audio/mp4', '.aac': 'audio/aac', '.wav': 'audio/wav',
+  '.flac': 'audio/flac', '.ogg': 'audio/ogg', '.oga': 'audio/ogg', '.opus': 'audio/ogg',
+}
+
+/**
+ * Read FFmpeg's `-progress` stream into monotonic whole-percent updates.
+ * @param duration - Expected output duration in seconds; zero keeps every update at zero.
+ * @param report - Whole-percent observer.
+ * @returns the stdout consumer for the running encoder.
+ */
+function progressReader(duration: number, report: (progress: number) => void): (text: string) => void {
+  let carry = ''
+  let last = -1
+  return (text) => {
+    carry += text
+    const lines = carry.split('\n')
+    carry = lines.pop() ?? ''
+    for (const line of lines) {
+      const match = /^out_time_us=(\d+)$/u.exec(line.trim())
+      if (match === null) continue
+      const seconds = Number(match[1]) / 1_000_000
+      const percent = duration > 0 ? Math.min(99, Math.round((seconds / duration) * 100)) : 0
+      if (percent > last) {
+        last = percent
+        report(percent)
+      }
+    }
+  }
 }
 
 function command(
@@ -84,7 +133,9 @@ export class AgentOsMedia {
   }
   /** @param path - Proposed media or upload path. @param workspace - Calling chat root. @returns Canonical admitted path. */
   async admit(path: string, workspace?: string): Promise<string> {
-    const target = await realpath(path)
+    const target = await realpath(path).catch(() => {
+      throw new Error(`The media file ${basename(path)} has moved or been deleted.`)
+    })
     const known = this.list().some(asset => asset.path === target)
     if (!known) {
       if (workspace === undefined) throw new Error('Import this file in Video studio first.')
@@ -99,27 +150,83 @@ export class AgentOsMedia {
     if (!info.isFile() || info.size > 4 * 1024 ** 3) throw new Error('Choose a media file smaller than 4 GB.')
     return target
   }
-  private async inspect(
-    path: string,
-    signal?: AbortSignal,
-  ): Promise<{ duration: number; width: number; height: number; audio: boolean }> {
+  private async probe(path: string, signal?: AbortSignal): Promise<ProbedMedia> {
     const data = JSON.parse(
       await command(
         executable('ffprobe'),
         ['-v', 'error', '-show_format', '-show_streams', '-of', 'json', path],
         signal,
       ),
-    ) as { format?: { duration?: string }; streams?: Array<{ codec_type?: string; width?: number; height?: number }> }
+    ) as {
+      format?: { duration?: string }
+      streams?: Array<{ codec_type?: string; codec_name?: string; width?: number; height?: number }>
+    }
     const video = data.streams?.find(stream => stream.codec_type === 'video')
     const duration = Number(data.format?.duration)
-    if (video === undefined || !Number.isFinite(duration) || duration <= 0)
-      throw new Error('This file does not contain a supported video.')
+    if (!Number.isFinite(duration) || duration <= 0) throw new Error('This file reports no usable duration.')
     return {
       duration,
-      width: video.width ?? 0,
-      height: video.height ?? 0,
+      width: video?.width ?? 0,
+      height: video?.height ?? 0,
       audio: data.streams?.some(stream => stream.codec_type === 'audio') ?? false,
+      video: video !== undefined,
+      ...(video?.codec_name === undefined ? {} : { codec: video.codec_name }),
     }
+  }
+
+  /**
+   * Convert one source into an MP4 a Chromium media element can play.
+   * @param source - Canonical source path.
+   * @param target - Destination MP4 path.
+   * @param duration - Source duration in seconds, used for progress.
+   * @param report - Whole-percent observer.
+   */
+  private async convert(
+    source: string,
+    target: string,
+    duration: number,
+    report: (progress: number) => void,
+  ): Promise<void> {
+    await command(
+      executable('ffmpeg'),
+      [
+        '-hide_banner', '-loglevel', 'error', '-nostdin', '-progress', 'pipe:1',
+        '-i', source,
+        '-map', '0:v:0', '-map', '0:a:0?',
+        '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '22', '-pix_fmt', 'yuv420p',
+        '-c:a', 'aac', '-b:a', '160k',
+        '-movflags', '+faststart',
+        target,
+      ],
+      undefined,
+      progressReader(duration, report),
+    )
+  }
+  /**
+   * Convert one audio-only source into an M4A a Chromium media element can play.
+   * @param source - Canonical source path.
+   * @param target - Destination M4A path.
+   * @param duration - Source duration in seconds, used for progress.
+   * @param report - Whole-percent observer.
+   */
+  private async convertAudio(
+    source: string,
+    target: string,
+    duration: number,
+    report: (progress: number) => void,
+  ): Promise<void> {
+    await command(
+      executable('ffmpeg'),
+      [
+        '-hide_banner', '-loglevel', 'error', '-nostdin', '-progress', 'pipe:1',
+        '-i', source,
+        '-vn', '-c:a', 'aac', '-b:a', '160k',
+        '-movflags', '+faststart',
+        target,
+      ],
+      undefined,
+      progressReader(duration, report),
+    )
   }
   /** @param paths - Files selected by the user in the native file picker. @returns Imported inventory. */
   import(paths: string[]): Promise<MediaAsset[]> {
@@ -142,21 +249,57 @@ export class AgentOsMedia {
     await mkdir(join(this.root, 'imports'), { recursive: true, mode: 0o700 })
     for (const path of paths) {
       const source = await realpath(path)
-      const details = await this.inspect(source)
       const info = await stat(source)
-      if (info.size > 4 * 1024 ** 3) throw new Error('Choose a video smaller than 4 GB.')
+      if (info.size > 4 * 1024 ** 3) throw new Error('Choose a media file smaller than 4 GB.')
+      const chosen = extname(source).toLowerCase()
       const id = randomUUID()
-      const target = join(this.root, 'imports', `${id}${extname(source).toLowerCase()}`)
-      await copyFile(source, target)
+      const name = basename(source)
+      const report = (progress: number): void => {
+        this.emit({ type: 'media.progress', jobId: id, progress, name })
+      }
+      const facts = await this.probe(source).catch((reason: unknown) => {
+        const cause = reason instanceof Error ? reason.message : 'ffprobe could not read it'
+        throw new Error(`${name} is not a media file this application can read (${cause})`)
+      })
+      if (!facts.video && !facts.audio) throw new Error(`${name} carries no audio or video this application can play.`)
+      // Audio is judged on its own containers: a format the player cannot decode
+      // is converted, so a successful import always plays.
+      const playable = facts.video
+        ? PLAYABLE_CONTAINERS.has(chosen) && PLAYABLE_CODECS.has(facts.codec ?? '')
+        : PLAYABLE_AUDIO_CONTAINERS.has(chosen)
+      const converted = facts.video ? '.mp4' : '.m4a'
+      const target = join(this.root, 'imports', `${id}${playable ? chosen : converted}`)
+      // A copy or conversion that fails must not leave a half-written file
+      // behind, or the next import would see it as orphaned library bytes.
+      try {
+        if (playable) await copyFile(source, target)
+        else {
+          report(0)
+          if (facts.video) await this.convert(source, target, facts.duration, report)
+          else await this.convertAudio(source, target, facts.duration, report)
+        }
+      } catch (reason: unknown) {
+        await rm(target, { force: true })
+        throw reason
+      }
+      const details = playable ? facts : await this.probe(target).catch(async (reason: unknown) => {
+        await rm(target, { force: true })
+        throw reason
+      })
       this.save({
         id,
-        name: basename(source),
+        name,
         path: await realpath(target),
         url: `dsh-app://app/agent-os-media/${id}`,
-        ...details,
+        duration: details.duration,
+        width: details.width,
+        height: details.height,
+        audio: details.audio,
+        media: details.video ? 'video' : 'audio',
         createdAt: Date.now(),
         kind: 'input',
       })
+      report(100)
     }
     return this.list()
   }
@@ -183,9 +326,8 @@ export class AgentOsMedia {
     if (!Array.isArray(edit.clips) || edit.clips.length < 1 || edit.clips.length > 30)
       throw new Error('Choose between 1 and 30 clips.')
     const formats = { portrait: [1080, 1920], square: [1080, 1080], landscape: [1920, 1080] } as const
-    const dimensions = formats[edit.format]
     if (!Object.hasOwn(formats, edit.format)) throw new Error('Choose portrait, square, or landscape output.')
-    const [width, height] = dimensions
+    const [width, height] = formats[edit.format]
     const id = randomUUID()
     const controller = new AbortController()
     const abort = (): void => {
@@ -210,7 +352,8 @@ export class AgentOsMedia {
       let totalDuration = 0
       for (const [index, clip] of edit.clips.entries()) {
         const path = await this.admit(clip.path, workspace)
-        const info = await this.inspect(path, controller.signal)
+        const info = await this.probe(path, controller.signal)
+        if (!info.video) throw new Error('Every timeline clip needs a video track.')
         const start = clip.start ?? 0
         const end = clip.end ?? info.duration
         if (
@@ -234,6 +377,8 @@ export class AgentOsMedia {
             '-loglevel',
             'error',
             '-nostdin',
+            '-progress',
+            'pipe:1',
             '-ss',
             String(start),
             '-i',
@@ -269,12 +414,17 @@ export class AgentOsMedia {
             join(temp, `clip-${index}.mp4`),
           ],
           controller.signal,
+          progressReader(end - start, (percent) => {
+            report(Math.round(((index + percent / 100) / edit.clips.length) * 75))
+          }),
         )
-        report(Math.round(((index + 1) / edit.clips.length) * 75))
       }
       const manifest = join(temp, 'clips.txt')
       await writeFile(manifest, edit.clips.map((_, index) => `file 'clip-${index}.mp4'`).join('\n'))
-      const args = ['-hide_banner', '-loglevel', 'error', '-nostdin', '-f', 'concat', '-safe', '0', '-i', manifest]
+      const args = [
+        '-hide_banner', '-loglevel', 'error', '-nostdin', '-progress', 'pipe:1',
+        '-f', 'concat', '-safe', '0', '-i', manifest,
+      ]
       let nextInput = 1
       if (edit.musicPath) {
         args.push('-stream_loop', '-1', '-i', await this.admit(edit.musicPath, workspace))
@@ -326,15 +476,21 @@ export class AgentOsMedia {
       else args.push('-map', '0:v:0', '-c:v', 'copy')
       args.push('-map', edit.musicPath ? '1:a:0' : '0:a:0', '-t', String(totalDuration))
       args.push('-c:a', 'aac', '-movflags', '+faststart', target)
-      await command(executable('ffmpeg'), args, controller.signal)
-      const details = await this.inspect(target, controller.signal)
+      await command(executable('ffmpeg'), args, controller.signal, progressReader(totalDuration, (percent) => {
+        report(75 + Math.round(percent * 0.25))
+      }))
+      const details = await this.probe(target, controller.signal)
       await writeFile(join(outputDir, `${id}.edit.json`), JSON.stringify(edit, null, 2), { mode: 0o600 })
       const asset = this.save({
         id,
         name: `${name}.mp4`,
         path: await realpath(target),
         url: `dsh-app://app/agent-os-media/${id}`,
-        ...details,
+        duration: details.duration,
+        width: details.width,
+        height: details.height,
+        audio: details.audio,
+        media: 'video',
         kind: 'export',
         createdAt: Date.now(),
       })
@@ -367,20 +523,25 @@ export class AgentOsMedia {
     let start = 0
     let end = info.size - 1
     if (header) {
-      const match = /^bytes=(\d+)-(\d*)$/u.exec(header)
-      if (!match) return new Response(null, { status: 416 })
-      start = Number(match[1])
-      end = match[2] ? Number(match[2]) : end
-      if (start > end || end >= info.size)
+      // One range only: the suffix form asks for the last N bytes, the ordinary
+      // form names both ends, and a multipart set is refused rather than answered
+      // as a single part.
+      const match = /^bytes=(\d*)-(\d*)$/u.exec(header)
+      if (match === null || (match[1] === '' && match[2] === '')) return new Response(null, { status: 416 })
+      if (match[1] === '') {
+        const length = Number(match[2])
+        if (!Number.isFinite(length) || length <= 0) return new Response(null, { status: 416 })
+        start = Math.max(0, info.size - length)
+        end = info.size - 1
+      } else {
+        start = Number(match[1])
+        end = match[2] ? Number(match[2]) : end
+      }
+      if (start > end || start >= info.size || end >= info.size)
         return new Response(null, { status: 416, headers: { 'content-range': `bytes */${info.size}` } })
     }
     const headers: Record<string, string> = {
-      'content-type':
-        extname(asset.path) === '.webm'
-          ? 'video/webm'
-          : extname(asset.path) === '.mov'
-            ? 'video/quicktime'
-            : 'video/mp4',
+      'content-type': MEDIA_CONTENT_TYPES[extname(asset.path).toLowerCase()] ?? 'application/octet-stream',
       'accept-ranges': 'bytes',
       'content-length': String(end - start + 1),
       'cache-control': 'private, no-store',

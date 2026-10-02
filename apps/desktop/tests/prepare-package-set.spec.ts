@@ -78,9 +78,12 @@ describe('desktop package-set selection', () => {
     ])
   })
 
-  it('requires the Desktop Host entry', () => {
+  it('requires the Desktop Host entry and its Laya worker', () => {
+    // DESKTOP_HOST_RUNTIME_FILES names both files; the fixture previously listed only the entry,
+    // so it passed while the check already required the worker the Host boots for local Laya.
     const files = [
       'package/lib/index.js',
+      'package/lib/strugend-laya-worker.js',
     ]
     expect(() => {
       assertDesktopHostPackageFiles(files)
@@ -88,5 +91,8 @@ describe('desktop package-set selection', () => {
     expect(() => {
       assertDesktopHostPackageFiles(files.slice(1))
     }).toThrow(/lib\/index\.js/u)
+    expect(() => {
+      assertDesktopHostPackageFiles(files.filter(file => !file.endsWith('strugend-laya-worker.js')))
+    }).toThrow(/lib\/strugend-laya-worker\.js/u)
   })
 })

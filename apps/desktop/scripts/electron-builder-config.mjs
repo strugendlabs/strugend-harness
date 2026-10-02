@@ -18,6 +18,7 @@ import {
 } from './windows-sign.mjs'
 import { resolveDesktopAutoUpdateConfig } from './desktop-auto-update-environment.mjs'
 import { isStrugendPreviewDistribution } from './strugend-distribution.mjs'
+import { assertUnpackedNativeExecutables } from './check-unpacked-executables.mjs'
 import { resolveDesktopPolicyEnvironment } from './desktop-policy-environment.mjs'
 import { desktopTargetBuildPaths, resolveDesktopBuildTarget } from './desktop-build-paths.mjs'
 import { installWindowsDirectoryInstaller } from './windows-directory-installer.mjs'
@@ -123,7 +124,15 @@ export function createElectronBuilderConfig(
       '**/*.{node,dylib,dll,so,exe}',
       '**/*.so.*',
       '**/spawn-helper',
-      '**/@vscode/ripgrep/bin/rg',
+      // The loader package ships no executable: `@vscode/ripgrep` resolves the
+      // binary from `@vscode/ripgrep-<platform>-<arch>/bin/rg`. Naming only the
+      // loader unpacks nothing, so ripgrep stays inside app.asar where spawn
+      // cannot execute it and every glob/grep call fails.
+      // Windows ships rg.exe; the extension glob above already unpacks it.
+      '**/@vscode/ripgrep*/bin/rg',
+      // The Linux sandbox launcher is a bare executable name as well: no extension for a glob
+      // to match, so the package's bin directory is named explicitly.
+      '**/@deepseek-ai/node-addon-system-*/bin/*',
     ],
     extraResources: [
       { from: buildPaths.runtime, to: 'runtime' },
@@ -155,6 +164,12 @@ export function createElectronBuilderConfig(
     afterPack: async context => {
       const { verifyDesktopRuntime, writeDesktopRuntime } = await import('../lib/types/runtime-tree.js')
       const resourcesDir = context.packager.getResourcesDir(context.appOutDir)
+      // A native executable left inside app.asar cannot be spawned, and no other build stage
+      // reads the finished archive. Fail here rather than shipping a tool that cannot start.
+      assertUnpackedNativeExecutables(
+        join(resourcesDir, 'app.asar'),
+        `${context.packager.appInfo.productFilename} ${context.packager.appInfo.version}`,
+      )
       if (resolvedPlatform === 'darwin' && update !== undefined) {
         await writeMacOSAppUpdateConfig(resourcesDir, resolveMacOSAppUpdateFeed(context.packager.config.publish),
           context.packager.appInfo.updaterCacheDirName)

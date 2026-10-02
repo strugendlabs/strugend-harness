@@ -1,15 +1,18 @@
 /** Installs Agent OS capabilities behind the owned desktop's narrow IPC surface. */
-import { app, clipboard, ipcMain, safeStorage, shell, type BrowserWindow, type IpcMainInvokeEvent } from 'electron'
+import { app, clipboard, dialog, ipcMain, safeStorage, shell, type BrowserWindow, type IpcMainInvokeEvent } from 'electron'
 import { extname, join } from 'node:path'
 import { cpSync, existsSync, mkdirSync, readdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
-import type { AgentOsCommand, AgentOsEvent, BrowserAction, VideoEdit } from '@deepseek-ai/dsh-agentos-protocol'
+import type { AgentOsCommand, AgentOsEvent, BrowserAction, MediaAsset, VideoEdit } from '@deepseek-ai/dsh-agentos-protocol'
 import { AgentOsMedia } from './agentos-media.ts'
 import { AgentOsStore } from './agentos-store.ts'
 import { AgentOsBrowser } from './agentos-browser.ts'
 import { openLocation } from './strugend-location.ts'
 import type { DesktopBackground } from './background.ts'
 import { AgentOsCrawler } from './agentos-crawler.ts'
+
+/** Footage and audio the import dialog offers; FFmpeg decides what it can actually read. */
+const MEDIA_IMPORT_EXTENSIONS = ['mp4', 'mov', 'm4v', 'webm', 'mkv', 'avi', 'mp3', 'm4a', 'wav', 'aac', 'flac', 'ogg', 'opus']
 
 /** Main-process feature composition; untrusted page renderers receive none of these APIs. */
 export class AgentOsDesktop {
@@ -24,7 +27,7 @@ export class AgentOsDesktop {
   /** @param root - Private application data. @param window - Owned window. @param assertSender - Top-level renderer authentication. */
   constructor(
     root: string,
-    window: () => BrowserWindow | undefined,
+    private readonly window: () => BrowserWindow | undefined,
     assertSender: (event: IpcMainInvokeEvent) => void,
     private readonly background?: DesktopBackground,
     private readonly updates?: { preferences(mode?: 'ask' | 'automatic'): unknown; check(): Promise<void> },
@@ -79,8 +82,9 @@ export class AgentOsDesktop {
         case 'media.list':
           return this.media.list()
         case 'media.import':
+          return this.importMedia()
         case 'media.edit':
-          throw new Error('Video studio is coming soon.')
+          return this.media.edit(command.edit)
         case 'media.recipe':
           return this.media.recipe(command.assetId)
         case 'media.cancel':
@@ -256,7 +260,7 @@ export class AgentOsDesktop {
       return { path }
     }
     if (request.method === 'media' && request.edit !== undefined)
-      throw new Error('Video studio is coming soon.')
+      return this.media.edit(request.edit, request.workspace, signal)
     if (request.method === 'media-list') return this.media.list()
     if (request.method === 'browser' && typeof request.sessionId === 'string' && request.command !== undefined) {
       if (request.command.action === 'upload') {
@@ -300,6 +304,24 @@ export class AgentOsDesktop {
       }
     }
     throw new Error('Unsupported host operation.')
+  }
+
+  /**
+   * Import footage the user picks. Only the owned window may open a dialog, so the chosen
+   * absolute paths stay in the main process and a page renderer never names a file itself.
+   * @returns the imported assets; an empty list when the user cancels the dialog.
+   */
+  private async importMedia(): Promise<MediaAsset[]> {
+    const target = this.window()
+    if (target === undefined || target.isDestroyed()) throw new Error('Open the application window before importing media.')
+    const result = await dialog.showOpenDialog(target, {
+      title: 'Import video or audio',
+      buttonLabel: 'Import',
+      properties: ['openFile', 'multiSelections'],
+      filters: [{ name: 'Video and audio', extensions: MEDIA_IMPORT_EXTENSIONS }],
+    })
+    if (result.canceled) return []
+    return this.media.import(result.filePaths)
   }
 
   /** Dispose input surfaces before releasing persisted metadata. */

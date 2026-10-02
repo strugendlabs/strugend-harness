@@ -151,6 +151,8 @@ export interface MediaAsset {
   width: number
   height: number
   audio: boolean
+  /** Present audio-only or video media; absent on libraries saved before audio import existed. */
+  media?: 'video' | 'audio'
   kind: 'input' | 'export'
   createdAt: number
 }
