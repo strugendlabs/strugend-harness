@@ -429,6 +429,34 @@ describe('ModelSelect keyboard walk', () => {
     expect(document.activeElement).toBe(cells[0])
   })
 
+  it('shows a localized free badge instead of the catalog name suffix for free OpenRouter models', () => {
+    const directory = createSnapshotStore<ModelDirectoryState>(state({
+      current: { provider: 'openrouter', model: 'google/gemma-4-31b-it:free' },
+      groups: [{
+        id: 'openrouter',
+        name: 'OpenRouter',
+        models: [
+          { id: 'google/gemma-4-31b-it:free', name: 'Google: Gemma 4 31B (free)' },
+          { id: 'anthropic/claude-3-haiku', name: 'Anthropic: Claude 3 Haiku' },
+        ],
+      }],
+    }))
+    render(<ModelSelect
+      locked={false}
+      available
+      directory={directory}
+      load={vi.fn()}
+      select={vi.fn().mockResolvedValue({ ok: true, value: undefined })}
+      t={t}
+    />)
+    fireEvent.click(screen.getByRole('button', { name: /选择模型/ }))
+    fireEvent.click(screen.getByRole('menuitem', { name: /^模型/ }))
+
+    const rows = screen.getAllByRole('menuitemradio')
+    // The English catalog suffix is replaced by the badge, so it is not spelled twice.
+    expect(rows.map(row => row.textContent)).toEqual(['Google: Gemma 4 31B免费', 'Anthropic: Claude 3 Haiku'])
+  })
+
   it('a pane whose rows mark no current value opens on its first row', () => {
     // The session runs a model the catalog no longer lists: no row is checked.
     render(<ModelSelect

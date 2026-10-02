@@ -319,6 +319,12 @@ export function ModelSelect(
     if (process.env.DSH_CLIENT_TITLE !== 'Strugend Harness' || provider !== 'deepseek-official') return fallback
     return t(model.includes('vision') ? 'role.vision' : 'role.core')
   }
+  // Free OpenRouter models carry an English "(free)" in their catalog name;
+  // the picker replaces that suffix with the localized badge beside it.
+  const optionLabel = (provider: string, model: { id: string; name: string }): string => {
+    const label = productName(provider, model.id, model.name)
+    return model.id.endsWith(':free') ? label.replace(/\s*\(free\)$/u, '') : label
+  }
   const waiting = state.current === null && state.status === 'loading'
   const rawModelLabel = waiting
     ? t('trigger.loading')
@@ -434,7 +440,10 @@ export function ModelSelect(
                             onClick={() => { choose({ provider: group.id, model: model.id }) }}
                           >
                             <span className={css.optionCopy}>
-                              <span className={css.modelName}>{productName(group.id, model.id, model.name)}</span>
+                              <span className={css.modelName}>
+                                {optionLabel(group.id, model)}
+                                {model.id.endsWith(':free') && <span className={css.freeTag}>{t('model.free')}</span>}
+                              </span>
                             </span>
                             <span className={css.check}>
                               {selected ? <IconCheckOutline16 /> : null}

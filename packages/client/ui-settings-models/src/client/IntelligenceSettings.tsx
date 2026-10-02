@@ -125,7 +125,7 @@ export function IntelligenceSettings({ access, operations, t }: {
         </label>}
         {role.provider === 'decision' && <label className={styles.intelligenceKey}>
           <span>{t('intelligenceRuntime')}</span>
-          <select className={styles.input} aria-label={t('intelligenceRuntime')} value={snapshot?.decisionMode} disabled={busy}
+          <select className={`${styles.input} ${styles.selectInput}`} aria-label={t('intelligenceRuntime')} value={snapshot?.decisionMode} disabled={busy}
             onChange={(event) => { void setMode(event.target.value) }}>
             <option value="local" disabled={snapshot?.localAllowed === false}>{t('intelligenceLocal')}</option>
             <option value="auto">{t('intelligenceAuto')}</option>
@@ -135,7 +135,7 @@ export function IntelligenceSettings({ access, operations, t }: {
         {role.provider === 'decision' && <>
           <label className={styles.intelligenceKey}>
             <span>{t('intelligenceAdvice')}</span>
-            <select className={styles.input} aria-label={t('intelligenceAdvice')} value={snapshot?.adviceMode} disabled={busy}
+            <select className={`${styles.input} ${styles.selectInput}`} aria-label={t('intelligenceAdvice')} value={snapshot?.adviceMode} disabled={busy}
               onChange={(event) => { void setMode(event.target.value, 'adviceMode') }}>
               <option value="observe">{t('intelligenceObserve')}</option>
               <option value="assist">{t('intelligenceAssist')}</option>

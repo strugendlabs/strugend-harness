@@ -73,7 +73,7 @@ export function ProviderOnboardingDialog(props: PropsRuntime<'settings.onboardin
     {error && <p role="alert" className={styles.error}>{error}</p>}
     <label className={styles.field}>
       <span>{t('provider')}</span>
-      <select className={styles.input} value={provider} onChange={(event) => { setProvider(event.target.value); setEditing(true); setError('') }}>
+      <select className={`${styles.input} ${styles.selectInput}`} value={provider} onChange={(event) => { setProvider(event.target.value); setEditing(true); setError('') }}>
         <option value="">{t('providerChoose')}</option>
         {state.rows.filter(value => state.namespaces.has(value.entry.settingsNs)).map(value =>
           <option key={value.entry.provider} value={value.entry.provider}>{value.entry.displayName}</option>)}

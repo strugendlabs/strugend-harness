@@ -229,6 +229,17 @@
   min-width: 0;
 }
 
+.freeTag {
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: 4px;
+  background: var(--dsw-alias-bg-layer-2);
+  color: var(--dsw-alias-label-secondary);
+  font-size: 10px;
+  line-height: 16px;
+  vertical-align: 1px;
+}
+
 .modelName {
   overflow: hidden;
   color: inherit;

@@ -19,6 +19,7 @@ import { Button, IconPlusOutline16, Modal } from '@deepseek-ai/dsh-client-ui-pri
 import type { InjectFace, PropsRenderSlots } from '@deepseek-ai/dsh-client-ui-slots'
 // Type-only: pulls this package's SlotMap merge (the two Models child slots).
 import type {} from './slot-contract.ts'
+import { CoreModelPicker } from './CoreModelPicker.tsx'
 import { CustomProviderCard } from './CustomProviderCard.tsx'
 import { deriveKeyRef, protocolChoices, providerUsable } from './store.ts'
 import type { ModelsSettingsStore, ProviderRow } from './store.ts'
@@ -32,6 +33,15 @@ import styles from './ModelsSection.module.css'
 export interface ModelsSectionInjected {
   /** Product-role settings supplied only by the desktop composition. */
   intelligence?: IntelligenceOperations
+
+  /**
+   * Deployment-level model choice: the route and model new chats start on.
+   * Absent in a composition whose settings host cannot write the default.
+   */
+  coreModel?: {
+    modelsForProvider: (provider: string) => Promise<readonly { id: string; name: string }[]>
+    setDefaultModel: (provider: string, model: string) => Promise<void>
+  }
 
   /** The page store (loaded on mount, refreshed on pushed invalidations). */
   controller: ModelsSettingsStore
@@ -202,14 +212,19 @@ export function ModelsSection(props: ModelsSectionProps): ReactNode {
     controller === undefined || useSnapshot === undefined || operations === undefined
     || schema === undefined || t === undefined
   ) return null
+  const coreModel = props.coreModel
+  const face = {
+    controller, useSnapshot, operations, schema, t,
+    ...coreModel === undefined ? {} : { coreModel },
+  }
   if (props.intelligence !== undefined) return <>
-    <Loaded injected={{ controller, useSnapshot, operations, schema, t }} renderSlot={renderSlot} />
+    <Loaded injected={face} renderSlot={renderSlot} />
     <details className={styles.section}>
       <summary>{t('intelligenceTitle')}</summary>
       <IntelligenceSettings access={props.intelligence} operations={operations} t={t} />
     </details>
   </>
-  return <Loaded injected={{ controller, useSnapshot, operations, schema, t }} renderSlot={renderSlot} />
+  return <Loaded injected={face} renderSlot={renderSlot} />
 }
 
 function Loaded({ injected, renderSlot, additionalOnly = false }: {
@@ -217,7 +232,7 @@ function Loaded({ injected, renderSlot, additionalOnly = false }: {
   renderSlot: ModelsRenderSlot
   additionalOnly?: boolean
 }): ReactNode {
-  const { controller, operations, schema, t } = injected
+  const { controller, operations, schema, t, coreModel } = injected
   const state = injected.useSnapshot(snapshot => snapshot)
   const [editing, setEditing] = useState<EditorTarget | undefined>(undefined)
   const [adding, setAdding] = useState(false)
@@ -301,6 +316,13 @@ function Loaded({ injected, renderSlot, additionalOnly = false }: {
     ? savedTarget
     : { provider: savedRow.entry.provider, displayName: savedRow.entry.displayName }
 
+  // The saved Core selection, read from the settings document the page already
+  // mirrors: the default model belongs to its own namespace, not to a route.
+  const defaultValue = state.namespaces.get('agent-default-model')?.value as
+    | { provider?: unknown; model?: unknown } | undefined
+  const defaultSelection = typeof defaultValue?.provider === 'string' && typeof defaultValue.model === 'string'
+    ? { provider: defaultValue.provider, model: defaultValue.model }
+    : undefined
   // One fact decides both first-run postures on this page and the onboarding
   // step: whether the user already has a provider to talk to.
   const anyUsable = state.rows.some(providerUsable)
@@ -327,6 +349,22 @@ function Loaded({ injected, renderSlot, additionalOnly = false }: {
     <div className={styles['section']}>
       <h2 className={styles['title']}>{t('title')}</h2>
       <p className={styles['intro']}>{t('intro')}</p>
+      {coreModel === undefined
+        ? null
+        : (
+          <CoreModelPicker
+            providers={state.rows.map(row => ({
+              provider: row.entry.provider,
+              displayName: row.entry.displayName,
+              active: row.entry.active,
+            }))}
+            current={defaultSelection}
+            modelsForProvider={coreModel.modelsForProvider}
+            setDefaultModel={coreModel.setDefaultModel}
+            readOnly={!state.writable}
+            t={t}
+          />
+        )}
       {!state.writable && state.status === 'ready' ? <p className={styles['notice']}>{t('readOnly')}</p> : null}
       {savedIdentity === undefined
         ? null

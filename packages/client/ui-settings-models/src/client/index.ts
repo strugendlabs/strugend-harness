@@ -117,6 +117,31 @@ export function apply(ctx: ClientContext): void {
         revision: service.revision, credentials: credentials.value }
     },
   } : undefined
+  /** One route's models, read from the Host catalog the pickers share. */
+  const providerModels = async (provider: string): Promise<readonly { id: string; name: string }[]> => {
+    const result = await ctx.remote.session.modelCatalog()
+    if (!result.ok) throw new Error(result.error.message)
+    return result.value.groups.find(row => row.id === provider)?.models.map(row => ({ id: row.id, name: row.name })) ?? []
+  }
+
+  /**
+   * Write the deployment default every new chat, task, and background run reads.
+   * The revision comes from the settings document, so a concurrent edit is
+   * refused rather than overwritten.
+   */
+  const selectDefaultModel = async (provider: string, model: string): Promise<void> => {
+    const current = await ctx.remote.settings.describe()
+    if (!current.ok) throw new Error(current.error.message)
+    const namespace = current.value.namespaces.find(row => row.ns === 'agent-default-model')
+    if (!namespace) throw new Error('Default model settings are unavailable.')
+    const result = await operations.writeSettings('agent-default-model', [
+      { op: 'set', path: ['provider'], value: provider },
+      { op: 'set', path: ['model'], value: model },
+      { op: 'unset', path: ['reasoningEffort'] },
+    ], namespace.revision)
+    if (result.kind !== 'written') throw new Error(result.message)
+  }
+
   const injected = (): ModelsSectionInjected => ({
     ...(intelligence === undefined ? {} : { intelligence }),
     controller,
@@ -124,6 +149,7 @@ export function apply(ctx: ClientContext): void {
     operations,
     schema,
     t,
+    coreModel: { modelsForProvider: providerModels, setDefaultModel: selectDefaultModel },
   })
   const deepSeekOnboardingInjected = (): DeepSeekOnboardingInjected => ({
     controller,
@@ -140,23 +166,8 @@ export function apply(ctx: ClientContext): void {
     ...deepSeekOnboardingInjected(),
     setupController: providerSetupController,
     hooks: { models: controller.store, providerSetup: providerSetupController.store },
-    models: async (provider) => {
-      const result = await ctx.remote.session.modelCatalog()
-      if (!result.ok) throw new Error(result.error.message)
-      return result.value.groups.find(row => row.id === provider)?.models.map(row => ({ id: row.id, name: row.name })) ?? []
-    },
-    select: async (provider, model) => {
-      const current = await ctx.remote.settings.describe()
-      if (!current.ok) throw new Error(current.error.message)
-      const namespace = current.value.namespaces.find(row => row.ns === 'agent-default-model')
-      if (!namespace) throw new Error('Default model settings are unavailable.')
-      const result = await operations.writeSettings('agent-default-model', [
-        { op: 'set', path: ['provider'], value: provider },
-        { op: 'set', path: ['model'], value: model },
-        { op: 'unset', path: ['reasoningEffort'] },
-      ], namespace.revision)
-      if (result.kind !== 'written') throw new Error(result.message)
-    },
+    models: providerModels,
+    select: selectDefaultModel,
   })
   // The scope's own memory mode is what keeps a remote browser process-local,
   // so the store needs no isLoopback branch of its own.
