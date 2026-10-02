@@ -7,9 +7,10 @@
  *
  * Both tools execute as ordinary foreground spawns through `ctx.subprocess` —
  * never `ctx.shell`, never `ctx.shell.start()`, never a model-visible background
- * task. The ripgrep binary ships inside the npm package, so no system `rg`
- * install is required, and no shell layer exists between the argv vector and
- * ripgrep, so no shell quoting is involved. Raw `rg` stdout is an internal
+ * task. The ripgrep binary ships inside the npm package; a host `rg` on `PATH`
+ * is only a fallback for a release whose packaged copy is missing, and no shell
+ * layer exists between the argv vector and ripgrep, so no shell quoting is
+ * involved. Raw `rg` stdout is an internal
  * transport detail: the tools request a per-run stdout capture budget from the
  * subprocess seam, parse only complete in-memory stdout within
  * `rawOutputMaxBytes`, and never read spill files. The model-facing recovery
@@ -19,8 +20,8 @@
  * @module @deepseek-ai/dsh-tool-fs-search/search-core
  */
 
-import { existsSync } from 'node:fs'
-import { isAbsolute, join, parse, relative, sep } from 'node:path'
+import { existsSync, statSync } from 'node:fs'
+import { delimiter, isAbsolute, join, parse, relative, sep } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
 import { HarnessError } from '@deepseek-ai/dsh-llm'
 import { ItemRetainer, TextRetainer } from '@deepseek-ai/dsh-output-retention'
@@ -166,7 +167,7 @@ let rgPathPromise: Promise<string> | undefined
  * call as `SEARCH_FAILED`, rather than failing the Loader composition.
  *
  * @returns the packaged binary's absolute path; the memoized promise rejects
- *   when the platform package cannot be resolved.
+ *   when the platform package cannot be resolved or the resolved file is absent.
  */
 export function resolveRgPath(): Promise<string> {
   rgPathPromise ??= Promise.resolve().then(async () => {
@@ -176,11 +177,79 @@ export function resolveRgPath(): Promise<string> {
       : `${process.execPath}-rg`
     if ('pkg' in process && existsSync(executableSidecar)) return executableSidecar
     const dependency = (await import('@vscode/ripgrep')).rgPath
-    return process.versions.electron === undefined
-      ? dependency
-      : dependency.replace(/\.asar(?=[\\/])/u, '.asar.unpacked')
+    if (process.versions.electron === undefined) return resolveSearchBinary(dependency)
+    const unpacked = dependency.replace(/\.asar(?=[\\/])/u, '.asar.unpacked')
+    return resolveSearchBinary(unpacked, dependency)
   })
   return rgPathPromise
+}
+
+/**
+ * Resolve a usable ripgrep binary, preferring the packaged copy.
+ *
+ * The Electron branch rewrites an in-archive path to its unpacked sibling, because
+ * `child_process.spawn` cannot execute a file inside `app.asar`. That rewrite is a
+ * pure string operation: without a check, a release that failed to unpack the binary
+ * dies at the first search call as a bare spawn error that names neither the binary
+ * nor the path it tried.
+ *
+ * When the packaged copy is absent the host's own `rg` is used instead, so one bad
+ * release does not disable search for an entire session; the failure message names
+ * every candidate it tried.
+ *
+ * @param binary - the packaged absolute path to prefer.
+ * @param packaged - the in-archive path the rewrite started from, when one applied.
+ * @returns the packaged path, or a host `rg` when the packaged one is missing.
+ * @throws SearchError naming the missing packaged path and the packaging cause. The rejection is
+ *   memoized with the rest of the resolution: a running process cannot gain the file, because it
+ *   lives in its own read-only application bundle.
+ */
+function resolveSearchBinary(binary: string, packaged?: string): string {
+  if (existsSync(binary)) return binary
+  const system = systemRipgrepPath()
+  if (system.found !== undefined) return system.found
+  const origin = packaged === undefined ? '' : ` (unpacked from the archive path ${packaged})`
+  const hint = packaged === undefined
+    ? ''
+    : ' The release must unpack this executable; check asarUnpack in the desktop packaging config.'
+  const searched = system.tried.length === 0
+    ? ' PATH names no directory to search.'
+    : ` PATH was searched in ${system.tried.join(', ')}.`
+  throw new SearchError(
+    `no usable ripgrep binary: ${binary} is missing${origin}, and no rg executable is on PATH.${searched}${hint}`,
+    'SEARCH_FAILED',
+  )
+}
+
+/**
+ * The first executable `rg` on the host's PATH.
+ *
+ * A candidate must be a regular file the process may execute: a directory named
+ * `rg`, a data file of that name, or on Windows a `.cmd`/`.bat` shim — which
+ * `child_process.spawn` without a shell cannot run — is not a usable binary, and
+ * accepting one would turn a missing installation into a spawn error later.
+ *
+ * @returns the absolute path found, the directories searched, and whether PATH held any.
+ */
+function systemRipgrepPath(): { found?: string; tried: string[] } {
+  // Only a real .exe is spawnable without a shell on Windows.
+  const names = process.platform === 'win32' ? ['rg.exe'] : ['rg']
+  const directories = (process.env.PATH ?? '').split(delimiter).filter(directory => directory !== '')
+  for (const directory of directories) {
+    for (const name of names) {
+      const candidate = join(directory, name)
+      try {
+        const info = statSync(candidate)
+        if (!info.isFile()) continue
+        // Windows reports a fixed mode; only the POSIX bits mean anything.
+        if (process.platform !== 'win32' && (info.mode & 0o111) === 0) continue
+        return { found: candidate, tried: directories }
+      } catch {
+        // An absent or unreadable entry simply is not the binary.
+      }
+    }
+  }
+  return { tried: directories }
 }
 
 /**
@@ -208,7 +277,9 @@ export function resolveRgPath(): Promise<string> {
  * the command could not start, while a rejection of `handle.done` reports a
  * provider failure without claiming whether execution began. Both become
  * `SEARCH_FAILED` with the original as `cause`; an abort already observed by
- * creation time becomes `SEARCH_ABORTED` instead.
+ * creation time becomes `SEARCH_ABORTED` instead. Both launch messages name the
+ * binary that was spawned, and a resolution failure keeps its own message naming
+ * the missing path instead of being replaced by the launch message.
  *
  * @param ctx - the plugin context; execution uses its `subprocess` service.
  * @param exec - the tool-execution context; supplies the session cwd and the abort signal.
@@ -233,10 +304,12 @@ export async function runRipgrep(
   }
   const cwd = exec.agent?.session.header.cwd
   const workdir = cwd ?? process.cwd()
+  let binary: string | undefined
   let handle: SubprocessHandle
   try {
+    binary = await resolveRgPath()
     handle = ctx.subprocess.spawn({
-      argv: [await resolveRgPath(), '--no-config', ...argv],
+      argv: [binary, '--no-config', ...argv],
       cwd: workdir,
       stdio: {
         stdin: 'ignore',
@@ -256,13 +329,15 @@ export async function runRipgrep(
     if (exec.signal.aborted) {
       throw new SearchError(`${toolName} was aborted before completion (tool timeout or caller cancellation)`, 'SEARCH_ABORTED')
     }
-    throw new SearchError(`${toolName} could not start its search command (ripgrep launch failed)`, 'SEARCH_FAILED', { cause: error })
+    // A resolution failure already names the missing binary and its packaging cause.
+    if (error instanceof SearchError) throw error
+    throw new SearchError(`${toolName} could not start its search command (ripgrep launch failed at ${binary ?? 'an unresolved binary path'})`, 'SEARCH_FAILED', { cause: error })
   }
   let outcome: SubprocessOutcome
   try {
     outcome = await handle.done
   } catch (error: unknown) {
-    throw new SearchError(`${toolName} subprocess failed before reporting an outcome (ripgrep provider failure)`, 'SEARCH_FAILED', { cause: error })
+    throw new SearchError(`${toolName} subprocess failed before reporting an outcome (ripgrep provider failure at ${binary})`, 'SEARCH_FAILED', { cause: error })
   }
   const stdout = handle.collected.stdout?.readFrom(0)
   const stderr = handle.collected.stderr?.readFrom(0)
